@@ -1,6 +1,6 @@
 # Техническое задание: PWA «Новая глава»
 
-**Версия:** 2.2  
+**Версия:** 2.3  
 **Дата:** 18.06.2026  
 **Статус:** Утверждение
 
@@ -586,7 +586,8 @@ Email, пароль, имя, возраст, пол.
 - На iOS — push только после установки PWA («На экран Домой»).
 - Шаблоны в БД: `event_type × harshness_level`.
 - Типы событий: `morning`, `afternoon`, `evening`, `relapse`, `success`, `smoke_cheer`, `doom_scroll_start`, `doom_scroll_end`, `doom_scroll_limit`.
-- Сессии «тупых дел» — отложенные push через BullMQ (через 15 мин после старта).
+- Сессии «тупых дел» — отложенные push через BullMQ (через 15 мин после старта); **одна job на сессию**.
+- Расписание (утро / день / вечер / cheer) — не чаще 1 раза за событие в локальный день пользователя; учёт в `push_delivery_log` (§17).
 
 ### 9.7. Фоновые задачи (обязательная реализация)
 
@@ -1071,6 +1072,34 @@ CREATE TABLE english_progress (
     watched_sec INTEGER DEFAULT 0,
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE (user_id, date)
+);
+
+-- Снимки цели на каждый день (для графиков §27; пишет worker при закрытии дня)
+CREATE TABLE goal_snapshots (
+    habit_id   UUID NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+    date       DATE NOT NULL,
+    goal_value DECIMAL NOT NULL,
+    PRIMARY KEY (habit_id, date)
+);
+
+-- Итоги дня по привычке (для /stats/*; пишет worker при закрытии дня)
+CREATE TABLE daily_stats (
+    habit_id      UUID NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+    date          DATE NOT NULL,
+    status        VARCHAR NOT NULL CHECK (status IN ('success', 'fail', 'skipped')),
+    value         DECIMAL,
+    minutes_total INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (habit_id, date)
+);
+
+-- Журнал отправленных push (защита от дублей расписания §9.7)
+CREATE TABLE push_delivery_log (
+    user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    event_type VARCHAR NOT NULL,
+    local_date DATE NOT NULL,
+    slot       INTEGER NOT NULL DEFAULT 0,
+    sent_at    TIMESTAMP NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, event_type, local_date, slot)
 );
 ```
 
@@ -1613,9 +1642,16 @@ Push-уведомления **не гарантируются** (зависит 
 
 ### 27.4. Обновление данных
 
-- графики пересчитываются при каждом новом чекине (сохранение ползунка, «Сорвался», помодоро, сессия «тупых дел»);
-- данные кешируются на клиенте (**TanStack Query**), инвалидируются после `POST /checkins` и связанных мутаций;
-- офлайн: графики строятся из локального кеша, синхронизируются после `POST /checkins/batch`.
+**Сервер (backend):**
+
+- при закрытии дня (worker, 23:59) в `goal_snapshots` сохраняется `goal_value` за этот день — **до** прогрессии цели на завтра;
+- в `daily_stats` сохраняется итог дня по каждой привычке (`status`, `value`, `minutes_total`);
+- эндпоинты `/stats/*` читают `goal_snapshots` и `daily_stats`, а не пересчитывают историю из текущего `current_goal`.
+
+**Клиент (PWA):**
+
+- графики обновляются после каждого чекина (инвалидация TanStack Query);
+- данные кешируются на клиенте, синхронизируются после `POST /checkins/batch`.
 
 ### 27.5. UI-референс
 
