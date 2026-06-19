@@ -1,6 +1,7 @@
 import { Queue, Worker, type ConnectionOptions } from "bullmq";
 import type { Redis } from "ioredis";
 import type { BillingService } from "../services/billing.js";
+import type { PledgeService } from "../services/pledges.js";
 import type { DayCloseService } from "../services/day-close.js";
 
 export const WORKER_QUEUE_NAME = "mytodo-worker";
@@ -44,6 +45,7 @@ export function createMinuteTickWorker(
   redis: Redis,
   dayCloseService: DayCloseService,
   billingService: BillingService,
+  pledgeService: PledgeService,
   logger: WorkerLogger,
 ): Worker {
   return new Worker(
@@ -52,6 +54,7 @@ export function createMinuteTickWorker(
       const now = new Date();
       await billingService.processEndedSubscriptions(now);
       await billingService.processPastDueRetries(now);
+      await pledgeService.processExpiredPledges(now);
       const summaries = await dayCloseService.runMinuteTick(now);
 
       for (const summary of summaries) {
@@ -79,12 +82,13 @@ export async function startWorker(
   redis: Redis,
   dayCloseService: DayCloseService,
   billingService: BillingService,
+  pledgeService: PledgeService,
   logger: WorkerLogger,
 ): Promise<{ queue: Queue; worker: Worker }> {
   const queue = createWorkerQueue(redis);
   await ensureMinuteTickSchedule(queue);
 
-  const worker = createMinuteTickWorker(redis, dayCloseService, billingService, logger);
+  const worker = createMinuteTickWorker(redis, dayCloseService, billingService, pledgeService, logger);
   worker.on("failed", (job, error) => {
     logger.error(
       { event: "worker_failed", job_id: job?.id, error: error.message },

@@ -19,6 +19,7 @@ export type CreatePaymentInput = {
   description: string;
   savePaymentMethod: boolean;
   idempotenceKey: string;
+  extraMetadata?: Record<string, string>;
 };
 
 export type CreateRecurringPaymentInput = {
@@ -47,5 +48,6 @@ export interface YukassaClient {
   createPayment(input: CreatePaymentInput): Promise<YukassaPayment>;
   createRecurringPayment(input: CreateRecurringPaymentInput): Promise<YukassaPayment>;
   getPayment(paymentId: string): Promise<YukassaPayment>;
+  createRefund(paymentId: string, amountRub: number, idempotenceKey: string): Promise<void>;
   verifyWebhookSignature(_body: string, _signature: string | undefined): boolean;
 }

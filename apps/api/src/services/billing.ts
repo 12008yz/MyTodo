@@ -48,10 +48,13 @@ function toSubscriptionResponse(row: Subscription): SubscriptionResponse {
   };
 }
 
+import type { PledgeService } from "./pledges.js";
+
 export class BillingService {
   constructor(
     private readonly db: Database,
     private readonly yukassa: YukassaClient,
+    private readonly pledgeService?: PledgeService,
   ) {}
 
   async getAccessSubscription(userId: string): Promise<Subscription | null> {
@@ -163,7 +166,11 @@ export class BillingService {
     const payment = await this.yukassa.getPayment(paymentId);
 
     if (eventType === "payment.succeeded" && payment.paid) {
-      await this.activateSubscription(payment);
+      if (payment.metadata.purpose === "pledge") {
+        await this.pledgeService?.activateFromPayment(payment);
+      } else {
+        await this.activateSubscription(payment);
+      }
     } else if (eventType === "payment.canceled") {
       await this.markPastDueFromPayment(payment);
     }

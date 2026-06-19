@@ -23,7 +23,7 @@ export class MockYukassaClient implements YukassaClient {
       amountRub: input.amountRub,
       confirmationUrl: `https://yookassa.mock/pay/${id}`,
       paymentMethodId: null,
-      metadata: { user_id: input.userId, plan: input.plan },
+      metadata: { user_id: input.userId, plan: input.plan, ...input.extraMetadata },
       savePaymentMethod: input.savePaymentMethod,
     };
     this.payments.set(id, payment);
@@ -39,7 +39,7 @@ export class MockYukassaClient implements YukassaClient {
       amountRub: input.amountRub,
       confirmationUrl: null,
       paymentMethodId: input.paymentMethodId,
-      metadata: { user_id: input.userId, plan: input.plan },
+      metadata: { user_id: input.userId, plan: input.plan, ...input.extraMetadata },
       savePaymentMethod: false,
     };
     this.payments.set(id, payment);
@@ -57,6 +57,10 @@ export class MockYukassaClient implements YukassaClient {
 
   verifyWebhookSignature(): boolean {
     return true;
+  }
+
+  async createRefund(): Promise<void> {
+    // no-op in mock
   }
 
   /** Test helper: mark a payment as succeeded. */

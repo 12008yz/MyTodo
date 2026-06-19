@@ -319,3 +319,52 @@ export const billingWebhookEvents = pgTable(
 
 export type BillingWebhookEvent = typeof billingWebhookEvents.$inferSelect;
 export type NewBillingWebhookEvent = typeof billingWebhookEvents.$inferInsert;
+
+export const pledges = pgTable(
+  "pledges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    habitId: uuid("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+    amountRub: integer("amount_rub").notNull().default(5000),
+    status: varchar("status", { length: 20 }).notNull(),
+    charityFund: varchar("charity_fund", { length: 32 }).notNull(),
+    startedAt: date("started_at").notNull(),
+    endedAt: date("ended_at"),
+    yukassaPaymentId: varchar("yukassa_payment_id", { length: 255 }),
+    refundError: boolean("refund_error").notNull().default(false),
+    adminComment: text("admin_comment"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdIdx: index("pledges_user_id_idx").on(table.userId),
+    habitIdIdx: index("pledges_habit_id_idx").on(table.habitId),
+    statusCheck: check(
+      "pledges_status_check",
+      sql`${table.status} IN ('active', 'success', 'failed')`,
+    ),
+    charityFundCheck: check(
+      "pledges_charity_fund_check",
+      sql`${table.charity_fund} IN ('oncology', 'children', 'animals')`,
+    ),
+  }),
+);
+
+export type Pledge = typeof pledges.$inferSelect;
+export type NewPledge = typeof pledges.$inferInsert;
+
+export const userBadges = pgTable("user_badges", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  badgeType: varchar("badge_type", { length: 64 }).notNull(),
+  earnedAt: timestamp("earned_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+});
+
+export type UserBadge = typeof userBadges.$inferSelect;
+export type NewUserBadge = typeof userBadges.$inferInsert;

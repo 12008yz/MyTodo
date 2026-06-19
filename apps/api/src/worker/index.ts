@@ -7,6 +7,7 @@ import { CheckinService } from "../services/checkins.js";
 import { DoomScrollService } from "../services/doom-scroll.js";
 import { DayCloseService } from "../services/day-close.js";
 import { BillingService } from "../services/billing.js";
+import { PledgeService } from "../services/pledges.js";
 import { createYukassaClient } from "../lib/yukassa/client.js";
 import { startWorker } from "./scheduler.js";
 
@@ -16,10 +17,12 @@ async function main(): Promise<void> {
 
   const { db, client: dbClient } = createDb(env);
   const redis = createRedis(env);
-  const checkinService = new CheckinService(db);
+  const yukassa = createYukassaClient(env);
+  const pledgeService = new PledgeService(db, yukassa);
+  const checkinService = new CheckinService(db, pledgeService);
   const doomScrollService = new DoomScrollService(db, checkinService);
-  const dayCloseService = new DayCloseService(db, doomScrollService);
-  const billingService = new BillingService(db, createYukassaClient(env));
+  const dayCloseService = new DayCloseService(db, doomScrollService, pledgeService);
+  const billingService = new BillingService(db, yukassa, pledgeService);
 
   const logger = {
     info: (obj: Record<string, unknown>, message?: string) => {
@@ -30,7 +33,7 @@ async function main(): Promise<void> {
     },
   };
 
-  const { worker } = await startWorker(redis, dayCloseService, billingService, logger);
+  const { worker } = await startWorker(redis, dayCloseService, billingService, pledgeService, logger);
 
   const shutdown = async () => {
     await worker.close();

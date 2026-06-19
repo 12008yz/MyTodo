@@ -57,3 +57,8 @@ export {
   type BillingAccessInput,
   type SubscriptionAccess,
 } from "./billing/access.js";
+export {
+  evaluatePledgePeriod,
+  type PledgeDayRecord,
+  type PledgeDayStatus,
+} from "./pledges/evaluate.js";

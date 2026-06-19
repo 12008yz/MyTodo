@@ -2,6 +2,18 @@ export const TRIAL_DAYS = 3;
 
 export const PLEDGE_AMOUNT = 5000;
 
+export const PLEDGE_PERIOD_DAYS = 30;
+
+export const PLEDGE_CHARITY_FUNDS = ["oncology", "children", "animals"] as const;
+
+export type PledgeCharityFund = (typeof PLEDGE_CHARITY_FUNDS)[number];
+
+export const PLEDGE_STATUSES = ["active", "success", "failed"] as const;
+
+export type PledgeStatus = (typeof PLEDGE_STATUSES)[number];
+
+export const PLEDGE_BADGE_STEEL_CHARACTER = "steel_character";
+
 export const PAST_DUE_RETRY_DAYS = 3;
 
 export const PAST_DUE_MAX_RETRIES = 3;

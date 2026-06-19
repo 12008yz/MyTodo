@@ -25,7 +25,10 @@ type UpsertResult = {
 };
 
 export class CheckinService {
-  constructor(private readonly db: DbExecutor) {}
+  constructor(
+    private readonly db: DbExecutor,
+    private readonly pledgeService?: import("./pledges.js").PledgeService,
+  ) {}
 
   async listByDate(userId: string, date: string) {
     const rows = await this.db
@@ -57,6 +60,11 @@ export class CheckinService {
     }
 
     const checkin = await this.saveCheckin(habit.id, date, status, value);
+
+    if (status === "fail") {
+      await this.pledgeService?.failActivePledgeForHabit(habit.id);
+    }
+
     const currentGoal = Number(habit.currentGoal);
 
     return {
@@ -251,8 +259,8 @@ export class CheckinService {
     }
   }
 
-  private async assertNoActivePledge(_habitId: string) {
-    // Block 11: reject skip when habit has an active pledge.
+  private async assertNoActivePledge(habitId: string) {
+    await this.pledgeService?.assertNoActivePledge(habitId);
   }
 
   private async listSkippedDates(habitId: string) {

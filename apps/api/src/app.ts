@@ -18,6 +18,7 @@ import { registerDoomScrollRoutes } from "./routes/doom-scroll.js";
 import { registerStatsRoutes } from "./routes/stats.js";
 import { registerEnglishRoutes } from "./routes/english.js";
 import { registerBillingRoutes } from "./routes/billing.js";
+import { registerPledgeRoutes } from "./routes/pledges.js";
 import { createAuthServices } from "./services/auth.js";
 import { HabitService } from "./services/habits.js";
 import { CheckinService } from "./services/checkins.js";
@@ -27,6 +28,7 @@ import { DoomScrollService } from "./services/doom-scroll.js";
 import { StatsService } from "./services/stats.js";
 import { EnglishService } from "./services/english.js";
 import { BillingService } from "./services/billing.js";
+import { PledgeService } from "./services/pledges.js";
 import { createYukassaClient } from "./lib/yukassa/client.js";
 import { createRequireAccess } from "./plugins/require-access.js";
 
@@ -69,14 +71,15 @@ export async function buildApp({ env, yukassaClient }: AppDependencies): Promise
 
   const { authService, userService } = createAuthServices(app, db);
   const habitService = new HabitService(db);
-  const checkinService = new CheckinService(db);
+  const yukassa = createYukassaClient(env, yukassaClient);
+  const pledgeService = new PledgeService(db, yukassa);
+  const billingService = new BillingService(db, yukassa, pledgeService);
+  const checkinService = new CheckinService(db, pledgeService);
   const pomodoroService = new PomodoroService(db);
   const doomScrollService = new DoomScrollService(db, checkinService);
   const todayService = new TodayService(db, pomodoroService, doomScrollService);
   const statsService = new StatsService(db);
   const englishService = new EnglishService(db);
-  const yukassa = createYukassaClient(env, yukassaClient);
-  const billingService = new BillingService(db, yukassa);
   const requireAccess = createRequireAccess(db, billingService);
 
   await registerHealthRoutes(app, { dbClient, redis });
@@ -90,6 +93,7 @@ export async function buildApp({ env, yukassaClient }: AppDependencies): Promise
   await registerStatsRoutes(app, userService, statsService, requireAccess);
   await registerEnglishRoutes(app, userService, englishService, requireAccess);
   await registerBillingRoutes(app, billingService);
+  await registerPledgeRoutes(app, pledgeService, requireAccess);
 
   app.addHook("onClose", async () => {
     await dbClient.end({ timeout: 5 });

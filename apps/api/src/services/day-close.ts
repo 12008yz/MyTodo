@@ -22,6 +22,7 @@ import {
   type User,
 } from "../db/schema/index.js";
 import type { DoomScrollService } from "./doom-scroll.js";
+import type { PledgeService } from "./pledges.js";
 
 export type DayCloseSummary = {
   user_id: string;
@@ -34,6 +35,7 @@ export class DayCloseService {
   constructor(
     private readonly db: DbExecutor,
     private readonly doomScrollService: DoomScrollService,
+    private readonly pledgeService?: PledgeService,
   ) {}
 
   /** Users whose local time is 23:59 at the given instant. */
@@ -309,8 +311,10 @@ export class DayCloseService {
     };
   }
 
-  /** Placeholder until pledges (block 11) — returns empty set. */
-  private async listActivePledgeHabitIds(_userId: string): Promise<Set<string>> {
+  private async listActivePledgeHabitIds(userId: string): Promise<Set<string>> {
+    if (this.pledgeService) {
+      return this.pledgeService.listActiveHabitIds(userId);
+    }
     return new Set();
   }
 }

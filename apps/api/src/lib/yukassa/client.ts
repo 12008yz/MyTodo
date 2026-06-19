@@ -43,7 +43,7 @@ export class HttpYukassaClient implements YukassaClient {
       confirmation: { type: "redirect", return_url: "https://example.com/billing/return" },
       description: input.description,
       save_payment_method: input.savePaymentMethod,
-      metadata: { user_id: input.userId, plan: input.plan },
+      metadata: { user_id: input.userId, plan: input.plan, ...input.extraMetadata },
     };
 
     const raw = await this.request<YukassaApiPayment>("POST", "/payments", body, input.idempotenceKey);
@@ -66,6 +66,18 @@ export class HttpYukassaClient implements YukassaClient {
   async getPayment(paymentId: string): Promise<YukassaPayment> {
     const raw = await this.request<YukassaApiPayment>("GET", `/payments/${paymentId}`);
     return mapPayment(raw);
+  }
+
+  async createRefund(paymentId: string, amountRub: number, idempotenceKey: string): Promise<void> {
+    await this.request(
+      "POST",
+      `/refunds`,
+      {
+        payment_id: paymentId,
+        amount: { value: amountRub.toFixed(2), currency: "RUB" },
+      },
+      idempotenceKey,
+    );
   }
 
   verifyWebhookSignature(_body: string, _signature: string | undefined): boolean {
