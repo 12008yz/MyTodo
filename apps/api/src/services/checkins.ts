@@ -9,13 +9,13 @@ import {
   ApiError,
   ERROR_CODES,
   HTTP_STATUS,
-  SOCIAL_MEDIA_MIN_GOAL,
   type BatchCheckinRequest,
   type CreateCheckinRequest,
 } from "@mytodo/shared";
 import type { DbExecutor } from "../db/index.js";
 import { checkins, habits, type Habit, type User } from "../db/schema/index.js";
 import { toCheckinResponse } from "../lib/checkin-mapper.js";
+import { previewStatusFromCheckin, toProgressionHabit } from "../lib/habit-progression.js";
 
 type UpsertResult = {
   checkin: typeof checkins.$inferSelect;
@@ -62,7 +62,10 @@ export class CheckinService {
     return {
       checkin,
       currentGoal,
-      previewNextGoal: computeNextGoal(this.toProgressionHabit(habit), status),
+      previewNextGoal: computeNextGoal(
+        toProgressionHabit(habit),
+        previewStatusFromCheckin(status),
+      ),
       created: !existing,
     };
   }
@@ -291,23 +294,11 @@ export class CheckinService {
     };
   }
 
-  private toProgressionHabit(habit: Habit) {
-    return {
-      ...this.toCheckinHabit(habit),
-      growthStep: Number(habit.growthStep),
-      progressionDirection: habit.progressionDirection as
-        | "increase"
-        | "decrease"
-        | "abstain",
-      minGoal: habit.templateId === "social_media" ? SOCIAL_MEDIA_MIN_GOAL : undefined,
-    };
-  }
-
   private toResponse(checkin: typeof checkins.$inferSelect, habit: Habit) {
     const currentGoal = Number(habit.currentGoal);
     const previewNextGoal = computeNextGoal(
-      this.toProgressionHabit(habit),
-      checkin.status as "success" | "fail" | "skipped",
+      toProgressionHabit(habit),
+      previewStatusFromCheckin(checkin.status),
     );
 
     return toCheckinResponse(checkin, currentGoal, previewNextGoal);

@@ -186,6 +186,122 @@ describe("Habits", () => {
     expect(seventh.statusCode).toBe(400);
   });
 
+  it("snapshots harshness_level from profile at creation time", async () => {
+    const auth = await createOnboardedUser("harshness@example.com");
+
+    await app.inject({
+      method: "PATCH",
+      url: "/api/v1/me",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: { harshness_level: 3 },
+    });
+
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: {
+        template_id: "smoking",
+        baseline_value: 20,
+      },
+    });
+
+    const habit = habitResponseSchema.parse(JSON.parse(createResponse.body));
+    expect(habit.harshness_level).toBe(3);
+
+    await app.inject({
+      method: "PATCH",
+      url: "/api/v1/me",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: { harshness_level: 1 },
+    });
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/habits?side=dark",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    const listed = habitResponseSchema.array().parse(JSON.parse(listResponse.body));
+    expect(listed[0]?.harshness_level).toBe(3);
+  });
+
+  it("recalibrates remaining light habits when one is deactivated", async () => {
+    const auth = await createOnboardedUser("recalibrate@example.com");
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+
+    const booksResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers,
+      payload: {
+        template_id: "books",
+        baseline_value: 5,
+      },
+    });
+    const books = habitResponseSchema.parse(JSON.parse(booksResponse.body));
+
+    const customResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers,
+      payload: {
+        name: "Blender 3D",
+        unit: "minutes",
+        baseline_value: 20,
+      },
+    });
+    const custom = habitResponseSchema.parse(JSON.parse(customResponse.body));
+    expect(custom.current_goal).toBe(30);
+
+    const listBefore = await app.inject({
+      method: "GET",
+      url: "/api/v1/habits?side=light",
+      headers,
+    });
+    const lightBefore = habitResponseSchema.array().parse(JSON.parse(listBefore.body));
+    const booksBefore = lightBefore.find((habit) => habit.id === books.id);
+    expect(booksBefore?.current_goal).toBe(60);
+
+    const deleteResponse = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/habits/${custom.id}`,
+      headers,
+    });
+    expect(deleteResponse.statusCode).toBe(200);
+
+    const listAfter = await app.inject({
+      method: "GET",
+      url: "/api/v1/habits?side=light",
+      headers,
+    });
+    const lightAfter = habitResponseSchema.array().parse(JSON.parse(listAfter.body));
+    expect(lightAfter).toHaveLength(1);
+    expect(lightAfter[0]?.current_goal).toBe(120);
+  });
+
+  it("rejects manual goal changes for abstinence habits", async () => {
+    const auth = await createOnboardedUser("abstinence-goal@example.com");
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+
+    const createResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers,
+      payload: { template_id: "nail_biting" },
+    });
+    const habit = habitResponseSchema.parse(JSON.parse(createResponse.body));
+
+    const patchResponse = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/habits/${habit.id}`,
+      headers,
+      payload: { current_goal: 5 },
+    });
+
+    expect(patchResponse.statusCode).toBe(400);
+  });
+
   it("lists, patches goal, and deactivates habits", async () => {
     const auth = await createOnboardedUser("crud@example.com");
     const headers = { authorization: `Bearer ${auth.access_token}` };

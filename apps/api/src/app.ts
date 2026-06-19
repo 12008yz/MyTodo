@@ -12,9 +12,11 @@ import { registerAuthRoutes } from "./routes/auth.js";
 import { registerMeRoutes } from "./routes/me.js";
 import { registerHabitRoutes } from "./routes/habits.js";
 import { registerCheckinRoutes } from "./routes/checkins.js";
+import { registerTodayRoutes } from "./routes/today.js";
 import { createAuthServices } from "./services/auth.js";
 import { HabitService } from "./services/habits.js";
 import { CheckinService } from "./services/checkins.js";
+import { TodayService } from "./services/today.js";
 
 export type AppDependencies = {
   env: Env;
@@ -55,12 +57,14 @@ export async function buildApp({ env }: AppDependencies): Promise<BuiltApp> {
   const { authService, userService } = createAuthServices(app, db);
   const habitService = new HabitService(db);
   const checkinService = new CheckinService(db);
+  const todayService = new TodayService(db);
 
   await registerHealthRoutes(app, { dbClient, redis });
   await registerAuthRoutes(app, authService);
   await registerMeRoutes(app, userService);
   await registerHabitRoutes(app, userService, habitService);
   await registerCheckinRoutes(app, userService, checkinService);
+  await registerTodayRoutes(app, userService, todayService);
 
   app.addHook("onClose", async () => {
     await dbClient.end({ timeout: 5 });

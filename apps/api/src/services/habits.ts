@@ -12,7 +12,7 @@ import {
   type PatchHabitRequest,
 } from "@mytodo/shared";
 import type { Database } from "../db/index.js";
-import { habits, type User } from "../db/schema/index.js";
+import { habits, users, type User } from "../db/schema/index.js";
 import { toHabitResponse } from "../lib/habit-mapper.js";
 
 function toProfile(user: User) {
@@ -92,6 +92,7 @@ export class HabitService {
         isCustom: calibrated.isCustom,
         icon: calibrated.icon,
         templateId: calibrated.templateId,
+        harshnessLevel: user.harshnessLevel,
       })
       .returning();
 
@@ -122,7 +123,10 @@ export class HabitService {
 
     const updates: Partial<typeof habits.$inferInsert> = {};
     if (body.name !== undefined) updates.name = body.name;
-    if (body.current_goal !== undefined) updates.currentGoal = String(body.current_goal);
+    if (body.current_goal !== undefined) {
+      this.assertGoalPatchAllowed(habit, body.current_goal);
+      updates.currentGoal = String(body.current_goal);
+    }
     if (body.icon !== undefined) updates.icon = body.icon;
 
     const [updated] = await this.db
@@ -144,6 +148,7 @@ export class HabitService {
 
   async deactivate(userId: string, habitId: string) {
     const habit = await this.getOwnedHabit(userId, habitId);
+    const wasLight = habit.side === "light";
 
     const [updated] = await this.db
       .update(habits)
@@ -159,7 +164,35 @@ export class HabitService {
       );
     }
 
+    if (wasLight) {
+      const user = await this.getUser(userId);
+      await this.recalibrateActiveLightGoals(user);
+    }
+
     return toHabitResponse(updated);
+  }
+
+  private assertGoalPatchAllowed(habit: typeof habits.$inferSelect, goal: number) {
+    const isAbstinenceGoalLocked =
+      habit.type === "abstinence" || habit.phase === "abstinence";
+
+    if (isAbstinenceGoalLocked && goal !== 0) {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
+        "Abstinence habits must keep current_goal at 0",
+      );
+    }
+  }
+
+  private async getUser(userId: string): Promise<User> {
+    const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
+
+    if (!user) {
+      throw new ApiError(HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, "User not found");
+    }
+
+    return user;
   }
 
   private assertOnboardingCompleted(user: User) {

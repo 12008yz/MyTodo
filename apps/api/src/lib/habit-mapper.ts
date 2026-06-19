@@ -24,6 +24,7 @@ export function toHabitResponse(habit: Habit): HabitResponse {
     icon: habit.icon,
     is_active: habit.isActive,
     template_id: (habit.templateId as HabitTemplateId | null) ?? null,
+    harshness_level: habit.harshnessLevel,
     created_at: habit.createdAt.toISOString(),
   };
 }

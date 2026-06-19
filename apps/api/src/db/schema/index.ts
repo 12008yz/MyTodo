@@ -79,6 +79,7 @@ export const habits = pgTable("habits", {
   isCustom: boolean("is_custom").notNull().default(false),
   icon: varchar("icon", { length: 32 }),
   templateId: varchar("template_id", { length: 32 }),
+  harshnessLevel: integer("harshness_level").notNull().default(1),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
 });

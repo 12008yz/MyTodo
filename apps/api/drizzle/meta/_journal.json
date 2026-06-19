@@ -36,6 +36,13 @@
       "when": 1781888000000,
       "tag": "0004_checkins_status_check",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781888500000,
+      "tag": "0005_habits_harshness_level",
+      "breakpoints": true
     }
   ]
 }
