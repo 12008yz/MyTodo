@@ -19,6 +19,7 @@ import { registerStatsRoutes } from "./routes/stats.js";
 import { registerEnglishRoutes } from "./routes/english.js";
 import { registerBillingRoutes } from "./routes/billing.js";
 import { registerPledgeRoutes } from "./routes/pledges.js";
+import { registerPushRoutes } from "./routes/push.js";
 import { createAuthServices } from "./services/auth.js";
 import { HabitService } from "./services/habits.js";
 import { CheckinService } from "./services/checkins.js";
@@ -29,12 +30,16 @@ import { StatsService } from "./services/stats.js";
 import { EnglishService } from "./services/english.js";
 import { BillingService } from "./services/billing.js";
 import { PledgeService } from "./services/pledges.js";
+import { PushService, seedPushTemplates } from "./services/push.js";
 import { createYukassaClient } from "./lib/yukassa/client.js";
+import { resolveWebPushClient, type WebPushClient } from "./lib/web-push/index.js";
+import { createPushQueue } from "./worker/push-queue.js";
 import { createRequireAccess } from "./plugins/require-access.js";
 
 export type AppDependencies = {
   env: Env;
   yukassaClient?: import("./lib/yukassa/types.js").YukassaClient;
+  webPushClient?: WebPushClient;
 };
 
 export type BuiltApp = {
@@ -43,7 +48,7 @@ export type BuiltApp = {
   redis: ReturnType<typeof createRedis>;
 };
 
-export async function buildApp({ env, yukassaClient }: AppDependencies): Promise<BuiltApp> {
+export async function buildApp({ env, yukassaClient, webPushClient }: AppDependencies): Promise<BuiltApp> {
   const { db, client: dbClient } = createDb(env);
   const redis = createRedis(env);
 
@@ -72,11 +77,15 @@ export async function buildApp({ env, yukassaClient }: AppDependencies): Promise
   const habitService = new HabitService(db);
   const yukassa = createYukassaClient(env, yukassaClient);
   const pledgeService = new PledgeService(db, yukassa);
+  const webPush = resolveWebPushClient(env, webPushClient);
+  const pushService = new PushService(db, webPush, app.log);
+  await seedPushTemplates(db);
   const { authService, userService } = createAuthServices(app, db, pledgeService);
   const billingService = new BillingService(db, yukassa, pledgeService);
-  const checkinService = new CheckinService(db, pledgeService);
+  const checkinService = new CheckinService(db, pledgeService, pushService);
+  const pushQueue = env.NODE_ENV === "test" ? undefined : createPushQueue(redis);
   const pomodoroService = new PomodoroService(db, pledgeService);
-  const doomScrollService = new DoomScrollService(db, checkinService);
+  const doomScrollService = new DoomScrollService(db, checkinService, pushService, pushQueue);
   const todayService = new TodayService(db, pomodoroService, doomScrollService);
   const statsService = new StatsService(db);
   const englishService = new EnglishService(db);
@@ -94,8 +103,12 @@ export async function buildApp({ env, yukassaClient }: AppDependencies): Promise
   await registerEnglishRoutes(app, userService, englishService, requireAccess);
   await registerBillingRoutes(app, billingService);
   await registerPledgeRoutes(app, pledgeService, requireAccess);
+  await registerPushRoutes(app, pushService, requireAccess);
 
   app.addHook("onClose", async () => {
+    if (pushQueue) {
+      await pushQueue.close();
+    }
     await dbClient.end({ timeout: 5 });
     await closeRedis(redis);
   });

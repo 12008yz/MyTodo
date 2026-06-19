@@ -28,6 +28,7 @@ export class CheckinService {
   constructor(
     private readonly db: DbExecutor,
     private readonly pledgeService?: import("./pledges.js").PledgeService,
+    private readonly pushService?: import("./push.js").PushService,
   ) {}
 
   async listByDate(userId: string, date: string) {
@@ -64,6 +65,8 @@ export class CheckinService {
     if (status === "fail") {
       await this.pledgeService?.failActivePledgeForHabit(habit.id, this.db);
     }
+
+    await this.pushService?.onCheckinInstant(user, habit, status, existing?.status);
 
     const currentGoal = Number(habit.currentGoal);
 
@@ -107,6 +110,8 @@ export class CheckinService {
     if (status === "fail") {
       await this.pledgeService?.failActivePledgeForHabit(habit.id, this.db);
     }
+
+    await this.pushService?.onCheckinInstant(user, habit, status, existing?.status);
 
     const currentGoal = Number(habit.currentGoal);
 
@@ -167,13 +172,13 @@ export class CheckinService {
 
     return this.db.transaction(async (tx) => {
       const batchService = new CheckinService(tx, this.pledgeService);
-      const results: UpsertResult[] = [];
+      const batchResults: UpsertResult[] = [];
 
       for (const item of body.checkins) {
-        results.push(await batchService.upsert(user, item));
+        batchResults.push(await batchService.upsert(user, item));
       }
 
-      return results;
+      return batchResults;
     });
   }
 

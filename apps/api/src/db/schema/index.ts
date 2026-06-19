@@ -6,6 +6,7 @@ import {
   integer,
   numeric,
   pgTable,
+  serial,
   text,
   timestamp,
   unique,
@@ -370,3 +371,67 @@ export const userBadges = pgTable("user_badges", {
 
 export type UserBadge = typeof userBadges.$inferSelect;
 export type NewUserBadge = typeof userBadges.$inferInsert;
+
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdIdx: index("push_subscriptions_user_id_idx").on(table.userId),
+    endpointUnique: unique("push_subscriptions_endpoint_unique").on(table.endpoint),
+  }),
+);
+
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type NewPushSubscription = typeof pushSubscriptions.$inferInsert;
+
+export const notificationTemplates = pgTable(
+  "notification_templates",
+  {
+    id: serial("id").primaryKey(),
+    eventType: varchar("event_type", { length: 64 }).notNull(),
+    harshnessLevel: integer("harshness_level").notNull(),
+    message: text("message").notNull(),
+  },
+  (table) => ({
+    harshnessCheck: check(
+      "notification_templates_harshness_level_check",
+      sql`${table.harshnessLevel} BETWEEN 1 AND 3`,
+    ),
+  }),
+);
+
+export type NotificationTemplate = typeof notificationTemplates.$inferSelect;
+export type NewNotificationTemplate = typeof notificationTemplates.$inferInsert;
+
+export const pushDeliveryLog = pgTable(
+  "push_delivery_log",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    eventType: varchar("event_type", { length: 64 }).notNull(),
+    localDate: date("local_date").notNull(),
+    slot: integer("slot").notNull().default(0),
+    sentAt: timestamp("sent_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => ({
+    pk: unique("push_delivery_log_pk").on(
+      table.userId,
+      table.eventType,
+      table.localDate,
+      table.slot,
+    ),
+  }),
+);
+
+export type PushDeliveryLog = typeof pushDeliveryLog.$inferSelect;
+export type NewPushDeliveryLog = typeof pushDeliveryLog.$inferInsert;

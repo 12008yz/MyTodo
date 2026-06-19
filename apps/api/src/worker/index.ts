@@ -8,8 +8,11 @@ import { DoomScrollService } from "../services/doom-scroll.js";
 import { DayCloseService } from "../services/day-close.js";
 import { BillingService } from "../services/billing.js";
 import { PledgeService } from "../services/pledges.js";
+import { PushService, seedPushTemplates } from "../services/push.js";
 import { createYukassaClient } from "../lib/yukassa/client.js";
+import { resolveWebPushClient } from "../lib/web-push/index.js";
 import { startWorker } from "./scheduler.js";
+import { startPushWorker } from "./push-queue.js";
 
 async function main(): Promise<void> {
   const env = loadEnv();
@@ -19,10 +22,6 @@ async function main(): Promise<void> {
   const redis = createRedis(env);
   const yukassa = createYukassaClient(env);
   const pledgeService = new PledgeService(db, yukassa);
-  const checkinService = new CheckinService(db, pledgeService);
-  const doomScrollService = new DoomScrollService(db, checkinService);
-  const dayCloseService = new DayCloseService(db, doomScrollService, pledgeService);
-  const billingService = new BillingService(db, yukassa, pledgeService);
 
   const logger = {
     info: (obj: Record<string, unknown>, message?: string) => {
@@ -33,17 +32,33 @@ async function main(): Promise<void> {
     },
   };
 
+  const webPush = resolveWebPushClient(env);
+  const pushService = new PushService(db, webPush, logger);
+  await seedPushTemplates(db);
+  const checkinService = new CheckinService(db, pledgeService, pushService);
+  const doomScrollService = new DoomScrollService(db, checkinService, pushService);
+  const dayCloseService = new DayCloseService(db, doomScrollService, pledgeService);
+  const billingService = new BillingService(db, yukassa, pledgeService);
+
   const { worker } = await startWorker(
     redis,
     db,
     dayCloseService,
     billingService,
     pledgeService,
+    pushService,
+    logger,
+  );
+  const { worker: pushWorker } = await startPushWorker(
+    redis,
+    pushService,
+    doomScrollService,
     logger,
   );
 
   const shutdown = async () => {
     await worker.close();
+    await pushWorker.close();
     await closeRedis(redis);
     await dbClient.end({ timeout: 5 });
     process.exit(0);

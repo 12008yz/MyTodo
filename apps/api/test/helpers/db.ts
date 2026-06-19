@@ -3,6 +3,7 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 import { createDb } from "../../src/db/index.js";
 import type { Env } from "../../src/config/env.js";
+import { seedPushTemplates } from "../../src/services/push.js";
 
 let migrated = false;
 
@@ -25,6 +26,7 @@ export async function resetAuthTables(databaseUrl: string): Promise<void> {
 
 export async function truncateAuthTables(db: ReturnType<typeof createDb>["db"]): Promise<void> {
   await db.execute(
-    sql`TRUNCATE TABLE user_badges, pledges, billing_webhook_events, subscriptions, english_progress, english_settings, english_lessons, daily_stats, goal_snapshots, doom_scroll_sessions, pomodoro_sessions, checkins, habits, refresh_tokens, users RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE TABLE push_delivery_log, push_subscriptions, user_badges, pledges, billing_webhook_events, subscriptions, english_progress, english_settings, english_lessons, daily_stats, goal_snapshots, doom_scroll_sessions, pomodoro_sessions, checkins, habits, refresh_tokens, users RESTART IDENTITY CASCADE`,
   );
+  await seedPushTemplates(db);
 }

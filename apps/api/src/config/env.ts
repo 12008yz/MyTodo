@@ -14,6 +14,8 @@ const baseEnvSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(16),
   YUKASSA_SHOP_ID: z.string().optional(),
   YUKASSA_SECRET_KEY: z.string().optional(),
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
 });
 

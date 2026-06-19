@@ -12,6 +12,9 @@ import { checkins, doomScrollSessions, habits, users, type User } from "../db/sc
 import { previewStatusFromCheckin, toProgressionHabit } from "../lib/habit-progression.js";
 import { computeDoomScrollMinutes, computeRemainingSeconds } from "../lib/session-minutes.js";
 import type { CheckinService } from "./checkins.js";
+import type { PushService } from "./push.js";
+import type { Queue } from "bullmq";
+import type { DoomScrollEndJobData } from "../worker/push-queue.js";
 
 type CheckinSnapshot = {
   date: string;
@@ -25,6 +28,8 @@ export class DoomScrollService {
   constructor(
     private readonly db: DbExecutor,
     private readonly checkinService: CheckinService,
+    private readonly pushService?: PushService,
+    private readonly pushQueue?: Queue<DoomScrollEndJobData>,
   ) {}
 
   async start(user: User, habitId: string): Promise<DoomScrollSessionResponse> {
@@ -61,7 +66,38 @@ export class DoomScrollService {
       );
     }
 
+    await this.pushService?.onDoomScrollStart(user, habit);
+    await this.scheduleDoomScrollEndJob(session.id, user.id, habit.id);
+
     return this.toResponse(session, now);
+  }
+
+  private async scheduleDoomScrollEndJob(
+    sessionId: string,
+    userId: string,
+    habitId: string,
+  ): Promise<void> {
+    if (!this.pushQueue) {
+      return;
+    }
+
+    try {
+      await this.pushQueue.add(
+        "doom-scroll-end",
+        {
+          session_id: sessionId,
+          user_id: userId,
+          habit_id: habitId,
+        },
+        {
+          jobId: `doom-scroll-end:${sessionId}`,
+          delay: DOOM_SCROLL_DURATION_MIN * 60_000,
+          removeOnComplete: true,
+        },
+      );
+    } catch {
+      // Redis may be unavailable in tests
+    }
   }
 
   async getActive(userId: string, habitId: string) {
@@ -86,7 +122,55 @@ export class DoomScrollService {
     const endedAt =
       unfinished.endsAt.getTime() <= now.getTime() ? unfinished.endsAt : now;
 
+    await this.pushQueue?.remove(`doom-scroll-end:${unfinished.id}`).catch(() => undefined);
+
     return this.finalizeSession(user, unfinished, endedAt);
+  }
+
+  async finalizeSessionForPush(userId: string, sessionId: string, habitId: string) {
+    const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) {
+      return null;
+    }
+
+    const [session] = await this.db
+      .select()
+      .from(doomScrollSessions)
+      .where(eq(doomScrollSessions.id, sessionId))
+      .limit(1);
+
+    if (!session) {
+      return null;
+    }
+
+    const now = new Date();
+
+    if (session.completed) {
+      const naturalExpiry = session.endsAt.getTime() <= now.getTime();
+      if (!naturalExpiry) {
+        return null;
+      }
+
+      const habit = await this.getDoomScrollHabit(userId, habitId);
+      return {
+        user,
+        habit,
+        sessionStartedAt: session.startedAt,
+      };
+    }
+
+    if (session.endsAt.getTime() > now.getTime()) {
+      return null;
+    }
+
+    await this.finalizeSession(user, session, now);
+    const habit = await this.getDoomScrollHabit(userId, habitId);
+
+    return {
+      user,
+      habit,
+      sessionStartedAt: session.startedAt,
+    };
   }
 
   /** Worker hook: finalize sessions whose planned end has passed. */
@@ -185,6 +269,13 @@ export class DoomScrollService {
       minutes > 0
         ? await this.checkinService.applySessionMinutes(user, session.habitId, minutes)
         : await this.getCheckinSnapshot(user, session.habitId);
+
+    const naturalExpiry = endedAt.getTime() >= session.endsAt.getTime() - 1000;
+    if (naturalExpiry && this.pushService) {
+      const habit = await this.getDoomScrollHabit(user.id, session.habitId);
+      await this.pushService.onDoomScrollEnd(user, habit, session.startedAt);
+      await this.pushQueue?.remove(`doom-scroll-end:${session.id}`).catch(() => undefined);
+    }
 
     return {
       session: this.toResponse(updated, endedAt),
