@@ -269,3 +269,53 @@ export const englishProgress = pgTable(
 
 export type EnglishProgress = typeof englishProgress.$inferSelect;
 export type NewEnglishProgress = typeof englishProgress.$inferInsert;
+
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    yukassaPaymentMethodId: varchar("yukassa_payment_method_id", { length: 255 }),
+    plan: varchar("plan", { length: 20 }).notNull(),
+    status: varchar("status", { length: 20 }).notNull(),
+    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true, mode: "date" }).notNull(),
+    pastDueRetryCount: integer("past_due_retry_count").notNull().default(0),
+    lastPaymentFailedAt: timestamp("last_payment_failed_at", { withTimezone: true, mode: "date" }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdIdx: index("subscriptions_user_id_idx").on(table.userId),
+    planCheck: check(
+      "subscriptions_plan_check",
+      sql`${table.plan} IN ('monthly', '2months', '3months')`,
+    ),
+    statusCheck: check(
+      "subscriptions_status_check",
+      sql`${table.status} IN ('active', 'canceled', 'expired', 'past_due')`,
+    ),
+  }),
+);
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type NewSubscription = typeof subscriptions.$inferInsert;
+
+export const billingWebhookEvents = pgTable(
+  "billing_webhook_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    yukassaPaymentId: varchar("yukassa_payment_id", { length: 255 }).notNull(),
+    eventType: varchar("event_type", { length: 64 }).notNull(),
+    processedAt: timestamp("processed_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => ({
+    paymentEventUnique: unique("billing_webhook_events_payment_event_unique").on(
+      table.yukassaPaymentId,
+      table.eventType,
+    ),
+  }),
+);
+
+export type BillingWebhookEvent = typeof billingWebhookEvents.$inferSelect;
+export type NewBillingWebhookEvent = typeof billingWebhookEvents.$inferInsert;

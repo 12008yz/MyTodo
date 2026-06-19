@@ -6,17 +6,17 @@ import {
   pomodoroSessionSchema,
 } from "@mytodo/shared";
 import { authenticate } from "../plugins/authenticate.js";
-import { requireAccess } from "../plugins/require-access.js";
+import type { RequireAccessHandler } from "../plugins/require-access.js";
 import type { UserService } from "../services/auth.js";
 import type { PomodoroService } from "../services/pomodoro.js";
-
-const sessionPreHandlers = [authenticate, requireAccess];
 
 export async function registerPomodoroRoutes(
   app: FastifyInstance,
   userService: UserService,
   pomodoroService: PomodoroService,
+  requireAccess: RequireAccessHandler,
 ): Promise<void> {
+  const sessionPreHandlers = [authenticate, requireAccess];
   app.post(
     "/api/v1/habits/:id/pomodoro/start",
     { preHandler: sessionPreHandlers },

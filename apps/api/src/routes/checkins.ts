@@ -8,18 +8,18 @@ import {
   listCheckinsQuerySchema,
 } from "@mytodo/shared";
 import { authenticate } from "../plugins/authenticate.js";
-import { requireAccess } from "../plugins/require-access.js";
+import type { RequireAccessHandler } from "../plugins/require-access.js";
 import type { UserService } from "../services/auth.js";
 import { CheckinService } from "../services/checkins.js";
 import { toCheckinResponse } from "../lib/checkin-mapper.js";
-
-const checkinPreHandlers = [authenticate, requireAccess];
 
 export async function registerCheckinRoutes(
   app: FastifyInstance,
   userService: UserService,
   checkinService: CheckinService,
+  requireAccess: RequireAccessHandler,
 ): Promise<void> {
+  const checkinPreHandlers = [authenticate, requireAccess];
   app.get(
     "/api/v1/checkins",
     { preHandler: checkinPreHandlers },

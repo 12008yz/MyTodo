@@ -16,17 +16,17 @@ import {
   statsWeekResponseSchema,
 } from "@mytodo/shared";
 import { authenticate } from "../plugins/authenticate.js";
-import { requireAccess } from "../plugins/require-access.js";
+import type { RequireAccessHandler } from "../plugins/require-access.js";
 import type { UserService } from "../services/auth.js";
 import { StatsService } from "../services/stats.js";
-
-const statsPreHandlers = [authenticate, requireAccess];
 
 export async function registerStatsRoutes(
   app: FastifyInstance,
   userService: UserService,
   statsService: StatsService,
+  requireAccess: RequireAccessHandler,
 ): Promise<void> {
+  const statsPreHandlers = [authenticate, requireAccess];
   app.get(
     "/api/v1/stats/week",
     { preHandler: statsPreHandlers },

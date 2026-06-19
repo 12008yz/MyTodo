@@ -9,17 +9,17 @@ import {
   patchEnglishSettingsRequestSchema,
 } from "@mytodo/shared";
 import { authenticate } from "../plugins/authenticate.js";
-import { requireAccess } from "../plugins/require-access.js";
+import type { RequireAccessHandler } from "../plugins/require-access.js";
 import type { UserService } from "../services/auth.js";
 import type { EnglishService } from "../services/english.js";
-
-const englishPreHandlers = [authenticate, requireAccess];
 
 export async function registerEnglishRoutes(
   app: FastifyInstance,
   userService: UserService,
   englishService: EnglishService,
+  requireAccess: RequireAccessHandler,
 ): Promise<void> {
+  const englishPreHandlers = [authenticate, requireAccess];
   app.get(
     "/api/v1/english/today",
     { preHandler: englishPreHandlers },

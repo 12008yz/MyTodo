@@ -12,6 +12,8 @@ const baseEnvSchema = z.object({
   REDIS_URL: z.string().url(),
   JWT_ACCESS_SECRET: z.string().min(16),
   JWT_REFRESH_SECRET: z.string().min(16),
+  YUKASSA_SHOP_ID: z.string().optional(),
+  YUKASSA_SECRET_KEY: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
 });
 

@@ -9,17 +9,17 @@ import {
   HTTP_STATUS,
 } from "@mytodo/shared";
 import { authenticate } from "../plugins/authenticate.js";
-import { requireAccess } from "../plugins/require-access.js";
+import type { RequireAccessHandler } from "../plugins/require-access.js";
 import type { UserService } from "../services/auth.js";
 import { TodayService } from "../services/today.js";
-
-const todayPreHandlers = [authenticate, requireAccess];
 
 export async function registerTodayRoutes(
   app: FastifyInstance,
   userService: UserService,
   todayService: TodayService,
+  requireAccess: RequireAccessHandler,
 ): Promise<void> {
+  const todayPreHandlers = [authenticate, requireAccess];
   app.get(
     "/api/v1/today/light",
     { preHandler: todayPreHandlers },

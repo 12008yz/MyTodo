@@ -2,6 +2,10 @@ export const TRIAL_DAYS = 3;
 
 export const PLEDGE_AMOUNT = 5000;
 
+export const PAST_DUE_RETRY_DAYS = 3;
+
+export const PAST_DUE_MAX_RETRIES = 3;
+
 export const SUBSCRIPTION_PLAN_IDS = ["monthly", "2months", "3months"] as const;
 
 export type SubscriptionPlanId = (typeof SUBSCRIPTION_PLAN_IDS)[number];

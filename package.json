@@ -8,7 +8,8 @@
     "test": "turbo run test",
     "lint": "turbo run lint",
     "db:migrate": "pnpm --filter @mytodo/api db:migrate",
-    "db:studio": "pnpm --filter @mytodo/api db:studio"
+    "db:studio": "pnpm --filter @mytodo/api db:studio",
+    "worker": "pnpm --filter @mytodo/api worker"
   },
   "devDependencies": {
     "turbo": "^2.3.3",

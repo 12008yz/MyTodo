@@ -12,7 +12,14 @@ export {
   type DayStatus,
   type HabitForProgression,
 } from "./habits/progression.js";
-export { getUserLocalDate } from "./time/user-day.js";
+export {
+  closeDayForHabit,
+  type CheckinForDayClose,
+  type DayCloseOptions,
+  type DayCloseResult,
+  type HabitForDayClose,
+} from "./habits/day-close.js";
+export { getUserLocalDate, isDayCloseMinute } from "./time/user-day.js";
 export {
   computeAbstinenceElapsed,
   type AbstinenceElapsed,
@@ -45,3 +52,8 @@ export {
   resolveEnglishDayStatus,
   type EnglishProgressToday,
 } from "./english/day-close.js";
+export {
+  hasBillingAccess,
+  type BillingAccessInput,
+  type SubscriptionAccess,
+} from "./billing/access.js";

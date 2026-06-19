@@ -17,6 +17,7 @@ import { registerPomodoroRoutes } from "./routes/pomodoro.js";
 import { registerDoomScrollRoutes } from "./routes/doom-scroll.js";
 import { registerStatsRoutes } from "./routes/stats.js";
 import { registerEnglishRoutes } from "./routes/english.js";
+import { registerBillingRoutes } from "./routes/billing.js";
 import { createAuthServices } from "./services/auth.js";
 import { HabitService } from "./services/habits.js";
 import { CheckinService } from "./services/checkins.js";
@@ -25,9 +26,13 @@ import { PomodoroService } from "./services/pomodoro.js";
 import { DoomScrollService } from "./services/doom-scroll.js";
 import { StatsService } from "./services/stats.js";
 import { EnglishService } from "./services/english.js";
+import { BillingService } from "./services/billing.js";
+import { createYukassaClient } from "./lib/yukassa/client.js";
+import { createRequireAccess } from "./plugins/require-access.js";
 
 export type AppDependencies = {
   env: Env;
+  yukassaClient?: import("./lib/yukassa/types.js").YukassaClient;
 };
 
 export type BuiltApp = {
@@ -36,7 +41,7 @@ export type BuiltApp = {
   redis: ReturnType<typeof createRedis>;
 };
 
-export async function buildApp({ env }: AppDependencies): Promise<BuiltApp> {
+export async function buildApp({ env, yukassaClient }: AppDependencies): Promise<BuiltApp> {
   const { db, client: dbClient } = createDb(env);
   const redis = createRedis(env);
 
@@ -70,17 +75,21 @@ export async function buildApp({ env }: AppDependencies): Promise<BuiltApp> {
   const todayService = new TodayService(db, pomodoroService, doomScrollService);
   const statsService = new StatsService(db);
   const englishService = new EnglishService(db);
+  const yukassa = createYukassaClient(env, yukassaClient);
+  const billingService = new BillingService(db, yukassa);
+  const requireAccess = createRequireAccess(db, billingService);
 
   await registerHealthRoutes(app, { dbClient, redis });
   await registerAuthRoutes(app, authService);
   await registerMeRoutes(app, userService);
   await registerHabitRoutes(app, userService, habitService);
-  await registerCheckinRoutes(app, userService, checkinService);
-  await registerTodayRoutes(app, userService, todayService);
-  await registerPomodoroRoutes(app, userService, pomodoroService);
-  await registerDoomScrollRoutes(app, userService, doomScrollService);
-  await registerStatsRoutes(app, userService, statsService);
-  await registerEnglishRoutes(app, userService, englishService);
+  await registerCheckinRoutes(app, userService, checkinService, requireAccess);
+  await registerTodayRoutes(app, userService, todayService, requireAccess);
+  await registerPomodoroRoutes(app, userService, pomodoroService, requireAccess);
+  await registerDoomScrollRoutes(app, userService, doomScrollService, requireAccess);
+  await registerStatsRoutes(app, userService, statsService, requireAccess);
+  await registerEnglishRoutes(app, userService, englishService, requireAccess);
+  await registerBillingRoutes(app, billingService);
 
   app.addHook("onClose", async () => {
     await dbClient.end({ timeout: 5 });

@@ -64,6 +64,13 @@
       "when": 1781890000000,
       "tag": "0008_english",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781890500000,
+      "tag": "0009_subscriptions",
+      "breakpoints": true
     }
   ]
 }

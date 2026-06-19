@@ -6,17 +6,17 @@ import {
   doomScrollStopResponseSchema,
 } from "@mytodo/shared";
 import { authenticate } from "../plugins/authenticate.js";
-import { requireAccess } from "../plugins/require-access.js";
+import type { RequireAccessHandler } from "../plugins/require-access.js";
 import type { UserService } from "../services/auth.js";
 import type { DoomScrollService } from "../services/doom-scroll.js";
-
-const sessionPreHandlers = [authenticate, requireAccess];
 
 export async function registerDoomScrollRoutes(
   app: FastifyInstance,
   userService: UserService,
   doomScrollService: DoomScrollService,
+  requireAccess: RequireAccessHandler,
 ): Promise<void> {
+  const sessionPreHandlers = [authenticate, requireAccess];
   app.post(
     "/api/v1/habits/:id/doom-scroll/start",
     { preHandler: sessionPreHandlers },
