@@ -1,5 +1,10 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
+import {
+  canEnableSilenceMode,
+  scheduleTimezoneChange,
+  SILENCE_MODE_DURATION_MS,
+} from "@mytodo/domain";
 import {
   ApiError,
   ACCESS_TOKEN_TTL_SEC,
@@ -10,17 +15,28 @@ import {
   computeDailyBudgetMin,
   resolveTimezone,
   type LoginRequest,
+  type PatchMeRequest,
   type RegisterRequest,
 } from "@mytodo/shared";
 import type { Database } from "../db/index.js";
-import { refreshTokens, users, type User } from "../db/schema/index.js";
+import {
+  checkins,
+  englishProgress,
+  habits,
+  refreshTokens,
+  users,
+  type User,
+} from "../db/schema/index.js";
 import {
   generateRefreshToken,
   hashPassword,
   hashRefreshToken,
   verifyPassword,
 } from "../lib/auth/crypto.js";
+import { buildZipArchive, csvRow } from "../lib/export-zip.js";
+import { applyPendingTimezoneIfDue } from "../lib/user-timezone.js";
 import { toUserProfile } from "../lib/user-mapper.js";
+import type { PledgeService } from "./pledges.js";
 
 type AuthResult = {
   user: ReturnType<typeof toUserProfile>;
@@ -117,7 +133,8 @@ export class AuthService {
       throw new ApiError(HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.UNAUTHORIZED, "Invalid credentials");
     }
 
-    return this.issueTokens(user);
+    const synced = await applyPendingTimezoneIfDue(this.db, user);
+    return this.issueTokens(synced);
   }
 
   async refresh(refreshToken: string): Promise<AuthResult> {
@@ -144,6 +161,8 @@ export class AuthService {
         throw new ApiError(HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.UNAUTHORIZED, "User not found");
       }
 
+      const synced = await applyPendingTimezoneIfDue(tx, user);
+
       const deleted = await tx
         .delete(refreshTokens)
         .where(eq(refreshTokens.id, stored.id))
@@ -157,18 +176,18 @@ export class AuthService {
         );
       }
 
-      const accessToken = this.signAccessToken({ sub: user.id });
+      const accessToken = this.signAccessToken({ sub: synced.id });
       const newRefreshToken = generateRefreshToken();
       const expiresAt = addDays(new Date(), REFRESH_TOKEN_TTL_DAYS);
 
       await tx.insert(refreshTokens).values({
-        userId: user.id,
+        userId: synced.id,
         tokenHash: hashRefreshToken(newRefreshToken),
         expiresAt,
       });
 
       return {
-        user: toUserProfile(user),
+        user: toUserProfile(synced),
         accessToken,
         refreshToken: newRefreshToken,
       };
@@ -200,7 +219,10 @@ export class AuthService {
 }
 
 export class UserService {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly pledgeService?: PledgeService,
+  ) {}
 
   async getById(userId: string): Promise<User> {
     const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
@@ -209,26 +231,47 @@ export class UserService {
       throw new ApiError(HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, "User not found");
     }
 
-    return user;
+    return applyPendingTimezoneIfDue(this.db, user);
   }
 
-  async updateProfile(
-    userId: string,
-    patch: {
-      name?: string;
-      weight_kg?: number;
-      height_cm?: number;
-      free_time_min?: number;
-      timezone?: string;
-      wake_time?: string;
-      sleep_time?: string;
-      pomodoro_work_min?: number;
-      pomodoro_break_min?: number;
-      pomodoro_long_break_min?: number;
-      harshness_level?: number;
-    },
-  ): Promise<User> {
-    const current = await this.getById(userId);
+  async updateProfile(userId: string, patch: PatchMeRequest): Promise<User> {
+    let current = await this.getById(userId);
+    const now = new Date();
+
+    if (patch.enable_silence_mode) {
+      if (!canEnableSilenceMode(current.silenceModeUsedAt, now)) {
+        throw new ApiError(
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_CODES.VALIDATION_ERROR,
+          "Silence mode can only be enabled once every 30 days",
+        );
+      }
+
+      const silenceModeUntil = new Date(now.getTime() + SILENCE_MODE_DURATION_MS);
+      const [silenced] = await this.db
+        .update(users)
+        .set({
+          silenceModeUntil,
+          silenceModeUsedAt: now,
+        })
+        .where(eq(users.id, userId))
+        .returning();
+
+      if (!silenced) {
+        throw new ApiError(
+          HTTP_STATUS.INTERNAL_SERVER_ERROR,
+          ERROR_CODES.INTERNAL_ERROR,
+          "Failed to enable silence mode",
+        );
+      }
+
+      const otherFields = Object.keys(patch).filter((key) => key !== "enable_silence_mode");
+      if (otherFields.length === 0) {
+        return silenced;
+      }
+
+      current = silenced;
+    }
 
     const updates: Partial<typeof users.$inferInsert> = {};
 
@@ -239,7 +282,6 @@ export class UserService {
       updates.freeTimeMin = patch.free_time_min;
       updates.dailyBudgetMin = computeDailyBudgetMin(patch.free_time_min);
     }
-    if (patch.timezone !== undefined) updates.timezone = patch.timezone;
     if (patch.wake_time !== undefined) updates.wakeTime = normalizeTime(patch.wake_time);
     if (patch.sleep_time !== undefined) updates.sleepTime = normalizeTime(patch.sleep_time);
     if (patch.pomodoro_work_min !== undefined) updates.pomodoroWorkMin = patch.pomodoro_work_min;
@@ -248,6 +290,22 @@ export class UserService {
       updates.pomodoroLongBreakMin = patch.pomodoro_long_break_min;
     }
     if (patch.harshness_level !== undefined) updates.harshnessLevel = patch.harshness_level;
+
+    if (patch.timezone !== undefined) {
+      const resolved = resolveTimezone(patch.timezone);
+      if (resolved === current.pendingTimezone) {
+        // already scheduled
+      } else if (resolved === current.timezone && !current.pendingTimezone) {
+        // no change
+      } else if (resolved === current.timezone && current.pendingTimezone) {
+        updates.pendingTimezone = null;
+        updates.pendingTimezoneFrom = null;
+      } else {
+        const scheduled = scheduleTimezoneChange(current.timezone, resolved, now);
+        updates.pendingTimezone = scheduled.pendingTimezone;
+        updates.pendingTimezoneFrom = scheduled.pendingTimezoneFrom;
+      }
+    }
 
     const merged: User = {
       ...current,
@@ -261,6 +319,10 @@ export class UserService {
 
     if (hasCompletedOnboarding(merged)) {
       updates.onboardingCompleted = true;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return current;
     }
 
     const [user] = await this.db
@@ -279,14 +341,94 @@ export class UserService {
 
     return user;
   }
+
+  async deleteAccount(userId: string): Promise<void> {
+    await this.getById(userId);
+    await this.pledgeService?.failAllActiveForUser(userId);
+    await this.db.delete(users).where(eq(users.id, userId));
+  }
+
+  async buildExportArchive(userId: string): Promise<Buffer> {
+    const user = await this.getById(userId);
+    const profile = toUserProfile(user);
+
+    const habitRows = await this.db.select().from(habits).where(eq(habits.userId, userId));
+    const habitIds = habitRows.map((row) => row.id);
+
+    const checkinRows =
+      habitIds.length === 0
+        ? []
+        : await this.db.select().from(checkins).where(inArray(checkins.habitId, habitIds));
+
+    const progressRows = await this.db
+      .select()
+      .from(englishProgress)
+      .where(eq(englishProgress.userId, userId));
+
+    const habitsCsv = [
+      csvRow([
+        "id",
+        "template_id",
+        "side",
+        "type",
+        "unit",
+        "current_goal",
+        "growth_step",
+        "progression_direction",
+        "phase",
+        "is_active",
+        "created_at",
+      ]),
+      ...habitRows.map((row) =>
+        csvRow([
+          row.id,
+          row.templateId,
+          row.side,
+          row.type,
+          row.unit,
+          row.currentGoal,
+          row.growthStep,
+          row.progressionDirection,
+          row.phase,
+          row.isActive,
+          row.createdAt.toISOString(),
+        ]),
+      ),
+    ].join("\n");
+
+    const checkinsCsv = [
+      csvRow(["date", "habit_id", "status", "value", "updated_at"]),
+      ...checkinRows.map((row) =>
+        csvRow([row.date, row.habitId, row.status, row.value, row.updatedAt.toISOString()]),
+      ),
+    ].join("\n");
+
+    const englishCsv = [
+      csvRow(["date", "status", "watched_sec", "lesson_id"]),
+      ...progressRows.map((row) =>
+        csvRow([row.date, row.status, row.watchedSec, row.lessonId]),
+      ),
+    ].join("\n");
+
+    return buildZipArchive({
+      "profile.json": JSON.stringify(profile, null, 2),
+      "habits.csv": habitsCsv,
+      "checkins.csv": checkinsCsv,
+      "english_progress.csv": englishCsv,
+    });
+  }
 }
 
-export function createAuthServices(app: FastifyInstance, db: Database) {
+export function createAuthServices(
+  app: FastifyInstance,
+  db: Database,
+  pledgeService?: PledgeService,
+) {
   const signAccessToken = (payload: { sub: string }) =>
     app.jwt.sign(payload, { expiresIn: ACCESS_TOKEN_TTL_SEC });
 
   return {
     authService: new AuthService(db, signAccessToken),
-    userService: new UserService(db),
+    userService: new UserService(db, pledgeService),
   };
 }

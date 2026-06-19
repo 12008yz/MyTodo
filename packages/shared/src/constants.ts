@@ -57,6 +57,12 @@ export const ACCESS_TOKEN_TTL_SEC = 15 * 60;
 
 export const REFRESH_TOKEN_TTL_DAYS = 30;
 
+export const SILENCE_MODE_DURATION_MS = 24 * 60 * 60 * 1000;
+
+export const SILENCE_MODE_COOLDOWN_DAYS = 30;
+
+export const SILENCE_MODE_HARSHNESS_LEVEL = 1;
+
 export const GENDERS = ["male", "female", "other"] as const;
 
 export type Gender = (typeof GENDERS)[number];

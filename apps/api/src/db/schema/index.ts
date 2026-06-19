@@ -36,6 +36,8 @@ export const users = pgTable("users", {
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
   silenceModeUntil: timestamp("silence_mode_until", { withTimezone: true, mode: "date" }),
   silenceModeUsedAt: timestamp("silence_mode_used_at", { withTimezone: true, mode: "date" }),
+  pendingTimezone: varchar("pending_timezone", { length: 64 }),
+  pendingTimezoneFrom: date("pending_timezone_from"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true, mode: "date" }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
 });

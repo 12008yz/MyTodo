@@ -30,4 +30,29 @@ export async function registerMeRoutes(
       return userProfileSchema.parse(toUserProfile(user));
     },
   );
+
+  app.get(
+    "/api/v1/me/export",
+    {
+      preHandler: authenticate,
+    },
+    async (request, reply) => {
+      const archive = await userService.buildExportArchive(request.userId);
+      return reply
+        .header("Content-Type", "application/zip")
+        .header("Content-Disposition", 'attachment; filename="novaya-glava-export.zip"')
+        .send(archive);
+    },
+  );
+
+  app.delete(
+    "/api/v1/me",
+    {
+      preHandler: authenticate,
+    },
+    async (request, reply) => {
+      await userService.deleteAccount(request.userId);
+      return reply.status(204).send();
+    },
+  );
 }

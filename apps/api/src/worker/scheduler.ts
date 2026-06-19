@@ -1,5 +1,7 @@
 import { Queue, Worker, type ConnectionOptions } from "bullmq";
 import type { Redis } from "ioredis";
+import type { Database } from "../db/index.js";
+import { syncAllPendingTimezones } from "../lib/user-timezone.js";
 import type { BillingService } from "../services/billing.js";
 import type { PledgeService } from "../services/pledges.js";
 import type { DayCloseService } from "../services/day-close.js";
@@ -43,6 +45,7 @@ export async function ensureMinuteTickSchedule(queue: Queue): Promise<void> {
 
 export function createMinuteTickWorker(
   redis: Redis,
+  db: Database,
   dayCloseService: DayCloseService,
   billingService: BillingService,
   pledgeService: PledgeService,
@@ -52,6 +55,7 @@ export function createMinuteTickWorker(
     WORKER_QUEUE_NAME,
     async () => {
       const now = new Date();
+      await syncAllPendingTimezones(db, now);
       await billingService.processEndedSubscriptions(now);
       await billingService.processPastDueRetries(now);
       await pledgeService.processExpiredPledges(now);
@@ -80,6 +84,7 @@ export function createMinuteTickWorker(
 
 export async function startWorker(
   redis: Redis,
+  db: Database,
   dayCloseService: DayCloseService,
   billingService: BillingService,
   pledgeService: PledgeService,
@@ -88,7 +93,14 @@ export async function startWorker(
   const queue = createWorkerQueue(redis);
   await ensureMinuteTickSchedule(queue);
 
-  const worker = createMinuteTickWorker(redis, dayCloseService, billingService, pledgeService, logger);
+  const worker = createMinuteTickWorker(
+    redis,
+    db,
+    dayCloseService,
+    billingService,
+    pledgeService,
+    logger,
+  );
   worker.on("failed", (job, error) => {
     logger.error(
       { event: "worker_failed", job_id: job?.id, error: error.message },

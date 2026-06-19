@@ -69,10 +69,10 @@ export async function buildApp({ env, yukassaClient }: AppDependencies): Promise
 
   app.setErrorHandler(errorHandler);
 
-  const { authService, userService } = createAuthServices(app, db);
   const habitService = new HabitService(db);
   const yukassa = createYukassaClient(env, yukassaClient);
   const pledgeService = new PledgeService(db, yukassa);
+  const { authService, userService } = createAuthServices(app, db, pledgeService);
   const billingService = new BillingService(db, yukassa, pledgeService);
   const checkinService = new CheckinService(db, pledgeService);
   const pomodoroService = new PomodoroService(db, pledgeService);

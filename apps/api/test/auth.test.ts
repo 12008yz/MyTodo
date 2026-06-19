@@ -226,6 +226,8 @@ describe("Auth and profile", () => {
     const profile = userProfileSchema.parse(JSON.parse(stepTwo.body));
     expect(profile.onboarding_completed).toBe(true);
     expect(profile.daily_budget_min).toBe(50);
-    expect(profile.timezone).toBe("Asia/Vladivostok");
+    expect(profile.timezone).toBe("Europe/Moscow");
+    expect(profile.pending_timezone).toBe("Asia/Vladivostok");
+    expect(profile.pending_timezone_from).toBeTruthy();
   });
 });

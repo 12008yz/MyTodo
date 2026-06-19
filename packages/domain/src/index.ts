@@ -62,3 +62,17 @@ export {
   type PledgeDayRecord,
   type PledgeDayStatus,
 } from "./pledges/evaluate.js";
+export {
+  canEnableSilenceMode,
+  effectiveHarshnessLevel,
+  isSilenceModeActive,
+  SILENCE_MODE_COOLDOWN_DAYS,
+  SILENCE_MODE_DURATION_MS,
+  SILENCE_MODE_HARSHNESS_LEVEL,
+} from "./user/silence-mode.js";
+export {
+  resolveEffectiveTimezone,
+  scheduleTimezoneChange,
+  shouldApplyPendingTimezone,
+  type UserTimezoneState,
+} from "./time/effective-timezone.js";

@@ -1,5 +1,6 @@
 import type { User } from "../db/schema/index.js";
 import type { UserProfile } from "@mytodo/shared";
+import { effectiveHarshnessLevel, isSilenceModeActive } from "@mytodo/domain";
 
 function formatTime(value: string | null): string | null {
   if (!value) {
@@ -17,7 +18,7 @@ function toNumber(value: string | null): number | null {
   return Number(value);
 }
 
-export function toUserProfile(user: User): UserProfile {
+export function toUserProfile(user: User, now: Date = new Date()): UserProfile {
   return {
     id: user.id,
     email: user.email,
@@ -38,6 +39,15 @@ export function toUserProfile(user: User): UserProfile {
     role: user.role as UserProfile["role"],
     onboarding_completed: user.onboardingCompleted,
     trial_ends_at: user.trialEndsAt.toISOString(),
+    silence_mode_until: user.silenceModeUntil?.toISOString() ?? null,
+    silence_mode_active: isSilenceModeActive(user.silenceModeUntil, now),
+    effective_harshness_level: effectiveHarshnessLevel(
+      user.harshnessLevel,
+      user.silenceModeUntil,
+      now,
+    ),
+    pending_timezone: user.pendingTimezone,
+    pending_timezone_from: user.pendingTimezoneFrom,
     created_at: user.createdAt.toISOString(),
   };
 }

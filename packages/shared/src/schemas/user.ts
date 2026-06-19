@@ -25,6 +25,11 @@ export const userProfileSchema = z.object({
   role: z.enum(["user", "admin"]),
   onboarding_completed: z.boolean(),
   trial_ends_at: z.string().datetime(),
+  silence_mode_until: z.string().datetime().nullable(),
+  silence_mode_active: z.boolean(),
+  effective_harshness_level: z.number().int().min(1).max(3),
+  pending_timezone: z.string().nullable(),
+  pending_timezone_from: z.string().nullable(),
   created_at: z.string().datetime(),
 });
 
@@ -51,6 +56,7 @@ export const patchMeRequestSchema = z
     pomodoro_break_min: z.number().int().min(1).max(60).optional(),
     pomodoro_long_break_min: z.number().int().min(1).max(60).optional(),
     harshness_level: z.number().int().min(1).max(3).optional(),
+    enable_silence_mode: z.literal(true).optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: "At least one field is required",

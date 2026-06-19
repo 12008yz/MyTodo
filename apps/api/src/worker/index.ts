@@ -33,7 +33,14 @@ async function main(): Promise<void> {
     },
   };
 
-  const { worker } = await startWorker(redis, dayCloseService, billingService, pledgeService, logger);
+  const { worker } = await startWorker(
+    redis,
+    db,
+    dayCloseService,
+    billingService,
+    pledgeService,
+    logger,
+  );
 
   const shutdown = async () => {
     await worker.close();

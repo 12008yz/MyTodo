@@ -22,6 +22,7 @@ import {
   type User,
 } from "../db/schema/index.js";
 import type { DoomScrollService } from "./doom-scroll.js";
+import { applyPendingTimezoneIfDue } from "../lib/user-timezone.js";
 import type { PledgeService } from "./pledges.js";
 
 export type DayCloseSummary = {
@@ -41,7 +42,16 @@ export class DayCloseService {
   /** Users whose local time is 23:59 at the given instant. */
   async findUsersToClose(now: Date = new Date()): Promise<User[]> {
     const allUsers = await this.db.select().from(users);
-    return allUsers.filter((user) => isDayCloseMinute(now, user.timezone));
+    const ready: User[] = [];
+
+    for (const row of allUsers) {
+      const user = await applyPendingTimezoneIfDue(this.db, row, now);
+      if (isDayCloseMinute(now, user.timezone)) {
+        ready.push(user);
+      }
+    }
+
+    return ready;
   }
 
   async runMinuteTick(now: Date = new Date()): Promise<DayCloseSummary[]> {

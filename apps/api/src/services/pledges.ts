@@ -262,6 +262,34 @@ export class PledgeService {
     });
   }
 
+  async failAllActiveForUser(userId: string, executor: DbExecutor = this.db): Promise<void> {
+    const active = await executor
+      .select()
+      .from(pledges)
+      .where(and(eq(pledges.userId, userId), eq(pledges.status, "active")));
+
+    if (active.length === 0) {
+      return;
+    }
+
+    const [user] = await executor
+      .select({ timezone: users.timezone })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const endedAt = user
+      ? getUserLocalDate(new Date(), user.timezone)
+      : active[0]!.startedAt;
+
+    for (const pledge of active) {
+      await executor
+        .update(pledges)
+        .set({ status: "failed", endedAt })
+        .where(eq(pledges.id, pledge.id));
+    }
+  }
+
   private async assertCanCreatePledge(userId: string, habitId: string): Promise<void> {
     const [habit] = await this.db
       .select()
