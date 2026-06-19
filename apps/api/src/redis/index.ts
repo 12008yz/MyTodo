@@ -31,7 +31,18 @@ export async function checkRedisConnection(redis: RedisClient): Promise<boolean>
 }
 
 export async function closeRedis(redis: RedisClient): Promise<void> {
-  if (redis.status !== "end") {
-    await redis.quit();
+  if (redis.status === "end" || redis.status === "close") {
+    return;
   }
+
+  try {
+    if (redis.status === "ready") {
+      await redis.quit();
+      return;
+    }
+  } catch {
+    // Fall through to hard disconnect.
+  }
+
+  redis.disconnect();
 }

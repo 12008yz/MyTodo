@@ -1,4 +1,5 @@
 import type { FastifyError, FastifyReply, FastifyRequest } from "fastify";
+import { ZodError } from "zod";
 import { ERROR_CODES, HTTP_STATUS, isApiError } from "@mytodo/shared";
 import { captureException } from "./sentry.js";
 
@@ -7,6 +8,17 @@ export function errorHandler(
   _request: FastifyRequest,
   reply: FastifyReply,
 ): void {
+  if (error instanceof ZodError) {
+    void reply.status(HTTP_STATUS.BAD_REQUEST).send({
+      error: {
+        code: ERROR_CODES.VALIDATION_ERROR,
+        message: "Validation failed",
+        details: error.flatten(),
+      },
+    });
+    return;
+  }
+
   if (isApiError(error)) {
     void reply.status(error.statusCode).send({
       error: {

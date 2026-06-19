@@ -1,12 +1,16 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
+import jwt from "@fastify/jwt";
 import rateLimit from "@fastify/rate-limit";
 import type { Env } from "./config/env.js";
 import { createDb } from "./db/index.js";
 import { createRedis, closeRedis } from "./redis/index.js";
 import { errorHandler } from "./lib/error-handler.js";
 import { registerHealthRoutes } from "./routes/health.js";
+import { registerAuthRoutes } from "./routes/auth.js";
+import { registerMeRoutes } from "./routes/me.js";
+import { createAuthServices } from "./services/auth.js";
 
 export type AppDependencies = {
   env: Env;
@@ -38,17 +42,23 @@ export async function buildApp({ env }: AppDependencies): Promise<BuiltApp> {
     max: 100,
     timeWindow: "1 minute",
   });
+  await app.register(jwt, {
+    secret: env.JWT_ACCESS_SECRET,
+  });
 
   app.setErrorHandler(errorHandler);
 
+  const { authService, userService } = createAuthServices(app, db);
+
   await registerHealthRoutes(app, { dbClient, redis });
+  await registerAuthRoutes(app, authService);
+  await registerMeRoutes(app, userService);
 
   app.addHook("onClose", async () => {
     await dbClient.end({ timeout: 5 });
     await closeRedis(redis);
   });
 
-  // Keep db reference for future routes
   app.decorate("db", db);
 
   return { app, dbClient, redis };
