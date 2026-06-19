@@ -24,5 +24,5 @@ export async function resetAuthTables(databaseUrl: string): Promise<void> {
 }
 
 export async function truncateAuthTables(db: ReturnType<typeof createDb>["db"]): Promise<void> {
-  await db.execute(sql`TRUNCATE TABLE habits, refresh_tokens, users RESTART IDENTITY CASCADE`);
+  await db.execute(sql`TRUNCATE TABLE checkins, habits, refresh_tokens, users RESTART IDENTITY CASCADE`);
 }

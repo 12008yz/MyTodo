@@ -80,3 +80,17 @@ export {
   type HabitResponse,
   type PatchHabitRequest,
 } from "./schemas/habits.js";
+export {
+  batchCheckinRequestSchema,
+  batchCheckinResponseSchema,
+  CHECKIN_STATUSES,
+  checkinResponseSchema,
+  createCheckinRequestSchema,
+  listCheckinsQuerySchema,
+  type BatchCheckinRequest,
+  type BatchCheckinResponse,
+  type CheckinResponse,
+  type CheckinStatusValue,
+  type CreateCheckinRequest,
+  type ListCheckinsQuery,
+} from "./schemas/checkins.js";

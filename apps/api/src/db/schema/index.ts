@@ -1,13 +1,17 @@
 import {
   boolean,
+  check,
+  date,
   index,
   integer,
   numeric,
   pgTable,
   timestamp,
+  unique,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -81,3 +85,29 @@ export const habits = pgTable("habits", {
 
 export type Habit = typeof habits.$inferSelect;
 export type NewHabit = typeof habits.$inferInsert;
+
+export const checkins = pgTable(
+  "checkins",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    habitId: uuid("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    status: varchar("status", { length: 20 }).notNull(),
+    value: numeric("value", { precision: 10, scale: 2 }),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    habitDateUnique: unique("checkins_habit_id_date_unique").on(table.habitId, table.date),
+    statusCheck: check(
+      "checkins_status_check",
+      sql`${table.status} IN ('success', 'fail', 'pending', 'skipped')`,
+    ),
+  }),
+);
+
+export type Checkin = typeof checkins.$inferSelect;
+export type NewCheckin = typeof checkins.$inferInsert;

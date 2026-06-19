@@ -22,6 +22,20 @@
       "when": 1781886879863,
       "tag": "0002_nostalgic_shard",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781887500000,
+      "tag": "0003_checkins",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781888000000,
+      "tag": "0004_checkins_status_check",
+      "breakpoints": true
     }
   ]
 }
