@@ -1,11 +1,20 @@
+# Dependencies
 node_modules/
 dist/
+.turbo/
+
+# Environment
 .env
 .env.*
 !.env.example
+
+# Logs & OS
 *.log
 .DS_Store
+
+# IDE
 .idea/
 .vscode/
+
+# Test coverage
 coverage/
-.turbo/
