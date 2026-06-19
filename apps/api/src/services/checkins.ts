@@ -62,7 +62,7 @@ export class CheckinService {
     const checkin = await this.saveCheckin(habit.id, date, status, value);
 
     if (status === "fail") {
-      await this.pledgeService?.failActivePledgeForHabit(habit.id);
+      await this.pledgeService?.failActivePledgeForHabit(habit.id, this.db);
     }
 
     const currentGoal = Number(habit.currentGoal);
@@ -103,6 +103,11 @@ export class CheckinService {
     const newValue = currentValue + minutes;
     const status = resolveCheckinStatus(this.toCheckinHabit(habit), { value: newValue });
     const checkin = await this.saveCheckin(habit.id, date, status, newValue);
+
+    if (status === "fail") {
+      await this.pledgeService?.failActivePledgeForHabit(habit.id, this.db);
+    }
+
     const currentGoal = Number(habit.currentGoal);
 
     return {
@@ -161,7 +166,7 @@ export class CheckinService {
     }
 
     return this.db.transaction(async (tx) => {
-      const batchService = new CheckinService(tx);
+      const batchService = new CheckinService(tx, this.pledgeService);
       const results: UpsertResult[] = [];
 
       for (const item of body.checkins) {

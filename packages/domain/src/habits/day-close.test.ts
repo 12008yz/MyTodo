@@ -101,6 +101,15 @@ describe("closeDayForHabit", () => {
     ).toMatchObject({ status: "fail" });
   });
 
+  it("fails pledge habit when checkin is skipped outside silence mode", () => {
+    expect(
+      closeDayForHabit(lightTarget(10), { status: "skipped", value: null }, {
+        silenceMode: false,
+        hasActivePledge: true,
+      }),
+    ).toMatchObject({ status: "fail" });
+  });
+
   it("transitions smoking to abstinence when goal reaches zero after success", () => {
     const smoking: HabitForDayClose = {
       ...darkLimit(1, "smoking"),

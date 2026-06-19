@@ -75,7 +75,7 @@ export async function buildApp({ env, yukassaClient }: AppDependencies): Promise
   const pledgeService = new PledgeService(db, yukassa);
   const billingService = new BillingService(db, yukassa, pledgeService);
   const checkinService = new CheckinService(db, pledgeService);
-  const pomodoroService = new PomodoroService(db);
+  const pomodoroService = new PomodoroService(db, pledgeService);
   const doomScrollService = new DoomScrollService(db, checkinService);
   const todayService = new TodayService(db, pomodoroService, doomScrollService);
   const statsService = new StatsService(db);

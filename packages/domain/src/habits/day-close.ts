@@ -36,6 +36,14 @@ function resolveFinalStatus(
     return "skipped";
   }
 
+  if (
+    options.hasActivePledge &&
+    !options.silenceMode &&
+    checkin?.status === "skipped"
+  ) {
+    return "fail";
+  }
+
   if (!checkin) {
     if (habit.type === "abstinence") {
       return "success";

@@ -10,9 +10,13 @@ import type { Database, DbExecutor } from "../db/index.js";
 import { habits, pomodoroSessions, type User } from "../db/schema/index.js";
 import { computeRemainingSeconds } from "../lib/session-minutes.js";
 import { CheckinService } from "./checkins.js";
+import type { PledgeService } from "./pledges.js";
 
 export class PomodoroService {
-  constructor(private readonly db: DbExecutor) {}
+  constructor(
+    private readonly db: DbExecutor,
+    private readonly pledgeService?: PledgeService,
+  ) {}
 
   async start(user: User, habitId: string): Promise<PomodoroSessionResponse> {
     const habit = await this.getPomodoroHabit(user.id, habitId);
@@ -88,7 +92,7 @@ export class PomodoroService {
         );
       }
 
-      const checkin = await new CheckinService(executor).applySessionMinutes(
+      const checkin = await new CheckinService(executor, this.pledgeService).applySessionMinutes(
         user,
         habit.id,
         session.workMin,

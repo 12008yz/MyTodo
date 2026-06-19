@@ -12,8 +12,9 @@ import {
   type PledgeResponse,
 } from "@mytodo/shared";
 import { and, desc, eq, gte, lte } from "drizzle-orm";
-import type { Database } from "../db/index.js";
+import type { Database, DbExecutor } from "../db/index.js";
 import {
+  checkins,
   dailyStats,
   habits,
   pledges,
@@ -144,8 +145,8 @@ export class PledgeService {
     }
   }
 
-  async failActivePledgeForHabit(habitId: string): Promise<void> {
-    const [pledge] = await this.db
+  async failActivePledgeForHabit(habitId: string, executor: DbExecutor = this.db): Promise<void> {
+    const [pledge] = await executor
       .select()
       .from(pledges)
       .where(and(eq(pledges.habitId, habitId), eq(pledges.status, "active")))
@@ -155,22 +156,42 @@ export class PledgeService {
       return;
     }
 
-    await this.db
+    const [user] = await executor
+      .select({ timezone: users.timezone })
+      .from(users)
+      .where(eq(users.id, pledge.userId))
+      .limit(1);
+
+    const endedAt = user
+      ? getUserLocalDate(new Date(), user.timezone)
+      : pledge.startedAt;
+
+    await executor
       .update(pledges)
       .set({
         status: "failed",
-        endedAt: pledge.startedAt,
+        endedAt,
       })
       .where(eq(pledges.id, pledge.id));
   }
 
   async processExpiredPledges(now: Date = new Date()): Promise<number> {
-    const today = now.toISOString().slice(0, 10);
     const rows = await this.db.select().from(pledges).where(eq(pledges.status, "active"));
 
     let processed = 0;
 
     for (const pledge of rows) {
+      const [user] = await this.db
+        .select({ timezone: users.timezone })
+        .from(users)
+        .where(eq(users.id, pledge.userId))
+        .limit(1);
+
+      if (!user) {
+        continue;
+      }
+
+      const today = getUserLocalDate(now, user.timezone);
       const periodEndExclusive = addDays(pledge.startedAt, PLEDGE_PERIOD_DAYS);
       if (today < periodEndExclusive) {
         continue;
@@ -250,6 +271,35 @@ export class PledgeService {
 
     if (!habit) {
       throw new ApiError(HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, "Habit not found");
+    }
+
+    const [user] = await this.db
+      .select({ timezone: users.timezone })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (user) {
+      const today = getUserLocalDate(new Date(), user.timezone);
+      const [skippedToday] = await this.db
+        .select({ id: checkins.id })
+        .from(checkins)
+        .where(
+          and(
+            eq(checkins.habitId, habitId),
+            eq(checkins.date, today),
+            eq(checkins.status, "skipped"),
+          ),
+        )
+        .limit(1);
+
+      if (skippedToday) {
+        throw new ApiError(
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_CODES.VALIDATION_ERROR,
+          "Cannot start a pledge on a habit with a skip today",
+        );
+      }
     }
 
     const [active] = await this.db
