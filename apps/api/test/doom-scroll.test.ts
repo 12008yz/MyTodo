@@ -18,6 +18,11 @@ const env = loadEnv({
   NODE_ENV: "test",
 });
 
+/** Stable startedAt for ceil-minute billing: lands inside the N-minute bucket. */
+function startedAtMinutesAgo(minutes: number): Date {
+  return new Date(Date.now() - minutes * 60_000 + 1_000);
+}
+
 describe("Doom scroll", () => {
   let app: Awaited<ReturnType<typeof buildApp>>["app"];
   let db: Awaited<ReturnType<typeof buildApp>>["app"]["db"];
@@ -119,11 +124,10 @@ describe("Doom scroll", () => {
     });
 
     const session = doomScrollSessionSchema.parse(JSON.parse(startResponse.body));
-    const startedAt = new Date(Date.now() - 5 * 60_000);
 
     await db
       .update(doomScrollSessions)
-      .set({ startedAt })
+      .set({ startedAt: startedAtMinutesAgo(5) })
       .where(eq(doomScrollSessions.id, session.id));
 
     const stopResponse = await app.inject({
@@ -151,11 +155,10 @@ describe("Doom scroll", () => {
       });
 
       const session = doomScrollSessionSchema.parse(JSON.parse(startResponse.body));
-      const startedAt = new Date(Date.now() - minutesAgo * 60_000);
 
       await db
         .update(doomScrollSessions)
-        .set({ startedAt })
+        .set({ startedAt: startedAtMinutesAgo(minutesAgo) })
         .where(eq(doomScrollSessions.id, session.id));
 
       await app.inject({
@@ -182,11 +185,10 @@ describe("Doom scroll", () => {
     });
 
     const finalSession = doomScrollSessionSchema.parse(JSON.parse(finalStart.body));
-    const startedAt = new Date(Date.now() - 6 * 60_000);
 
     await db
       .update(doomScrollSessions)
-      .set({ startedAt })
+      .set({ startedAt: startedAtMinutesAgo(6) })
       .where(eq(doomScrollSessions.id, finalSession.id));
 
     const stopResponse = await app.inject({
