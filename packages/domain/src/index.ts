@@ -27,3 +27,12 @@ export {
   type DayCheckin,
   type HabitStreakScope,
 } from "./habits/streak.js";
+export {
+  addDays,
+  computeDayColor,
+  getMonthRange,
+  getProgressPeriodRange,
+  listDatesInclusive,
+  type DayColor,
+  type HabitDayStatus,
+} from "./stats/day-color.js";

@@ -168,3 +168,43 @@ export const doomScrollSessions = pgTable(
 
 export type DoomScrollSession = typeof doomScrollSessions.$inferSelect;
 export type NewDoomScrollSession = typeof doomScrollSessions.$inferInsert;
+
+export const goalSnapshots = pgTable(
+  "goal_snapshots",
+  {
+    habitId: uuid("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    goalValue: numeric("goal_value", { precision: 10, scale: 2 }).notNull(),
+  },
+  (table) => ({
+    pk: unique("goal_snapshots_habit_id_date_pk").on(table.habitId, table.date),
+  }),
+);
+
+export type GoalSnapshot = typeof goalSnapshots.$inferSelect;
+export type NewGoalSnapshot = typeof goalSnapshots.$inferInsert;
+
+export const dailyStats = pgTable(
+  "daily_stats",
+  {
+    habitId: uuid("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    status: varchar("status", { length: 20 }).notNull(),
+    value: numeric("value", { precision: 10, scale: 2 }),
+    minutesTotal: integer("minutes_total").notNull().default(0),
+  },
+  (table) => ({
+    pk: unique("daily_stats_habit_id_date_pk").on(table.habitId, table.date),
+    statusCheck: check(
+      "daily_stats_status_check",
+      sql`${table.status} IN ('success', 'fail', 'skipped')`,
+    ),
+  }),
+);
+
+export type DailyStat = typeof dailyStats.$inferSelect;
+export type NewDailyStat = typeof dailyStats.$inferInsert;

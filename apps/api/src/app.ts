@@ -15,12 +15,14 @@ import { registerCheckinRoutes } from "./routes/checkins.js";
 import { registerTodayRoutes } from "./routes/today.js";
 import { registerPomodoroRoutes } from "./routes/pomodoro.js";
 import { registerDoomScrollRoutes } from "./routes/doom-scroll.js";
+import { registerStatsRoutes } from "./routes/stats.js";
 import { createAuthServices } from "./services/auth.js";
 import { HabitService } from "./services/habits.js";
 import { CheckinService } from "./services/checkins.js";
 import { TodayService } from "./services/today.js";
 import { PomodoroService } from "./services/pomodoro.js";
 import { DoomScrollService } from "./services/doom-scroll.js";
+import { StatsService } from "./services/stats.js";
 
 export type AppDependencies = {
   env: Env;
@@ -64,6 +66,7 @@ export async function buildApp({ env }: AppDependencies): Promise<BuiltApp> {
   const pomodoroService = new PomodoroService(db);
   const doomScrollService = new DoomScrollService(db, checkinService);
   const todayService = new TodayService(db, pomodoroService, doomScrollService);
+  const statsService = new StatsService(db);
 
   await registerHealthRoutes(app, { dbClient, redis });
   await registerAuthRoutes(app, authService);
@@ -73,6 +76,7 @@ export async function buildApp({ env }: AppDependencies): Promise<BuiltApp> {
   await registerTodayRoutes(app, userService, todayService);
   await registerPomodoroRoutes(app, userService, pomodoroService);
   await registerDoomScrollRoutes(app, userService, doomScrollService);
+  await registerStatsRoutes(app, userService, statsService);
 
   app.addHook("onClose", async () => {
     await dbClient.end({ timeout: 5 });
