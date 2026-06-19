@@ -20,6 +20,30 @@ export {
   type SubscriptionPlanId,
 } from "./constants.js";
 export {
+  BOOKS_PAGES_PER_MIN,
+  CUSTOM_HABIT_UNITS,
+  CUSTOM_MINUTES_STEP,
+  HABIT_PHASES,
+  HABIT_SIDES,
+  HABIT_TEMPLATES,
+  HABIT_TEMPLATE_IDS,
+  HABIT_TYPES,
+  HABIT_UNITS,
+  MAX_ACTIVE_HABITS,
+  PROGRESSION_DIRECTIONS,
+  PUSHUP_SECONDS_PER_REP,
+  SOCIAL_MEDIA_MIN_GOAL,
+  SOCIAL_MEDIA_STEP,
+  type CustomHabitUnit,
+  type HabitPhase,
+  type HabitSide,
+  type HabitTemplate,
+  type HabitTemplateId,
+  type HabitType,
+  type HabitUnit,
+  type ProgressionDirection,
+} from "./constants/habits.js";
+export {
   authTokensSchema,
   loginRequestSchema,
   logoutRequestSchema,
@@ -46,3 +70,13 @@ export {
   type PatchMeRequest,
   type UserProfile,
 } from "./schemas/user.js";
+export {
+  createCustomHabitSchema,
+  createHabitFromTemplateSchema,
+  createHabitRequestSchema,
+  habitResponseSchema,
+  patchHabitRequestSchema,
+  type CreateHabitRequest,
+  type HabitResponse,
+  type PatchHabitRequest,
+} from "./schemas/habits.js";

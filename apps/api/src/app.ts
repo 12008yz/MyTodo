@@ -10,7 +10,9 @@ import { errorHandler } from "./lib/error-handler.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerMeRoutes } from "./routes/me.js";
+import { registerHabitRoutes } from "./routes/habits.js";
 import { createAuthServices } from "./services/auth.js";
+import { HabitService } from "./services/habits.js";
 
 export type AppDependencies = {
   env: Env;
@@ -49,10 +51,12 @@ export async function buildApp({ env }: AppDependencies): Promise<BuiltApp> {
   app.setErrorHandler(errorHandler);
 
   const { authService, userService } = createAuthServices(app, db);
+  const habitService = new HabitService(db);
 
   await registerHealthRoutes(app, { dbClient, redis });
   await registerAuthRoutes(app, authService);
   await registerMeRoutes(app, userService);
+  await registerHabitRoutes(app, userService, habitService);
 
   app.addHook("onClose", async () => {
     await dbClient.end({ timeout: 5 });

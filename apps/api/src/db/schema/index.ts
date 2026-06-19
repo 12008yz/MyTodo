@@ -55,3 +55,29 @@ export const refreshTokens = pgTable(
 
 export type RefreshToken = typeof refreshTokens.$inferSelect;
 export type NewRefreshToken = typeof refreshTokens.$inferInsert;
+
+export const habits = pgTable("habits", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 20 }).notNull(),
+  side: varchar("side", { length: 10 }).notNull(),
+  unit: varchar("unit", { length: 20 }),
+  baselineValue: numeric("baseline_value", { precision: 10, scale: 2 }).notNull(),
+  currentGoal: numeric("current_goal", { precision: 10, scale: 2 }).notNull(),
+  growthStep: numeric("growth_step", { precision: 10, scale: 2 }).notNull().default("1"),
+  progressionDirection: varchar("progression_direction", { length: 20 }).notNull(),
+  phase: varchar("phase", { length: 20 }).notNull().default("reduction"),
+  lastRelapseAt: timestamp("last_relapse_at", { withTimezone: true, mode: "date" }),
+  allowsWeeklySkip: boolean("allows_weekly_skip").notNull().default(false),
+  isCustom: boolean("is_custom").notNull().default(false),
+  icon: varchar("icon", { length: 32 }),
+  templateId: varchar("template_id", { length: 32 }),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+});
+
+export type Habit = typeof habits.$inferSelect;
+export type NewHabit = typeof habits.$inferInsert;

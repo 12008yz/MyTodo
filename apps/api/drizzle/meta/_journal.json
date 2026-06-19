@@ -15,6 +15,13 @@
       "when": 1781886282212,
       "tag": "0001_fine_namora",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781886879863,
+      "tag": "0002_nostalgic_shard",
+      "breakpoints": true
     }
   ]
 }
