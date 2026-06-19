@@ -43,6 +43,13 @@
       "when": 1781888500000,
       "tag": "0005_habits_harshness_level",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781889000000,
+      "tag": "0006_pomodoro_doom_scroll",
+      "breakpoints": true
     }
   ]
 }

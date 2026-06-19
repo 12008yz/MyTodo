@@ -1,0 +1,1 @@
+export const DOOM_SCROLL_DURATION_MIN = 15;

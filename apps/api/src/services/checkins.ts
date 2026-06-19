@@ -70,6 +70,45 @@ export class CheckinService {
     };
   }
 
+  async applySessionMinutes(user: User, habitId: string, minutes: number) {
+    if (minutes <= 0) {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
+        "minutes must be greater than zero",
+      );
+    }
+
+    const habit = await this.getOwnedHabit(user.id, habitId);
+    const date = getUserLocalDate(new Date(), user.timezone);
+    const existing = await this.findExistingCheckin(habit.id, date);
+
+    if (existing?.status === "skipped") {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
+        "Cannot add minutes on a skipped day",
+      );
+    }
+
+    const currentValue = existing?.value == null ? 0 : Number(existing.value);
+    const newValue = currentValue + minutes;
+    const status = resolveCheckinStatus(this.toCheckinHabit(habit), { value: newValue });
+    const checkin = await this.saveCheckin(habit.id, date, status, newValue);
+    const currentGoal = Number(habit.currentGoal);
+
+    return {
+      date,
+      status: checkin.status as "success" | "fail" | "pending" | "skipped",
+      value: newValue,
+      current_goal: currentGoal,
+      preview_next_goal: computeNextGoal(
+        toProgressionHabit(habit),
+        previewStatusFromCheckin(status),
+      ),
+    };
+  }
+
   async batchUpsert(user: User, body: BatchCheckinRequest) {
     this.assertNoDuplicateBatchItems(user, body);
 

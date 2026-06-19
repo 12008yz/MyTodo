@@ -112,3 +112,59 @@ export const checkins = pgTable(
 
 export type Checkin = typeof checkins.$inferSelect;
 export type NewCheckin = typeof checkins.$inferInsert;
+
+export const pomodoroSessions = pgTable(
+  "pomodoro_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    habitId: uuid("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+    startedAt: timestamp("started_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true, mode: "date" }),
+    workMin: integer("work_min").notNull().default(25),
+    completed: boolean("completed").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    activeHabitIdx: index("pomodoro_sessions_active_habit_idx").on(table.habitId),
+  }),
+);
+
+export type PomodoroSession = typeof pomodoroSessions.$inferSelect;
+export type NewPomodoroSession = typeof pomodoroSessions.$inferInsert;
+
+export const doomScrollSessions = pgTable(
+  "doom_scroll_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    habitId: uuid("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+    startedAt: timestamp("started_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    endsAt: timestamp("ends_at", { withTimezone: true, mode: "date" }).notNull(),
+    durationMin: integer("duration_min").notNull().default(15),
+    completed: boolean("completed").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    activeHabitIdx: index("doom_scroll_sessions_active_habit_idx").on(table.habitId),
+  }),
+);
+
+export type DoomScrollSession = typeof doomScrollSessions.$inferSelect;
+export type NewDoomScrollSession = typeof doomScrollSessions.$inferInsert;

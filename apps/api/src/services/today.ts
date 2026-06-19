@@ -14,13 +14,19 @@ import type { Database } from "../db/index.js";
 import { checkins, habits, type Habit, type User } from "../db/schema/index.js";
 import { toHabitResponse } from "../lib/habit-mapper.js";
 import { previewStatusFromCheckin, toProgressionHabit } from "../lib/habit-progression.js";
+import type { DoomScrollService } from "./doom-scroll.js";
+import type { PomodoroService } from "./pomodoro.js";
 
 type Side = "light" | "dark";
 
 type CheckinRow = typeof checkins.$inferSelect;
 
 export class TodayService {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly pomodoroService: PomodoroService,
+    private readonly doomScrollService: DoomScrollService,
+  ) {}
 
   async getLightDashboard(user: User) {
     return this.getDashboard(user, "light");
@@ -29,6 +35,12 @@ export class TodayService {
   async getDarkDashboard(user: User) {
     const dashboard = await this.getDashboard(user, "dark");
     const now = new Date();
+    const activeDoomByHabit = new Map(
+      (await this.doomScrollService.listActiveForUser(user.id)).map((session) => [
+        session.habit_id,
+        session,
+      ]),
+    );
 
     return {
       date: dashboard.date,
@@ -39,7 +51,7 @@ export class TodayService {
         timer: isAbstinenceTimerHabit(habit.phase)
             ? this.buildTimer(habit.last_relapse_at, now)
             : null,
-        doom_scroll_active: null,
+        doom_scroll_active: activeDoomByHabit.get(habit.id) ?? null,
       })),
     };
   }
@@ -71,7 +83,7 @@ export class TodayService {
     const checkinsByHabit = this.groupCheckinsByHabit(allCheckins);
     const todayCheckins = this.indexTodayCheckins(allCheckins, today);
 
-    const stats = this.buildStats(
+    const stats = await this.buildStats(
       user,
       userHabits,
       allCheckins,
@@ -133,7 +145,7 @@ export class TodayService {
     };
   }
 
-  private buildStats(
+  private async buildStats(
     user: User,
     userHabits: Habit[],
     allCheckins: CheckinRow[],
@@ -177,11 +189,13 @@ export class TodayService {
       );
     }
 
+    const pomodorosToday = await this.pomodoroService.countCompletedToday(user.id, user.timezone);
+
     return {
       completed_today: completedToday,
       relapses_this_week: relapsesThisWeek,
       minutes_today: minutesToday,
-      pomodoros_today: 0,
+      pomodoros_today: pomodorosToday,
       streak_days: computeGlobalStreak(streakRecords, habitScopes, today),
     };
   }
