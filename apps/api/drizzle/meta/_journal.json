@@ -57,6 +57,13 @@
       "when": 1781889500000,
       "tag": "0007_goal_snapshots_daily_stats",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1781890000000,
+      "tag": "0008_english",
+      "breakpoints": true
     }
   ]
 }

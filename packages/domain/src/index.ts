@@ -36,3 +36,12 @@ export {
   type DayColor,
   type HabitDayStatus,
 } from "./stats/day-color.js";
+export {
+  computeNextEnglishDay,
+  type EnglishDayStatus,
+} from "./english/progression.js";
+export {
+  closeEnglishDay,
+  resolveEnglishDayStatus,
+  type EnglishProgressToday,
+} from "./english/day-close.js";

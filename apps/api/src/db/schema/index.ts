@@ -6,6 +6,7 @@ import {
   integer,
   numeric,
   pgTable,
+  text,
   timestamp,
   unique,
   uuid,
@@ -208,3 +209,63 @@ export const dailyStats = pgTable(
 
 export type DailyStat = typeof dailyStats.$inferSelect;
 export type NewDailyStat = typeof dailyStats.$inferInsert;
+
+export const englishLessons = pgTable(
+  "english_lessons",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    dayNumber: integer("day_number").notNull().unique(),
+    title: varchar("title", { length: 255 }).notNull(),
+    videoUrl: text("video_url").notNull(),
+    durationSec: integer("duration_sec").notNull(),
+    description: varchar("description"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+);
+
+export type EnglishLesson = typeof englishLessons.$inferSelect;
+export type NewEnglishLesson = typeof englishLessons.$inferInsert;
+
+export const englishSettings = pgTable("english_settings", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  isEnabled: boolean("is_enabled").notNull().default(false),
+  currentDay: integer("current_day").notNull().default(1),
+  startedAt: date("started_at"),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+    .notNull()
+    .defaultNow(),
+});
+
+export type EnglishSettings = typeof englishSettings.$inferSelect;
+export type NewEnglishSettings = typeof englishSettings.$inferInsert;
+
+export const englishProgress = pgTable(
+  "english_progress",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    lessonId: uuid("lesson_id").references(() => englishLessons.id, { onDelete: "set null" }),
+    date: date("date").notNull(),
+    status: varchar("status", { length: 20 }).notNull(),
+    watchedSec: integer("watched_sec").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    userDateUnique: unique("english_progress_user_id_date_unique").on(table.userId, table.date),
+    statusCheck: check(
+      "english_progress_status_check",
+      sql`${table.status} IN ('success', 'fail', 'pending', 'skipped')`,
+    ),
+  }),
+);
+
+export type EnglishProgress = typeof englishProgress.$inferSelect;
+export type NewEnglishProgress = typeof englishProgress.$inferInsert;
