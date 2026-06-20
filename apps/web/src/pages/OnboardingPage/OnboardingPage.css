@@ -118,7 +118,7 @@
   border-radius: 0.875rem;
   background: rgba(255, 255, 255, 0.92);
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   color: #24252c;
 }
 
@@ -363,7 +363,6 @@ button.onboarding__card {
 .onboarding__input--compact {
   width: 100%;
   height: 2.75rem;
-  font-size: 0.9375rem;
 }
 
 .onboarding__card-check {
