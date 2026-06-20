@@ -7,6 +7,7 @@ import {
   PLEDGE_AMOUNT,
   PLEDGE_BADGE_STEEL_CHARACTER,
   PLEDGE_PERIOD_DAYS,
+  type AdminClosePledgeRequest,
   type CreatePledgeRequest,
   type PledgeCharityFund,
   type PledgeResponse,
@@ -254,12 +255,80 @@ export class PledgeService {
         .where(eq(pledges.id, pledge.id));
 
       if (!refundError) {
-        await tx.insert(userBadges).values({
-          userId: pledge.userId,
-          badgeType: PLEDGE_BADGE_STEEL_CHARACTER,
-        });
+        await this.awardSteelCharacterBadge(tx, pledge.userId);
       }
     });
+  }
+
+  async adminClosePledge(pledgeId: string, input: AdminClosePledgeRequest): Promise<PledgeResponse> {
+    const [pledge] = await this.db.select().from(pledges).where(eq(pledges.id, pledgeId)).limit(1);
+
+    if (!pledge) {
+      throw new ApiError(HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, "Pledge not found");
+    }
+
+    if (pledge.status !== "active") {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
+        "Only active pledges can be closed manually",
+      );
+    }
+
+    const [user] = await this.db
+      .select({ timezone: users.timezone })
+      .from(users)
+      .where(eq(users.id, pledge.userId))
+      .limit(1);
+
+    const endedAt = user
+      ? getUserLocalDate(new Date(), user.timezone)
+      : pledge.startedAt;
+
+    if (input.status === "failed") {
+      const [updated] = await this.db
+        .update(pledges)
+        .set({
+          status: "failed",
+          endedAt,
+          adminComment: input.admin_comment,
+        })
+        .where(eq(pledges.id, pledgeId))
+        .returning();
+
+      return toPledgeResponse(updated!);
+    }
+
+    let refundError = false;
+    if (pledge.yukassaPaymentId) {
+      try {
+        await this.yukassa.createRefund(pledge.yukassaPaymentId, pledge.amountRub, randomUUID());
+      } catch (error) {
+        refundError = true;
+        captureException(error);
+      }
+    }
+
+    const [updated] = await this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(pledges)
+        .set({
+          status: refundError ? "failed" : "success",
+          endedAt,
+          adminComment: input.admin_comment,
+          refundError,
+        })
+        .where(eq(pledges.id, pledgeId))
+        .returning();
+
+      if (row && !refundError) {
+        await this.awardSteelCharacterBadge(tx, pledge.userId);
+      }
+
+      return [row];
+    });
+
+    return toPledgeResponse(updated!);
   }
 
   async failAllActiveForUser(userId: string, executor: DbExecutor = this.db): Promise<void> {
@@ -288,6 +357,28 @@ export class PledgeService {
         .set({ status: "failed", endedAt })
         .where(eq(pledges.id, pledge.id));
     }
+  }
+
+  private async awardSteelCharacterBadge(
+    executor: DbExecutor,
+    userId: string,
+  ): Promise<void> {
+    const [existing] = await executor
+      .select({ id: userBadges.id })
+      .from(userBadges)
+      .where(
+        and(eq(userBadges.userId, userId), eq(userBadges.badgeType, PLEDGE_BADGE_STEEL_CHARACTER)),
+      )
+      .limit(1);
+
+    if (existing) {
+      return;
+    }
+
+    await executor.insert(userBadges).values({
+      userId,
+      badgeType: PLEDGE_BADGE_STEEL_CHARACTER,
+    });
   }
 
   private async assertCanCreatePledge(userId: string, habitId: string): Promise<void> {

@@ -9,7 +9,8 @@
     "lint": "turbo run lint",
     "db:migrate": "pnpm --filter @mytodo/api db:migrate",
     "db:studio": "pnpm --filter @mytodo/api db:studio",
-    "worker": "pnpm --filter @mytodo/api worker"
+    "worker": "pnpm --filter @mytodo/api worker",
+    "seed": "pnpm --filter @mytodo/api seed"
   },
   "devDependencies": {
     "turbo": "^2.3.3",

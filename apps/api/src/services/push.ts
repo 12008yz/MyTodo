@@ -85,6 +85,77 @@ export class PushService {
     return this.sendEvent(user, "test", { skipDedup: true });
   }
 
+  async broadcast(
+    userIds: string[],
+    text: string,
+  ): Promise<{ targeted_users: number; sent: number; failed: number }> {
+    const uniqueUserIds = [...new Set(userIds)];
+    let sent = 0;
+    let failed = 0;
+
+    for (const userId of uniqueUserIds) {
+      const subscriptions = await this.db
+        .select()
+        .from(pushSubscriptions)
+        .where(eq(pushSubscriptions.userId, userId));
+
+      if (subscriptions.length === 0) {
+        continue;
+      }
+
+      const payload = JSON.stringify({
+        title: "Новая глава",
+        body: text,
+        event_type: "broadcast",
+      });
+
+      let deliveredToUser = false;
+
+      for (const subscription of subscriptions) {
+        try {
+          await this.webPush.sendNotification(
+            {
+              endpoint: subscription.endpoint,
+              keys: { p256dh: subscription.p256dh, auth: subscription.auth },
+            },
+            payload,
+          );
+          this.logger?.info(
+            {
+              event: "push_sent",
+              user_id: userId,
+              event_type: "broadcast",
+            },
+            "broadcast push sent",
+          );
+          deliveredToUser = true;
+        } catch (error) {
+          this.logger?.error(
+            {
+              event: "push_failed",
+              user_id: userId,
+              event_type: "broadcast",
+              error: error instanceof Error ? error.message : String(error),
+            },
+            "broadcast push failed",
+          );
+        }
+      }
+
+      if (deliveredToUser) {
+        sent += 1;
+      } else {
+        failed += 1;
+      }
+    }
+
+    return {
+      targeted_users: uniqueUserIds.length,
+      sent,
+      failed,
+    };
+  }
+
   async sendEvent(user: User, eventType: PushEventType, options: SendEventOptions = {}): Promise<boolean> {
     const now = new Date();
 

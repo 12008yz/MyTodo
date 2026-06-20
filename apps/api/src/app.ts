@@ -20,6 +20,7 @@ import { registerEnglishRoutes } from "./routes/english.js";
 import { registerBillingRoutes } from "./routes/billing.js";
 import { registerPledgeRoutes } from "./routes/pledges.js";
 import { registerPushRoutes } from "./routes/push.js";
+import { registerAdminRoutes } from "./routes/admin.js";
 import { createAuthServices } from "./services/auth.js";
 import { HabitService } from "./services/habits.js";
 import { CheckinService } from "./services/checkins.js";
@@ -31,10 +32,12 @@ import { EnglishService } from "./services/english.js";
 import { BillingService } from "./services/billing.js";
 import { PledgeService } from "./services/pledges.js";
 import { PushService, seedPushTemplates } from "./services/push.js";
+import { AdminService } from "./services/admin.js";
 import { createYukassaClient } from "./lib/yukassa/client.js";
 import { resolveWebPushClient, type WebPushClient } from "./lib/web-push/index.js";
 import { createPushQueue } from "./worker/push-queue.js";
 import { createRequireAccess } from "./plugins/require-access.js";
+import { createRequireAdmin } from "./plugins/require-admin.js";
 
 export type AppDependencies = {
   env: Env;
@@ -90,6 +93,8 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
   const statsService = new StatsService(db);
   const englishService = new EnglishService(db);
   const requireAccess = createRequireAccess(db, billingService);
+  const requireAdmin = createRequireAdmin(db);
+  const adminService = new AdminService(db, billingService, pledgeService);
 
   await registerHealthRoutes(app, { dbClient, redis });
   await registerAuthRoutes(app, authService);
@@ -104,6 +109,7 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
   await registerBillingRoutes(app, billingService);
   await registerPledgeRoutes(app, pledgeService, requireAccess);
   await registerPushRoutes(app, pushService, requireAccess);
+  await registerAdminRoutes(app, adminService, pushService, requireAdmin);
 
   app.addHook("onClose", async () => {
     if (pushQueue) {
