@@ -381,6 +381,10 @@
   .welcome__description {
     margin-bottom: 1.75rem;
   }
+
+  .welcome__description--landing {
+    margin-bottom: 1.125rem;
+  }
 }
 
 @media (max-height: 32.5rem) {
@@ -388,9 +392,20 @@
     font-size: 1.25rem;
   }
 
+  .welcome__lead {
+    font-size: 0.8125rem;
+    margin-bottom: 0.5rem;
+  }
+
   .welcome__description {
     margin-bottom: 1rem;
     font-size: 0.8125rem;
+  }
+
+  .welcome__description--landing {
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    line-height: 1.4;
   }
 
   .welcome__content {
@@ -407,13 +422,29 @@
     margin-bottom: 0.25rem;
   }
 
+  .welcome__lead {
+    margin-bottom: 0.5rem;
+  }
+
   .welcome__description {
     margin-bottom: 1.25rem;
   }
+
+  .welcome__description--landing {
+    margin-bottom: 1rem;
+  }
+}
+
+.welcome__intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  flex-shrink: 0;
 }
 
 .welcome__title {
-  margin: 0 0 0.4375rem;
+  margin: 0 0 0.25rem;
   font-family: 'Onest', system-ui, sans-serif;
   font-weight: 600;
   font-size: clamp(1.25rem, 6.4cqw, 1.75rem);
@@ -422,6 +453,16 @@
   color: var(--color-black);
 }
 
+.welcome__lead {
+  margin: 0 0 0.625rem;
+  width: min(19.5rem, 100%);
+  font-family: 'Onest', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: clamp(0.875rem, 4.27cqw, 1rem);
+  line-height: 1.35;
+  text-align: center;
+  color: var(--color-black);
+}
 
 .welcome__description {
   margin: 0 0 2.5rem;
@@ -432,6 +473,13 @@
   line-height: calc(18 / 14);
   text-align: center;
   color: var(--color-secondary);
+}
+
+.welcome__description--landing {
+  width: min(19.5rem, 100%);
+  margin-bottom: 1.5rem;
+  font-size: clamp(0.75rem, 3.73cqw, 0.8125rem);
+  line-height: 1.45;
 }
 
 .welcome__description-line {

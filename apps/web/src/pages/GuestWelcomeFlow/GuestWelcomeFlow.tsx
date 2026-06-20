@@ -142,16 +142,15 @@ export function GuestWelcomeFlow() {
       <div className="welcome__page-stack">
         {!isLogin ? (
           <>
-            <h1 className="welcome__title">Новая глава</h1>
-            <p className="welcome__description">
-              <span className="welcome__description-line">
-                Приложение для контроля привычек:
-              </span>
-              <span className="welcome__description-line">
-                светлая сторона роста и тёмная сторона
-              </span>
-              <span className="welcome__description-line">отказа от вредного!</span>
-            </p>
+            <div className="welcome__intro">
+              <h1 className="welcome__title">Новая глава</h1>
+              <p className="welcome__lead">Твоя перезагрузка начинается сегодня.</p>
+              <p className="welcome__description welcome__description--landing">
+                Выбирай привычки, которые сделают тебя сильнее. Откажись от того, что
+                тянет вниз. Ежедневный контроль, помодоро и поддержка, которая не даст
+                свернуть с пути.
+              </p>
+            </div>
 
             <PrimaryButton onClick={handleStart} disabled={isTransitioning}>
               Начать
