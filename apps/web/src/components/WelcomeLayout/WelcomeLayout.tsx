@@ -143,7 +143,6 @@ const SCENE_ITEMS: SceneItemConfig[] = [
 type WelcomeLayoutProps = {
   children: ReactNode
   variant?: 'default' | 'login'
-  dense?: boolean
   iconTransition?: IconTransition
   contentHidden?: boolean
   contentEntering?: boolean
@@ -153,7 +152,6 @@ type WelcomeLayoutProps = {
 export function WelcomeLayout({
   children,
   variant = 'default',
-  dense = false,
   iconTransition = 'idle',
   contentHidden = false,
   contentEntering = false,
@@ -185,7 +183,6 @@ export function WelcomeLayout({
       className={[
         'welcome',
         variant === 'login' ? 'welcome--login' : '',
-        dense ? 'welcome--dense' : '',
         iconTransition !== 'idle' ? 'welcome--animating-icons' : '',
       ]
         .filter(Boolean)

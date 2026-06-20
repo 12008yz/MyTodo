@@ -1,10 +1,9 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import "./App.css";
 import { AuthProvider } from "./features/auth/AuthProvider";
-import { GuestAuthPage } from "./pages/GuestAuthPage";
+import { GuestWelcomeFlow } from "./pages/GuestWelcomeFlow";
 import { HomePage } from "./pages/HomePage";
 import { OnboardingPage } from "./pages/OnboardingPage";
-import { WelcomePage } from "./pages/WelcomePage";
 import { AuthGuard, GuestGuard, OnboardingGuard } from "./routes/guards";
 import { NotFoundRedirect } from "./routes/NotFoundRedirect";
 
@@ -15,9 +14,11 @@ export default function App() {
         <main className="app">
           <Routes>
             <Route element={<GuestGuard />}>
-              <Route path="/welcome" element={<WelcomePage />} />
-              <Route path="/login" element={<GuestAuthPage />} />
-              <Route path="/register" element={<GuestAuthPage />} />
+              <Route element={<GuestWelcomeFlow />}>
+                <Route path="/welcome" />
+                <Route path="/login" />
+                <Route path="/register" />
+              </Route>
             </Route>
 
             <Route element={<OnboardingGuard />}>

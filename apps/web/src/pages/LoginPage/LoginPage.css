@@ -70,18 +70,18 @@
     0 0 0 2px rgba(95, 51, 225, 0.15);
 }
 
+.login__field--select {
+  appearance: none;
+  cursor: pointer;
+}
+
 .login__panel .welcome__cta {
-  margin-top: 0.75rem;
+  margin-top: auto;
   flex-shrink: 0;
 }
 
-/* Свободное место — под ссылкой, не между полями и кнопкой */
-.login__panel:not(.login__panel--register) .login__link {
-  margin-top: auto;
-}
-
 .login__link {
-  margin-top: 1.25rem;
+  margin-top: 1.75rem;
   padding: 0;
   border: none;
   background: none;
@@ -117,23 +117,4 @@
   .login__link {
     margin-top: 1rem;
   }
-}
-
-.login__fields--scroll {
-  max-height: none;
-  overflow: visible;
-  padding-right: 0;
-}
-
-.login__field--select {
-  appearance: none;
-  cursor: pointer;
-}
-
-.login__panel--register .welcome__cta {
-  margin-top: 0.5rem;
-}
-
-.login__panel--register .login__link {
-  margin-top: auto;
 }
