@@ -353,6 +353,23 @@
   transition: opacity var(--content-transition-duration) ease;
 }
 
+/* Landing: CTA 10px от низа, текст поднят поверх hero без уменьшения иллюстрации */
+.welcome:not(.welcome--login) .welcome__content {
+  padding-bottom: 10px;
+}
+
+.welcome:not(.welcome--login) .welcome__page-stack {
+  justify-content: flex-end;
+}
+
+.welcome:not(.welcome--login) .welcome__intro {
+  margin-top: calc(-36 / var(--design-h) * 100dvh);
+}
+
+.welcome:not(.welcome--login) .welcome__cta {
+  margin-top: 0;
+}
+
 .welcome--login .welcome__content {
   overflow: hidden;
   -webkit-backface-visibility: hidden;
@@ -383,7 +400,7 @@
   }
 
   .welcome__description--landing {
-    margin-bottom: 1.125rem;
+    margin-bottom: 0.5rem;
   }
 }
 
@@ -408,13 +425,13 @@
     line-height: 1.4;
   }
 
-  .welcome__content {
+  .welcome--login .welcome__content {
     padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
   }
 }
 
 @media (max-height: 43.75rem) {
-  .welcome__content {
+  .welcome--login .welcome__content {
     padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
   }
 
@@ -431,7 +448,11 @@
   }
 
   .welcome__description--landing {
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .welcome:not(.welcome--login) .welcome__intro {
+    margin-top: calc(-44 / var(--design-h) * 100dvh);
   }
 }
 
@@ -477,7 +498,7 @@
 
 .welcome__description--landing {
   width: min(19.5rem, 100%);
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.625rem;
   font-size: clamp(0.75rem, 3.73cqw, 0.8125rem);
   line-height: 1.45;
 }
