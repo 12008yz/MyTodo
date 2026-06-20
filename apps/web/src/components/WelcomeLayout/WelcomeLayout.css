@@ -414,7 +414,7 @@
 
 .welcome__title {
   margin: 0 0 0.4375rem;
-  font-family: 'Lexend Deca', system-ui, sans-serif;
+  font-family: 'Onest', system-ui, sans-serif;
   font-weight: 600;
   font-size: clamp(1.25rem, 6.4cqw, 1.75rem);
   line-height: calc(30 / 24);
@@ -426,7 +426,7 @@
 .welcome__description {
   margin: 0 0 2.5rem;
   width: min(16.625rem, 100%);
-  font-family: 'Lexend Deca', system-ui, sans-serif;
+  font-family: 'Onest', system-ui, sans-serif;
   font-weight: 400;
   font-size: 0.875rem;
   line-height: calc(18 / 14);
@@ -491,7 +491,7 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  font-family: 'Lexend Deca', system-ui, sans-serif;
+  font-family: 'Onest', system-ui, sans-serif;
   font-weight: 600;
   font-size: clamp(1rem, 5.07cqw, 1.1875rem);
   line-height: calc(24 / 19);

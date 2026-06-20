@@ -51,7 +51,7 @@
   border: 1px solid #5f33e1;
   border-radius: 15px;
   box-shadow: 0 10px 32px rgba(0, 0, 0, 0.04);
-  font-family: 'Lexend Deca', system-ui, sans-serif;
+  font-family: "Onest", system-ui, sans-serif;
   font-weight: 400;
   font-size: 1rem;
   line-height: 1.875rem;
@@ -86,7 +86,7 @@
   border: none;
   background: none;
   flex-shrink: 0;
-  font-family: 'Lexend Deca', system-ui, sans-serif;
+  font-family: "Onest", system-ui, sans-serif;
   font-weight: 400;
   font-size: 0.875rem;
   line-height: calc(18 / 14);
