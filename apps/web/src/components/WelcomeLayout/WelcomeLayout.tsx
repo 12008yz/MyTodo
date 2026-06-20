@@ -1,4 +1,5 @@
 import { useRef, type ReactNode } from 'react'
+import { HABIT_TEMPLATES } from '@mytodo/shared'
 import type { IconAnimationPhase, IconTransition } from '../../constants/transitions'
 import { FLOAT_ITEM_COUNT } from '../../constants/transitions'
 import { useContentEnterAnimation } from './useContentEnterAnimation'
@@ -9,10 +10,11 @@ const ILLUSTRATIONS = {
   female: '/loginAndRegister/female-sitting-with-laptop.png',
   vase: '/loginAndRegister/vase-tulips-glasses-pencil.png',
   stopwatch: '/loginAndRegister/blue-stopwatch-pink-arrow.png',
-  notifications: '/loginAndRegister/multicolored-smartphone-notifications.png',
-  pieChart: '/loginAndRegister/pie-chart.png',
+  taskList: '/loginAndRegister/multicolored-smartphone-notifications.png',
+  book: HABIT_TEMPLATES.books.icon,
+  socialScrolling: HABIT_TEMPLATES.social_media.icon,
+  smoking: HABIT_TEMPLATES.smoking.icon,
   coffee: '/loginAndRegister/pink-coffee-cup-close-up.png',
-  calendar: '/loginAndRegister/blue-desk-calendar.png',
 } as const
 
 export type { IconTransition }
@@ -50,13 +52,13 @@ const SCENE_ITEMS: SceneItemConfig[] = [
   },
   {
     index: 3,
-    className: 'welcome__scene-item--calendar',
+    className: 'welcome__scene-item--social-scrolling',
     content: (
       <img
-        className="welcome__illustration welcome__illustration--calendar"
-        src={ILLUSTRATIONS.calendar}
-        width={31}
-        height={28}
+        className="welcome__illustration welcome__illustration--social-scrolling"
+        src={ILLUSTRATIONS.socialScrolling}
+        width={40}
+        height={40}
         decoding="async"
         alt=""
       />
@@ -64,13 +66,13 @@ const SCENE_ITEMS: SceneItemConfig[] = [
   },
   {
     index: 4,
-    className: 'welcome__scene-item--pie',
+    className: 'welcome__scene-item--book',
     content: (
       <img
-        className="welcome__illustration welcome__illustration--pie"
-        src={ILLUSTRATIONS.pieChart}
-        width={26}
-        height={26}
+        className="welcome__illustration welcome__illustration--book"
+        src={ILLUSTRATIONS.book}
+        width={30}
+        height={30}
         decoding="async"
         alt=""
       />
@@ -82,7 +84,7 @@ const SCENE_ITEMS: SceneItemConfig[] = [
     content: (
       <img
         className="welcome__illustration welcome__illustration--notifications"
-        src={ILLUSTRATIONS.notifications}
+        src={ILLUSTRATIONS.taskList}
         width={62}
         height={42}
         decoding="async"
@@ -120,8 +122,17 @@ const SCENE_ITEMS: SceneItemConfig[] = [
   },
   {
     index: 8,
-    className: 'welcome__scene-item--dot-green',
-    content: <span className="welcome__dot welcome__dot--4 welcome__dot--green" />,
+    className: 'welcome__scene-item--smoking',
+    content: (
+      <img
+        className="welcome__illustration welcome__illustration--smoking"
+        src={ILLUSTRATIONS.smoking}
+        width={32}
+        height={32}
+        decoding="async"
+        alt=""
+      />
+    ),
   },
   {
     index: 9,

@@ -67,7 +67,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "increase",
     unit: "pages",
     growthStep: 1,
-    icon: "📚",
+    icon: "/habits/light/books.png",
     phase: "reduction",
   },
   pushups: {
@@ -111,7 +111,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "decrease",
     unit: "cigarettes",
     growthStep: 1,
-    icon: "🚬",
+    icon: "/habits/dark/smoking.png",
     phase: "reduction",
   },
   sugar: {
@@ -144,7 +144,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "decrease",
     unit: "minutes",
     growthStep: SOCIAL_MEDIA_STEP,
-    icon: "📱",
+    icon: "/habits/dark/social-media.png",
     phase: "reduction",
   },
   nail_biting: {
