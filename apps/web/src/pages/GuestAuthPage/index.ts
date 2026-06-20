@@ -1,0 +1,1 @@
+export { GuestAuthPage } from "./GuestAuthPage";

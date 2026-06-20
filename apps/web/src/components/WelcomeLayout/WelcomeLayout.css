@@ -1,0 +1,559 @@
+/* Макет Figma: 375×812. Вертикальная сетка 556 + контент. */
+
+.welcome {
+  --design-w: 375;
+  --design-h: 812;
+  --hero-h: 556;
+  --btn-w: 331;
+  --btn-h: 52;
+  --btn-radius: 14;
+  --color-primary: #5f33e1;
+  --color-black: #24252c;
+  --color-secondary: #6e6a7c;
+  --icon-item-duration: 900ms;
+  --icon-item-stagger: 125ms;
+  --float-item-count: 12;
+  --icon-transition-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --content-transition-duration: 350ms;
+  --icon-travel: 120vh;
+
+  position: relative;
+  display: grid;
+  grid-template-rows:
+    minmax(0, calc(556 / var(--design-h) * 100%))
+    minmax(0, 1fr);
+  width: min(100%, 26.875rem);
+  height: 100%;
+  max-height: 100%;
+  margin-inline: auto;
+  background: #ffffff;
+  overflow: hidden;
+  container-type: inline-size;
+  container-name: welcome;
+}
+
+.welcome--animating-icons {
+  /* Keep container query units stable while icons animate.
+     Button sizing uses `cqw`, so disabling container queries causes layout jumps (desktop). */
+  container-type: inline-size;
+}
+
+.welcome--animating-icons .welcome__hero {
+  isolation: isolate;
+}
+
+.welcome--animating-icons .welcome__scene {
+  transform: translate3d(0, 0, 0);
+  -webkit-transform: translate3d(0, 0, 0);
+}
+
+.welcome__blobs {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  transform: none;
+}
+
+.welcome__blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(50px);
+}
+
+.welcome__blob--green {
+  width: calc(70 / var(--design-w) * 100%);
+  aspect-ratio: 1;
+  left: calc(-15 / var(--design-w) * 100%);
+  top: calc(126 / var(--design-h) * 100%);
+  background: linear-gradient(
+    180deg,
+    #46f080 0%,
+    rgba(70, 240, 138, 0.15) 100%
+  );
+}
+
+.welcome__blob--yellow-top {
+  width: calc(70 / var(--design-w) * 100%);
+  aspect-ratio: 1;
+  left: calc(263 / var(--design-w) * 100%);
+  top: 0;
+  background: linear-gradient(
+    180deg,
+    #edf046 0%,
+    rgba(240, 233, 70, 0.15) 100%
+  );
+}
+
+.welcome__blob--blue-right {
+  width: calc(60 / var(--design-w) * 100%);
+  aspect-ratio: 1;
+  left: calc(333 / var(--design-w) * 100%);
+  top: calc(232 / var(--design-h) * 100%);
+  background: linear-gradient(
+    180deg,
+    #2555ff 0%,
+    rgba(37, 85, 255, 0.25) 100%
+  );
+}
+
+.welcome__blob--cyan {
+  width: calc(58 / var(--design-w) * 100%);
+  aspect-ratio: 1;
+  left: calc(76 / var(--design-w) * 100%);
+  top: calc(424 / var(--design-h) * 100%);
+  background: radial-gradient(
+    circle at 50% 50%,
+    #46bdf0 0%,
+    rgba(70, 189, 240, 0.65) 45%,
+    rgba(70, 189, 240, 0.25) 100%
+  );
+  filter: blur(45px);
+}
+
+.welcome__blob--yellow-bottom {
+  width: calc(58 / var(--design-w) * 100%);
+  aspect-ratio: 1;
+  left: calc(240 / var(--design-w) * 100%);
+  top: auto;
+  bottom: calc(45 / var(--design-h) * 100%);
+  background: linear-gradient(
+    180deg,
+    #f0b646 0%,
+    rgba(240, 203, 70, 0.15) 100%
+  );
+}
+
+.welcome__hero {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.welcome__scene {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  aspect-ratio: 375 / 556;
+}
+
+.welcome__illustration {
+  position: absolute;
+  z-index: 1;
+  display: block;
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.welcome__illustration--female {
+  width: calc(159 / var(--design-w) * 100%);
+  left: calc(131 / var(--design-w) * 100%);
+  top: calc(147 / var(--hero-h) * 100%);
+  z-index: 2;
+}
+
+.welcome__scene-item {
+  position: absolute;
+  z-index: 1;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.welcome__scene-item[data-motion-active] {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-perspective: 1000px;
+  perspective: 1000px;
+}
+
+.welcome__scene-item[data-motion-active] .welcome__illustration,
+.welcome__scene-item[data-motion-active] .welcome__dot {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.welcome__scene-item .welcome__illustration {
+  position: static;
+  width: 100%;
+}
+
+.welcome__scene-item .welcome__dot {
+  position: static;
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+}
+
+.welcome__scene-item--stopwatch {
+  width: calc(40 / var(--design-w) * 100%);
+  left: calc(104 / var(--design-w) * 100%);
+  top: calc(69 / var(--hero-h) * 100%);
+}
+
+.welcome__scene-item--calendar {
+  width: calc(31.35 / var(--design-w) * 100%);
+  left: calc(276 / var(--design-w) * 100%);
+  top: calc(136 / var(--hero-h) * 100%);
+}
+
+.welcome__scene-item--calendar .welcome__illustration {
+  transform: rotate(12.86deg);
+}
+
+.welcome__scene-item--pie {
+  width: calc(26 / var(--design-w) * 100%);
+  left: calc(84 / var(--design-w) * 100%);
+  top: calc(180 / var(--hero-h) * 100%);
+}
+
+.welcome__scene-item--notifications {
+  width: calc(62 / var(--design-w) * 100%);
+  left: calc(245 / var(--design-w) * 100%);
+  top: calc(225 / var(--hero-h) * 100%);
+  z-index: 3;
+}
+
+.welcome__scene-item--vase {
+  width: calc(36 / var(--design-w) * 100%);
+  left: calc(79 / var(--design-w) * 100%);
+  top: calc(279 / var(--hero-h) * 100%);
+}
+
+.welcome__scene-item--coffee {
+  width: calc(18 / var(--design-w) * 100%);
+  left: calc(67 / var(--design-w) * 100%);
+  top: calc(310 / var(--hero-h) * 100%);
+}
+
+.welcome__scene-item--dot-blue {
+  width: calc(8 / var(--design-w) * 100%);
+  left: calc(252 / var(--design-w) * 100%);
+  top: calc(73 / var(--hero-h) * 100%);
+  z-index: 2;
+}
+
+.welcome__scene-item--dot-purple {
+  width: calc(4 / var(--design-w) * 100%);
+  left: calc(202 / var(--design-w) * 100%);
+  top: calc(92 / var(--hero-h) * 100%);
+  z-index: 2;
+}
+
+.welcome__scene-item--dot-green {
+  width: calc(4 / var(--design-w) * 100%);
+  left: calc(281 / var(--design-w) * 100%);
+  top: calc(362 / var(--hero-h) * 100%);
+  z-index: 2;
+}
+
+.welcome__scene-item--dot-yellow {
+  width: calc(8 / var(--design-w) * 100%);
+  left: calc(250 / var(--design-w) * 100%);
+  top: calc(383 / var(--hero-h) * 100%);
+  z-index: 2;
+}
+
+.welcome__scene-item--dot-pink {
+  width: calc(8 / var(--design-w) * 100%);
+  left: calc(138 / var(--design-w) * 100%);
+  top: calc(391 / var(--hero-h) * 100%);
+  z-index: 2;
+}
+
+.welcome__scene-item--dot-sky {
+  width: calc(4 / var(--design-w) * 100%);
+  left: calc(176 / var(--design-w) * 100%);
+  top: calc(405 / var(--hero-h) * 100%);
+  z-index: 2;
+}
+
+.welcome__content--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.welcome__content--enter-pending {
+  opacity: 0.01;
+  pointer-events: none;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome__scene-item:not([data-motion-active]) {
+    transform: none;
+  }
+}
+
+.welcome__dot {
+  border-radius: 50%;
+}
+
+.welcome__dot--blue {
+  background: #92deff;
+}
+
+.welcome__dot--purple {
+  background: #be9fff;
+}
+
+.welcome__dot--yellow {
+  background: #eaed2a;
+}
+
+.welcome__dot--green {
+  background: #7ffcaa;
+}
+
+.welcome__dot--pink {
+  background: #ffd7e4;
+}
+
+.welcome__dot--sky {
+  background: #a4e7f9;
+}
+
+.welcome__svg-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.welcome__page-stack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.welcome__content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding:
+    0
+    calc(22 / var(--design-w) * 100%)
+    max(4.5625rem, env(safe-area-inset-bottom, 0px));
+  transition: opacity var(--content-transition-duration) ease;
+}
+
+.welcome--login .welcome__content {
+  overflow: hidden;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+}
+
+.welcome--dense {
+  grid-template-rows:
+    minmax(0, calc(420 / var(--design-h) * 100%))
+    minmax(0, 1fr);
+}
+
+.welcome--dense .welcome__content {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+.welcome--dense .login__panel--register .welcome__title {
+  margin-bottom: 0.25rem;
+  font-size: clamp(1.125rem, 5.6cqw, 1.375rem);
+}
+
+.welcome--dense .login__panel--register .login__fields {
+  gap: 0.375rem;
+  margin-bottom: 0.25rem;
+}
+
+.welcome--dense .login__panel--register .login__field {
+  height: 1.625rem;
+  line-height: 1.625rem;
+  font-size: 0.8125rem;
+  padding: 0 0.75rem;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+}
+
+.welcome--dense .login__panel--register .welcome__cta {
+  height: calc(46 / var(--design-w) * 100cqw);
+  margin-top: 0.375rem;
+}
+
+.welcome--dense .login__panel--register .login__link {
+  margin-top: 0.625rem;
+}
+
+.welcome--dense .login__panel--register .login__error {
+  margin: 0.125rem 0 0;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .welcome {
+    --content-transition-duration: 650ms;
+  }
+}
+
+.welcome--login .auth-panels {
+  flex: 1;
+  min-height: 0;
+}
+
+.welcome--login .auth-panels > .login__panel {
+  flex: 1;
+  min-height: 0;
+}
+
+@media (max-height: 46rem) {
+  .welcome__description {
+    margin-bottom: 1.75rem;
+  }
+}
+
+@media (max-height: 32.5rem) {
+  .welcome__title {
+    font-size: 1.25rem;
+  }
+
+  .welcome__description {
+    margin-bottom: 1rem;
+    font-size: 0.8125rem;
+  }
+
+  .welcome__content {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-height: 43.75rem) {
+  .welcome__content {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .welcome--login .welcome__content {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .welcome--dense {
+    grid-template-rows: minmax(0, 38%) minmax(0, 1fr);
+  }
+
+  .welcome__title {
+    margin-bottom: 0.25rem;
+  }
+
+  .welcome__description {
+    margin-bottom: 1.25rem;
+  }
+}
+
+.welcome__title {
+  margin: 0 0 0.4375rem;
+  font-family: 'Lexend Deca', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: clamp(1.25rem, 6.4cqw, 1.75rem);
+  line-height: calc(30 / 24);
+  text-align: center;
+  color: var(--color-black);
+}
+
+
+.welcome__description {
+  margin: 0 0 2.5rem;
+  width: min(16.625rem, 100%);
+  font-family: 'Lexend Deca', system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 0.875rem;
+  line-height: calc(18 / 14);
+  text-align: center;
+  color: var(--color-secondary);
+}
+
+.welcome__description-line {
+  display: block;
+}
+
+.welcome__cta {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: calc(52 / var(--design-w) * 100cqw);
+  margin-top: auto;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.welcome__button-shadow {
+  position: absolute;
+  left: calc(12 / 331 * 100%);
+  right: calc(12 / 331 * 100%);
+  bottom: -0.75rem;
+  height: 7px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  filter: blur(15px);
+}
+
+.welcome__button {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  border-radius: calc(var(--btn-radius) / var(--design-w) * 100cqw);
+  background: var(--color-primary);
+  clip-path: url(#welcome-button-shape);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.welcome__button:hover {
+  opacity: 0.92;
+}
+
+.welcome__button:active:not(:disabled) {
+  opacity: 0.85;
+}
+
+.welcome__button:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.welcome__button-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-family: 'Lexend Deca', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: clamp(1rem, 5.07cqw, 1.1875rem);
+  line-height: calc(24 / 19);
+  color: #ffffff;
+}
+
+.welcome__button-arrow {
+  position: absolute;
+  top: 50%;
+  right: calc(22 / 331 * 100%);
+  width: 18px;
+  height: 12px;
+  transform: translateY(-50%);
+}

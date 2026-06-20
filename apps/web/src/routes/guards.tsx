@@ -1,20 +1,24 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../features/auth/AuthProvider";
 
+function LoadingScreen() {
+  return (
+    <div className="app-loading">
+      Загрузка…
+    </div>
+  );
+}
+
 export function AuthGuard() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-slate-600">
-        Загрузка…
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    return <Navigate to="/welcome" replace state={{ from: location.pathname }} />;
   }
 
   if (user && !user.onboarding_completed) {
@@ -28,11 +32,7 @@ export function GuestGuard() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-slate-600">
-        Загрузка…
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (isAuthenticated) {
@@ -49,15 +49,11 @@ export function OnboardingGuard() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-slate-600">
-        Загрузка…
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/welcome" replace />;
   }
 
   if (user?.onboarding_completed) {

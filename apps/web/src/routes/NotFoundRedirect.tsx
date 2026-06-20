@@ -5,15 +5,11 @@ export function NotFoundRedirect() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-slate-600">
-        Загрузка…
-      </div>
-    );
+    return <div className="app-loading">Загрузка…</div>;
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/welcome" replace />;
   }
 
   if (user && !user.onboarding_completed) {

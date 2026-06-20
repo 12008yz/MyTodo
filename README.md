@@ -52,3 +52,11 @@ npx pnpm test
 **Seed-аккаунты:** `demo@novayaglava.local` / `demo1234`, `trial@novayaglava.local` / `trial1234`, `admin@novayaglava.local` / `admin1234`
 
 > Порты **5433** и **6380** — чтобы не конфликтовать с локальным PostgreSQL/Redis на Windows (стандартные 5432/6379).
+
+### Деплой frontend на Vercel
+
+1. **Root Directory** в Vercel: корень репо (`.`) или `apps/web` — оба варианта поддержаны через `vercel.json`.
+2. **Environment Variable:** `VITE_API_URL` = URL вашего API (например `https://api.example.com`). Без неё auth не заработает — proxy есть только в dev.
+3. Build: `pnpm turbo build --filter=@mytodo/web` (только web + shared, **не** api).
+4. Push в `main` → redeploy.
+
