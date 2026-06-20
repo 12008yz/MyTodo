@@ -206,12 +206,22 @@ export function WelcomeLayout({
           </clipPath>
         </defs>
       </svg>
+      <div className="welcome__split" aria-hidden="true">
+        <div className="welcome__split-side welcome__split-side--light" />
+        <div className="welcome__split-side welcome__split-side--dark" />
+        <div className="welcome__split-merge" />
+      </div>
+      <div className="welcome__side-labels" aria-hidden="true">
+        <span className="welcome__side-label welcome__side-label--light">☀️ Рост</span>
+        <span className="welcome__side-label welcome__side-label--dark">🌑 Контроль</span>
+      </div>
       <div className="welcome__blobs" aria-hidden="true">
         <span className="welcome__blob welcome__blob--green" />
         <span className="welcome__blob welcome__blob--yellow-top" />
         <span className="welcome__blob welcome__blob--blue-right" />
         <span className="welcome__blob welcome__blob--cyan" />
         <span className="welcome__blob welcome__blob--yellow-bottom" />
+        <span className="welcome__blob welcome__blob--purple-dark" />
       </div>
 
       <div className="welcome__hero">
