@@ -1,11 +1,19 @@
 import {
   apiErrorResponseSchema,
   authResponseSchema,
+  createHabitRequestSchema,
+  englishSettingsResponseSchema,
+  habitResponseSchema,
   type AuthResponse,
+  type CreateHabitRequest,
+  type HabitResponse,
   type LoginRequest,
+  type PatchEnglishSettingsRequest,
+  type PatchMeRequest,
   type RegisterRequest,
   type UserProfile,
   userProfileSchema,
+  type EnglishSettingsResponse,
 } from "@mytodo/shared";
 import {
   clearTokens,
@@ -166,4 +174,31 @@ export async function logout(): Promise<void> {
 export async function getMe(): Promise<UserProfile> {
   const response = await apiFetch<unknown>("/api/v1/me");
   return userProfileSchema.parse(response);
+}
+
+export async function updateMe(data: PatchMeRequest): Promise<UserProfile> {
+  const response = await apiFetch<unknown>("/api/v1/me", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+  return userProfileSchema.parse(response);
+}
+
+export async function createHabit(data: CreateHabitRequest): Promise<HabitResponse> {
+  createHabitRequestSchema.parse(data);
+  const response = await apiFetch<unknown>("/api/v1/habits", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return habitResponseSchema.parse(response);
+}
+
+export async function updateEnglishSettings(
+  data: PatchEnglishSettingsRequest,
+): Promise<EnglishSettingsResponse> {
+  const response = await apiFetch<unknown>("/api/v1/english/settings", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+  return englishSettingsResponseSchema.parse(response);
 }

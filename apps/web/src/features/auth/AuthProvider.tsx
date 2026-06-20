@@ -9,8 +9,8 @@ import {
 } from "react";
 import type { UserProfile } from "@mytodo/shared";
 import { clearTokens, getAccessToken } from "../../lib/auth-storage";
-import { ClientApiError, getMe, login as apiLogin, logout as apiLogout, register as apiRegister } from "../../lib/api";
-import type { LoginRequest, RegisterRequest } from "@mytodo/shared";
+import { ClientApiError, getMe, login as apiLogin, logout as apiLogout, register as apiRegister, updateMe as apiUpdateMe } from "../../lib/api";
+import type { LoginRequest, PatchMeRequest, RegisterRequest } from "@mytodo/shared";
 
 type AuthState = {
   user: UserProfile | null;
@@ -20,6 +20,7 @@ type AuthState = {
   register: (data: RegisterRequest) => Promise<UserProfile>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<UserProfile | null>;
+  updateProfile: (data: PatchMeRequest) => Promise<UserProfile>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -71,6 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateProfile = useCallback(async (data: PatchMeRequest) => {
+    const profile = await apiUpdateMe(data);
+    setUser(profile);
+    return profile;
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -80,8 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       refreshUser,
+      updateProfile,
     }),
-    [user, isLoading, login, register, logout, refreshUser],
+    [user, isLoading, login, register, logout, refreshUser, updateProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
