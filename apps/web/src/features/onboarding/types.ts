@@ -1,18 +1,21 @@
-import type { CreateHabitRequest, Gender, HabitTemplateId } from "@mytodo/shared";
+import type { CreateHabitRequest, HabitTemplateId } from "@mytodo/shared";
 
 export type OnboardingStepId =
   | "welcome"
-  | "register"
   | "light"
   | "dark"
   | "body"
   | "harshness"
   | "finale";
 
+export type LightPathId = "mindfulness" | "strength" | "creator" | "energy";
+
 export type SelectedTemplateHabit = {
   kind: "template";
   templateId: HabitTemplateId;
   baseline: string;
+  pathId?: LightPathId;
+  activityId?: string;
 };
 
 export type SelectedCustomHabit = {
@@ -20,17 +23,11 @@ export type SelectedCustomHabit = {
   name: string;
   unit: "minutes" | "pages" | "reps" | "lessons";
   baseline: string;
+  pathId?: LightPathId;
+  activityId?: string;
 };
 
 export type SelectedHabit = SelectedTemplateHabit | SelectedCustomHabit;
-
-export type RegisterFormData = {
-  name: string;
-  email: string;
-  password: string;
-  age: string;
-  gender: Gender;
-};
 
 export type BodyFormData = {
   weightKg: string;
@@ -38,14 +35,6 @@ export type BodyFormData = {
   wakeTime: string;
   sleepTime: string;
   freeTimeMin: number;
-};
-
-export type OnboardingDraft = {
-  lightHabits: SelectedHabit[];
-  darkHabits: SelectedHabit[];
-  body: BodyFormData;
-  harshnessLevel: 1 | 2 | 3;
-  englishEnabled: boolean;
 };
 
 export function toCreateHabitRequest(habit: SelectedHabit): CreateHabitRequest {

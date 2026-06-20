@@ -46,10 +46,14 @@ export function GuestGuard() {
 }
 
 export function OnboardingGuard() {
-  const { isLoading, user } = useAuth();
+  const { isLoading, isAuthenticated, user } = useAuth();
 
   if (isLoading) {
     return <LoadingScreen />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/welcome" replace />;
   }
 
   if (user?.onboarding_completed) {

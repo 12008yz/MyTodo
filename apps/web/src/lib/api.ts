@@ -21,6 +21,16 @@ import {
   getRefreshToken,
   setTokens,
 } from "./auth-storage";
+import { isDemoMode } from "./demo-mode";
+import {
+  demoCreateHabit,
+  demoGetMe,
+  demoLogin,
+  demoLogout,
+  demoRegister,
+  demoUpdateEnglishSettings,
+  demoUpdateMe,
+} from "./demo-api";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
@@ -128,6 +138,10 @@ export async function apiFetch<T>(
 export async function register(data: RegisterRequest): Promise<AuthResponse> {
   clearTokens();
 
+  if (isDemoMode()) {
+    return demoRegister(data);
+  }
+
   const timezone =
     data.timezone ??
     Intl.DateTimeFormat().resolvedOptions().timeZone ??
@@ -146,6 +160,10 @@ export async function register(data: RegisterRequest): Promise<AuthResponse> {
 export async function login(data: LoginRequest): Promise<AuthResponse> {
   clearTokens();
 
+  if (isDemoMode()) {
+    return demoLogin(data);
+  }
+
   const response = await publicFetch<unknown>("/api/v1/auth/login", {
     method: "POST",
     body: JSON.stringify(data),
@@ -157,6 +175,12 @@ export async function login(data: LoginRequest): Promise<AuthResponse> {
 }
 
 export async function logout(): Promise<void> {
+  if (isDemoMode()) {
+    demoLogout();
+    clearTokens();
+    return;
+  }
+
   const refreshToken = getRefreshToken();
   if (refreshToken) {
     try {
@@ -172,11 +196,19 @@ export async function logout(): Promise<void> {
 }
 
 export async function getMe(): Promise<UserProfile> {
+  if (isDemoMode() && getAccessToken()) {
+    return demoGetMe();
+  }
+
   const response = await apiFetch<unknown>("/api/v1/me");
   return userProfileSchema.parse(response);
 }
 
 export async function updateMe(data: PatchMeRequest): Promise<UserProfile> {
+  if (isDemoMode()) {
+    return demoUpdateMe(data);
+  }
+
   const response = await apiFetch<unknown>("/api/v1/me", {
     method: "PATCH",
     body: JSON.stringify(data),
@@ -186,6 +218,11 @@ export async function updateMe(data: PatchMeRequest): Promise<UserProfile> {
 
 export async function createHabit(data: CreateHabitRequest): Promise<HabitResponse> {
   createHabitRequestSchema.parse(data);
+
+  if (isDemoMode()) {
+    return demoCreateHabit(data);
+  }
+
   const response = await apiFetch<unknown>("/api/v1/habits", {
     method: "POST",
     body: JSON.stringify(data),
@@ -196,6 +233,10 @@ export async function createHabit(data: CreateHabitRequest): Promise<HabitRespon
 export async function updateEnglishSettings(
   data: PatchEnglishSettingsRequest,
 ): Promise<EnglishSettingsResponse> {
+  if (isDemoMode()) {
+    return demoUpdateEnglishSettings(data);
+  }
+
   const response = await apiFetch<unknown>("/api/v1/english/settings", {
     method: "PATCH",
     body: JSON.stringify(data),

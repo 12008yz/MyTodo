@@ -2,10 +2,8 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   computeDailyBudgetMin,
-  GENDERS,
   HABIT_TEMPLATES,
   MAX_ACTIVE_HABITS,
-  type Gender,
   type HabitTemplateId,
 } from "@mytodo/shared";
 import { OnboardingLayout, type OnboardingTheme } from "../../components/OnboardingLayout";
@@ -13,17 +11,18 @@ import {
   DARK_TEMPLATE_IDS,
   getBaselineLabel,
   getDarkSpeech,
-  getLightSpeech,
   HARSHNESS_OPTIONS,
-  LIGHT_TEMPLATE_IDS,
   ONBOARDING_STEPS,
   SUBSCRIPTION_PLANS,
   unitLabel,
 } from "../../features/onboarding/constants";
+import {
+  LIGHT_PATHS,
+  LIGHT_PATH_TAB_LABELS,
+  validateLightHabits,
+} from "../../features/onboarding/lightPaths";
 import type {
   BodyFormData,
-  RegisterFormData,
-  SelectedCustomHabit,
   SelectedHabit,
   SelectedTemplateHabit,
 } from "../../features/onboarding/types";
@@ -35,22 +34,11 @@ import {
   updateEnglishSettings,
   updateMe as apiUpdateMe,
 } from "../../lib/api";
+import { LightPathStep } from "./LightPathStep";
 import "./OnboardingPage.css";
 
 function parseNumber(value: string): number {
   return Number(value.replace(",", "."));
-}
-
-function resolveStepIndex(index: number, authenticated: boolean, direction: 1 | -1): number {
-  let next = index + direction;
-  while (next >= 0 && next < ONBOARDING_STEPS.length) {
-    if (ONBOARDING_STEPS[next] === "register" && authenticated) {
-      next += direction;
-      continue;
-    }
-    return next;
-  }
-  return Math.min(Math.max(next, 0), ONBOARDING_STEPS.length - 1);
 }
 
 function isTemplateSelected(habits: SelectedHabit[], templateId: HabitTemplateId): boolean {
@@ -86,10 +74,12 @@ function updateTemplateBaseline(
 }
 
 function validateHabits(habits: SelectedHabit[], side: "light" | "dark"): string | null {
+  if (side === "light") {
+    return validateLightHabits(habits);
+  }
+
   if (habits.length === 0) {
-    return side === "light"
-      ? "Выбери хотя бы одну привычку для роста"
-      : "Выбери хотя бы одну привычку для контроля";
+    return "Выбери хотя бы одну привычку для контроля";
   }
 
   for (const habit of habits) {
@@ -107,24 +97,25 @@ function validateHabits(habits: SelectedHabit[], side: "light" | "dark"): string
   return null;
 }
 
-function buildSpeech(habits: SelectedHabit[], side: "light" | "dark"): string | null {
+function buildDarkSpeech(habits: SelectedHabit[]): string | null {
   const first = habits[0];
   if (!first) return null;
 
-  if (first.kind === "template") {
-    const template = HABIT_TEMPLATES[first.templateId];
-    if (first.templateId === "nail_biting") {
-      return getDarkSpeech(template.name, 0, "отказ");
-    }
-    const baseline = parseNumber(first.baseline);
-    if (side === "light") {
-      return getLightSpeech(template.name, baseline, unitLabel(template.unit));
-    }
-    return getDarkSpeech(template.name, baseline, unitLabel(template.unit));
+  if (first.kind === "template" && first.templateId === "nail_biting") {
+    return getDarkSpeech(HABIT_TEMPLATES.nail_biting.name, 0, "отказ");
   }
 
   const baseline = parseNumber(first.baseline);
-  return getLightSpeech(first.name, baseline, unitLabel(first.unit));
+  const unit =
+    first.kind === "template"
+      ? unitLabel(HABIT_TEMPLATES[first.templateId].unit)
+      : unitLabel(first.unit);
+  const name =
+    first.kind === "template"
+      ? HABIT_TEMPLATES[first.templateId].name
+      : first.name;
+
+  return getDarkSpeech(name, baseline, unit);
 }
 
 const DEFAULT_BODY: BodyFormData = {
@@ -135,43 +126,29 @@ const DEFAULT_BODY: BodyFormData = {
   freeTimeMin: 60,
 };
 
-const DEFAULT_REGISTER: RegisterFormData = {
-  name: "",
-  email: "",
-  password: "",
-  age: "",
-  gender: "other",
-};
-
 export function OnboardingPage() {
-  const { user, isAuthenticated, register, refreshUser } = useAuth();
+  const { refreshUser } = useAuth();
   const navigate = useNavigate();
 
   const [stepIndex, setStepIndex] = useState(0);
-  const [registerForm, setRegisterForm] = useState(DEFAULT_REGISTER);
   const [lightHabits, setLightHabits] = useState<SelectedHabit[]>([]);
   const [darkHabits, setDarkHabits] = useState<SelectedHabit[]>([]);
   const [body, setBody] = useState<BodyFormData>(DEFAULT_BODY);
   const [harshnessLevel, setHarshnessLevel] = useState<1 | 2 | 3>(1);
   const [englishEnabled, setEnglishEnabled] = useState(false);
-  const [customOpen, setCustomOpen] = useState(false);
-  const [customName, setCustomName] = useState("");
-  const [customUnit, setCustomUnit] = useState<SelectedCustomHabit["unit"]>("minutes");
-  const [customBaseline, setCustomBaseline] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [lightPathIndex, setLightPathIndex] = useState(0);
 
   const step = ONBOARDING_STEPS[stepIndex] ?? "welcome";
+  const activeLightPathId = LIGHT_PATHS[lightPathIndex]?.id ?? "mindfulness";
+  const isLastLightPath = lightPathIndex >= LIGHT_PATHS.length - 1;
   const totalHabits = lightHabits.length + darkHabits.length;
   const progress = Math.round((stepIndex / (ONBOARDING_STEPS.length - 1)) * 100);
   const dailyBudget = useMemo(() => computeDailyBudgetMin(body.freeTimeMin), [body.freeTimeMin]);
-  const lightSpeech = useMemo(() => {
-    if (step !== "light" || validateHabits(lightHabits, "light")) return null;
-    return buildSpeech(lightHabits, "light");
-  }, [step, lightHabits]);
   const darkSpeech = useMemo(() => {
     if (step !== "dark" || validateHabits(darkHabits, "dark")) return null;
-    return buildSpeech(darkHabits, "dark");
+    return buildDarkSpeech(darkHabits);
   }, [step, darkHabits]);
 
   const theme: OnboardingTheme =
@@ -185,49 +162,16 @@ export function OnboardingPage() {
 
   const goNext = () => {
     setError(null);
-    setStepIndex((current) => resolveStepIndex(current, isAuthenticated, 1));
+    setStepIndex((current) => Math.min(current + 1, ONBOARDING_STEPS.length - 1));
   };
 
   const goBack = () => {
     setError(null);
-    setStepIndex((current) => resolveStepIndex(current, isAuthenticated, -1));
-  };
-
-  const handleRegister = async () => {
-    const age = Number(registerForm.age);
-    if (!registerForm.name.trim()) {
-      setError("Укажи имя");
+    if (step === "light" && lightPathIndex > 0) {
+      setLightPathIndex((current) => current - 1);
       return;
     }
-    if (!registerForm.email.trim()) {
-      setError("Укажи email");
-      return;
-    }
-    if (registerForm.password.length < 8) {
-      setError("Пароль — минимум 8 символов");
-      return;
-    }
-    if (!Number.isInteger(age) || age < 10 || age > 120) {
-      setError("Укажи возраст от 10 до 120");
-      return;
-    }
-
-    setPending(true);
-    setError(null);
-    try {
-      await register({
-        email: registerForm.email.trim(),
-        password: registerForm.password,
-        name: registerForm.name.trim(),
-        age,
-        gender: registerForm.gender,
-      });
-      goNext();
-    } catch (err) {
-      setError(err instanceof ClientApiError ? err.message : "Не удалось зарегистрироваться");
-    } finally {
-      setPending(false);
-    }
+    setStepIndex((current) => Math.max(current - 1, 0));
   };
 
   const finishOnboarding = async () => {
@@ -317,18 +261,16 @@ export function OnboardingPage() {
 
     switch (step) {
       case "welcome":
+        setLightPathIndex(0);
         goNext();
         return;
 
-      case "register":
-        if (isAuthenticated) {
-          goNext();
+      case "light": {
+        if (!isLastLightPath) {
+          setLightPathIndex((current) => current + 1);
           return;
         }
-        await handleRegister();
-        return;
 
-      case "light": {
         const validation = validateHabits(lightHabits, "light");
         if (validation) {
           setError(validation);
@@ -368,50 +310,18 @@ export function OnboardingPage() {
         return;
 
       case "finale":
-        if (!isAuthenticated) {
-          setError("Сначала пройди регистрацию");
-          setStepIndex(ONBOARDING_STEPS.indexOf("register"));
-          return;
-        }
         await finishOnboarding();
         return;
     }
   };
 
-  const addCustomHabit = () => {
-    if (!customName.trim()) {
-      setError("Укажи название занятия");
-      return;
-    }
-    const baseline = parseNumber(customBaseline);
-    if (!Number.isFinite(baseline) || baseline < 0) {
-      setError("Укажи текущий уровень");
-      return;
-    }
-    if (totalHabits >= MAX_ACTIVE_HABITS) {
-      setError(`Максимум ${MAX_ACTIVE_HABITS} привычек`);
-      return;
-    }
-
-    setLightHabits((current) => [
-      ...current,
-      {
-        kind: "custom",
-        name: customName.trim(),
-        unit: customUnit,
-        baseline: customBaseline,
-      },
-    ]);
-    setCustomOpen(false);
-    setCustomName("");
-    setCustomBaseline("");
-    setError(null);
-  };
-
   const primaryLabel = (() => {
     if (pending) return "Сохранение…";
     if (step === "welcome") return "Да, погнали!";
-    if (step === "register") return isAuthenticated ? "Далее" : "Создать аккаунт";
+    if (step === "light" && !isLastLightPath) {
+      const nextPath = LIGHT_PATHS[lightPathIndex + 1];
+      return nextPath ? `Далее: ${LIGHT_PATH_TAB_LABELS[nextPath.id]}` : "Далее";
+    }
     if (step === "finale") return "Начать новую главу";
     return "Далее";
   })();
@@ -425,6 +335,7 @@ export function OnboardingPage() {
       {templateIds.map((templateId) => {
         const template = HABIT_TEMPLATES[templateId];
         const selected = getTemplateHabit(habits, templateId);
+        const totalFull = !selected && totalHabits >= MAX_ACTIVE_HABITS;
         return (
           <div key={templateId}>
             <button
@@ -432,12 +343,14 @@ export function OnboardingPage() {
               className={[
                 "onboarding__card",
                 selected ? "onboarding__card--selected" : "",
+                totalFull ? "onboarding__card--disabled" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
               onClick={() =>
                 onChange(toggleTemplate(habits, templateId, totalHabits))
               }
+              disabled={totalFull}
             >
               <div className="onboarding__card-head">
                 <span className="onboarding__card-icon">{template.icon.startsWith("/") ? "✨" : template.icon}</span>
@@ -482,197 +395,22 @@ export function OnboardingPage() {
               </>
             ) : null}
 
-            {step === "register" ? (
-              <>
-                <p className="onboarding__eyebrow">Шаг 1</p>
-                <h1 className="onboarding__title">Кто ты?</h1>
-                <p className="onboarding__subtitle">
-                  Чтобы я подобрал тебе идеальный план, давай познакомимся поближе.
-                  Твои ответы останутся строго между нами.
-                </p>
-                {isAuthenticated ? (
-                  <p className="onboarding__subtitle">
-                    Ты уже в системе{user?.name ? `, ${user.name}` : ""}. Можем двигаться дальше.
-                  </p>
-                ) : (
-                  <div className="onboarding__field-grid">
-                    <label className="onboarding__label">
-                      Имя
-                      <input
-                        className="onboarding__input"
-                        value={registerForm.name}
-                        onChange={(e) =>
-                          setRegisterForm((c) => ({ ...c, name: e.target.value }))
-                        }
-                      />
-                    </label>
-                    <label className="onboarding__label">
-                      Email
-                      <input
-                        className="onboarding__input"
-                        type="email"
-                        value={registerForm.email}
-                        onChange={(e) =>
-                          setRegisterForm((c) => ({ ...c, email: e.target.value }))
-                        }
-                      />
-                    </label>
-                    <label className="onboarding__label">
-                      Пароль
-                      <input
-                        className="onboarding__input"
-                        type="password"
-                        minLength={8}
-                        value={registerForm.password}
-                        onChange={(e) =>
-                          setRegisterForm((c) => ({ ...c, password: e.target.value }))
-                        }
-                      />
-                    </label>
-                    <div className="onboarding__field-grid onboarding__field-grid--2">
-                      <label className="onboarding__label">
-                        Возраст
-                        <input
-                          className="onboarding__input"
-                          type="number"
-                          min={10}
-                          max={120}
-                          value={registerForm.age}
-                          onChange={(e) =>
-                            setRegisterForm((c) => ({ ...c, age: e.target.value }))
-                          }
-                        />
-                      </label>
-                      <label className="onboarding__label">
-                        Пол
-                        <select
-                          className="onboarding__select"
-                          value={registerForm.gender}
-                          onChange={(e) =>
-                            setRegisterForm((c) => ({
-                              ...c,
-                              gender: e.target.value as Gender,
-                            }))
-                          }
-                        >
-                          {GENDERS.map((gender) => (
-                            <option key={gender} value={gender}>
-                              {gender === "male"
-                                ? "Мужской"
-                                : gender === "female"
-                                  ? "Женский"
-                                  : "Другой"}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : null}
-
             {step === "light" ? (
-              <>
-                <p className="onboarding__eyebrow">Шаг 2 · Светлая сторона ☀️</p>
-                <h1 className="onboarding__title">Что ты хочешь прокачать в себе?</h1>
-                <p className="onboarding__subtitle">
-                  Выбери то, что зажигает тебя. Это будут твои новые суперсилы.
-                  Добавь свои, если хочешь.
-                </p>
-                <p className="onboarding__counter">Выбрано {totalHabits}/{MAX_ACTIVE_HABITS}</p>
-                {renderHabitCards(LIGHT_TEMPLATE_IDS, lightHabits, setLightHabits)}
-                <button
-                  type="button"
-                  className="onboarding__card onboarding__card-add"
-                  style={{ marginTop: "0.625rem" }}
-                  onClick={() => setCustomOpen((v) => !v)}
-                >
-                  + Своё занятие
-                </button>
-                {customOpen ? (
-                  <div className="onboarding__custom-box" style={{ marginTop: "0.625rem" }}>
-                    <label className="onboarding__label">
-                      Название
-                      <input
-                        className="onboarding__input"
-                        placeholder="Программирование"
-                        value={customName}
-                        onChange={(e) => setCustomName(e.target.value)}
-                      />
-                    </label>
-                    <label className="onboarding__label">
-                      Единица
-                      <select
-                        className="onboarding__select"
-                        value={customUnit}
-                        onChange={(e) =>
-                          setCustomUnit(e.target.value as SelectedCustomHabit["unit"])
-                        }
-                      >
-                        <option value="minutes">Минуты</option>
-                        <option value="pages">Страницы</option>
-                        <option value="reps">Раз</option>
-                        <option value="lessons">Уроки</option>
-                      </select>
-                    </label>
-                    <label className="onboarding__label">
-                      Сколько сейчас в день?
-                      <input
-                        className="onboarding__input"
-                        type="number"
-                        min={0}
-                        value={customBaseline}
-                        onChange={(e) => setCustomBaseline(e.target.value)}
-                      />
-                    </label>
-                    <button type="button" className="onboarding__btn" onClick={addCustomHabit}>
-                      Добавить
-                    </button>
-                  </div>
-                ) : null}
-                {lightHabits.map((habit, index) => {
-                  if (habit.kind !== "custom") return null;
-                  return (
-                    <div
-                      key={`custom-${index}`}
-                      className="onboarding__card onboarding__card--selected"
-                      style={{ marginTop: "0.625rem" }}
-                    >
-                      <div className="onboarding__card-head">
-                        <span className="onboarding__card-icon">✨</span>
-                        <span className="onboarding__card-title">{habit.name}</span>
-                      </div>
-                      <label className="onboarding__label">
-                        Сколько сейчас в день?
-                        <input
-                          className="onboarding__input"
-                          type="number"
-                          min={0}
-                          value={habit.baseline}
-                          onChange={(e) =>
-                            setLightHabits((current) =>
-                              current.map((item, itemIndex) =>
-                                itemIndex === index
-                                  ? { ...item, baseline: e.target.value }
-                                  : item,
-                              ),
-                            )
-                          }
-                        />
-                      </label>
-                    </div>
-                  );
-                })}
-                {lightSpeech ? (
-                  <p className="onboarding__speech onboarding__speech--light">{lightSpeech}</p>
-                ) : null}
-              </>
+              <LightPathStep
+                lightHabits={lightHabits}
+                totalHabits={totalHabits}
+                activePathId={activeLightPathId}
+                onActivePathChange={(pathId) => {
+                  const index = LIGHT_PATHS.findIndex((path) => path.id === pathId);
+                  if (index >= 0) setLightPathIndex(index);
+                }}
+                onChange={setLightHabits}
+              />
             ) : null}
 
             {step === "dark" ? (
               <>
-                <p className="onboarding__eyebrow">Шаг 3 · Тёмная сторона 🌑</p>
+                <p className="onboarding__eyebrow">Шаг 2 · Тёмная сторона 🌑</p>
                 <h1 className="onboarding__title">Что тянет тебя на дно?</h1>
                 <p className="onboarding__subtitle">
                   Пришло время отрубить хвосты. Выбери то, с чем ты хочешь покончить навсегда.
@@ -688,7 +426,7 @@ export function OnboardingPage() {
 
             {step === "body" ? (
               <>
-                <p className="onboarding__eyebrow">Шаг 4</p>
+                <p className="onboarding__eyebrow">Шаг 3</p>
                 <h1 className="onboarding__title">Давай заложим фундамент</h1>
                 <p className="onboarding__subtitle">
                   Ответь на несколько вопросов, чтобы я подстроил нагрузку под твой реальный день,
@@ -763,7 +501,7 @@ export function OnboardingPage() {
 
             {step === "harshness" ? (
               <>
-                <p className="onboarding__eyebrow">Шаг 5</p>
+                <p className="onboarding__eyebrow">Шаг 4</p>
                 <h1 className="onboarding__title">Как ты хочешь, чтобы я с тобой разговаривал?</h1>
                 <p className="onboarding__subtitle">
                   Выбери голос, который тебя заведёт. Ты всегда сможешь его сменить.
@@ -794,7 +532,7 @@ export function OnboardingPage() {
 
             {step === "finale" ? (
               <>
-                <p className="onboarding__eyebrow">Шаг 6</p>
+                <p className="onboarding__eyebrow">Шаг 5</p>
                 <h1 className="onboarding__title">Это твой момент</h1>
                 <p className="onboarding__subtitle">
                   Ты только что создал свою «Новую главу». Теперь у тебя есть план, цель и контроль.
@@ -839,15 +577,6 @@ export function OnboardingPage() {
                 disabled={pending}
               >
                 Назад
-              </button>
-            ) : null}
-            {!isAuthenticated && step === "welcome" ? (
-              <button
-                type="button"
-                className="onboarding__link"
-                onClick={() => navigate("/login")}
-              >
-                Уже есть аккаунт? Войти
               </button>
             ) : null}
           </div>

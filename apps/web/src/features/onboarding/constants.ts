@@ -3,15 +3,12 @@ import type { OnboardingStepId } from "./types";
 
 export const ONBOARDING_STEPS: OnboardingStepId[] = [
   "welcome",
-  "register",
   "light",
   "dark",
   "body",
   "harshness",
   "finale",
 ];
-
-export const LIGHT_TEMPLATE_IDS: HabitTemplateId[] = ["books", "pushups", "running", "plank"];
 
 export const DARK_TEMPLATE_IDS: HabitTemplateId[] = [
   "smoking",
@@ -68,10 +65,6 @@ export function getBaselineLabel(templateId: HabitTemplateId): string {
     default:
       return "Сколько в день прямо сейчас?";
   }
-}
-
-export function getLightSpeech(habitName: string, baseline: number, unit: string): string {
-  return `Отлично! Ты уже делаешь ${baseline} ${unit} «${habitName}»? Мы начнём с этого уровня и будем расти каждый день. Светлая сторона гордится тобой.`;
 }
 
 export function getDarkSpeech(habitName: string, baseline: number, unit: string): string {

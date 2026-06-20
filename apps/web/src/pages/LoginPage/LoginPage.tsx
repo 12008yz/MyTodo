@@ -2,6 +2,8 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import type { PanelVisualState } from "../../components/AuthPanels";
 import { PrimaryButton } from "../../components/PrimaryButton";
+import { getDemoPrefillCredentials } from "../../lib/demo-api";
+import { isDemoMode } from "../../lib/demo-mode";
 import "./LoginPage.css";
 
 type LoginPageProps = {
@@ -23,8 +25,9 @@ export function LoginPage({
   error,
   pending = false,
 }: LoginPageProps) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const demoCredentials = isDemoMode() ? getDemoPrefillCredentials() : null;
+  const [email, setEmail] = useState(demoCredentials?.email ?? "");
+  const [password, setPassword] = useState(demoCredentials?.password ?? "");
 
   const interactive = showContent && panelState === "visible" && !pending;
 

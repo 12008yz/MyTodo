@@ -177,7 +177,7 @@ docker-compose.yml     # Postgres 16 + Redis
 
 ### ТЗ
 
-§2.1–2.3, §4 шаг 1 и 4, §14, §18
+§2.1–2.3, §4, §14, §18
 
 ---
 
@@ -194,6 +194,7 @@ docker-compose.yml     # Postgres 16 + Redis
 - [x] Миграция `habits`
 - [x] `GET/POST/PATCH/DELETE /habits` (delete = `is_active false`)
 - [x] Лимит **6 активных** привычек суммарно (светлая + тёмная)
+- [x] Онбординг «Светлая сторона» (§4 шаг 1): UI — **4 Пути** (архетипы), последовательная навигация «Далее»; лимит **6 привычек суммарно** (светлая + тёмная); API без изменений — `POST /habits` с `template_id` (`books`, `running`, `plank`) или custom `{ name, unit, baseline_value }` (силовая тренировка, медитация, язык, программирование и т.д.)
 - [x] Сервис калибровки (§3) — вызов **`domain.calibrateHabit`**:
   - светлая `target` / `increase`: `current_goal = max(baseline, recommended)`
   - тёмная `limit` / `decrease`: `current_goal = baseline`; шаги: курение/сахар/сладости −1, соцсети −5 мин (мин. 15)

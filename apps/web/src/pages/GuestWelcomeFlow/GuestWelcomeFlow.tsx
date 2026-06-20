@@ -48,14 +48,14 @@ export function GuestWelcomeFlow() {
 
   const handleStart = () => {
     if (isTransitioning) return;
-    navigate("/onboarding", { replace: true });
+    setTransitionPhase("exiting");
   };
 
   const handleIconsAnimationComplete = useCallback((phase: IconAnimationPhase) => {
     if (phase === "exit") {
       setPage("login");
       setTransitionPhase("entering-icons");
-      navigate("/login", { replace: true });
+      navigate("/register", { replace: true });
       return;
     }
 
