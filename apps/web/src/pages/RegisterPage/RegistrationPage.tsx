@@ -1,16 +1,9 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import type { Gender } from "@mytodo/shared";
-import { GENDERS } from "@mytodo/shared";
 import type { PanelVisualState } from "../../components/AuthPanels";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import "../LoginPage/LoginPage.css";
-
-const genderLabels: Record<Gender, string> = {
-  male: "Мужской",
-  female: "Женский",
-  other: "Другой",
-};
 
 type RegistrationPageProps = {
   showContent?: boolean;
@@ -39,16 +32,14 @@ export function RegistrationPage({
 }: RegistrationPageProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [age, setAge] = useState(25);
-  const [gender, setGender] = useState<Gender>("male");
 
   const interactive = showContent && panelState === "visible" && !pending;
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!interactive) return;
-    void onSubmit?.({ email, password, name, age, gender });
+    const name = email.split("@")[0]?.trim() || "User";
+    void onSubmit?.({ email, password, name, age: 25, gender: "other" as Gender });
   };
 
   const panelClassName = [
@@ -91,45 +82,6 @@ export function RegistrationPage({
           minLength={8}
           required
         />
-        <input
-          className="login__field"
-          type="text"
-          name="name"
-          autoComplete="name"
-          placeholder="Имя"
-          aria-label="Имя"
-          tabIndex={interactive ? 0 : -1}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-        <input
-          className="login__field"
-          type="number"
-          name="age"
-          placeholder="Возраст"
-          aria-label="Возраст"
-          tabIndex={interactive ? 0 : -1}
-          value={age}
-          onChange={(e) => setAge(Number(e.target.value))}
-          min={10}
-          max={120}
-          required
-        />
-        <select
-          className="login__field login__field--select"
-          name="gender"
-          aria-label="Пол"
-          tabIndex={interactive ? 0 : -1}
-          value={gender}
-          onChange={(e) => setGender(e.target.value as Gender)}
-        >
-          {GENDERS.map((value) => (
-            <option key={value} value={value}>
-              {genderLabels[value]}
-            </option>
-          ))}
-        </select>
       </form>
 
       {error ? <p className="login__error">{error}</p> : null}
