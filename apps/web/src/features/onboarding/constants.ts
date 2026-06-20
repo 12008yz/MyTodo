@@ -10,13 +10,24 @@ export const ONBOARDING_STEPS: OnboardingStepId[] = [
   "finale",
 ];
 
-export const DARK_TEMPLATE_IDS: HabitTemplateId[] = [
+export const DARK_TEMPLATE_IDS = [
   "smoking",
   "sugar",
   "sweets",
   "social_media",
   "nail_biting",
-];
+] as const satisfies readonly HabitTemplateId[];
+
+export const DARK_ENEMY_META: Record<
+  (typeof DARK_TEMPLATE_IDS)[number],
+  { emoji: string; unitHint: string }
+> = {
+  smoking: { emoji: "🚬", unitHint: "сиг./день" },
+  sugar: { emoji: "🍬", unitHint: "лож./день" },
+  sweets: { emoji: "🍭", unitHint: "шт./день" },
+  social_media: { emoji: "📱", unitHint: "мин/день" },
+  nail_biting: { emoji: "✋", unitHint: "отказ" },
+};
 
 export const HARSHNESS_OPTIONS = [
   {

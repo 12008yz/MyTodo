@@ -248,10 +248,6 @@ export function demoUpdateMe(patch: PatchMeRequest): UserProfile {
 export function demoCreateHabit(data: CreateHabitRequest): HabitResponse {
   const state = ensureState();
 
-  if (state.habits.filter((habit) => habit.is_active).length >= 6) {
-    throw new Error("Максимум 6 активных привычек");
-  }
-
   const habit = createHabitResponse(state.user, data);
   state.habits.push(habit);
   saveState(state);

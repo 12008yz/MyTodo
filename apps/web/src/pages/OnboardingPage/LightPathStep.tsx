@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HABIT_TEMPLATES, MAX_ACTIVE_HABITS } from "@mytodo/shared";
+import { HABIT_TEMPLATES } from "@mytodo/shared";
 import { unitLabel } from "../../features/onboarding/constants";
 import {
   addCreatorCustomHabit,
@@ -16,9 +16,18 @@ import {
 } from "../../features/onboarding/lightPaths";
 import type { SelectedCustomHabit, SelectedHabit } from "../../features/onboarding/types";
 
+function HabitCheck({ selected }: { selected: boolean }) {
+  return (
+    <span className="onboarding__card-check">
+      <span className={["onboarding__check", selected ? "onboarding__check--on" : ""].filter(Boolean).join(" ")}>
+        {selected ? "✓" : null}
+      </span>
+    </span>
+  );
+}
+
 type LightPathStepProps = {
   lightHabits: SelectedHabit[];
-  totalHabits: number;
   activePathId: LightPathId;
   onActivePathChange: (pathId: LightPathId) => void;
   onChange: (habits: SelectedHabit[]) => void;
@@ -133,7 +142,6 @@ function BaselineField({
 
 export function LightPathStep({
   lightHabits,
-  totalHabits,
   activePathId,
   onActivePathChange,
   onChange,
@@ -160,7 +168,7 @@ export function LightPathStep({
     }
 
     setLocalError(null);
-    const nextHabits = toggleLightActivity(lightHabits, activity, totalHabits);
+    const nextHabits = toggleLightActivity(lightHabits, activity);
     onChange(nextHabits);
 
     const selected = findHabitByActivityId(nextHabits, activity.id);
@@ -181,11 +189,11 @@ export function LightPathStep({
   };
 
   const handleAddCustom = () => {
-    const result = addCreatorCustomHabit(
-      lightHabits,
-      { name: customName, unit: customUnit, baseline: customBaseline },
-      totalHabits,
-    );
+    const result = addCreatorCustomHabit(lightHabits, {
+      name: customName,
+      unit: customUnit,
+      baseline: customBaseline,
+    });
 
     if (result.error) {
       setLocalError(result.error);
@@ -223,9 +231,7 @@ export function LightPathStep({
     >
       <button type="button" className="onboarding__card-toggle" onClick={onDeselect}>
         <div className="onboarding__card-head">
-          <span className="onboarding__card-check" aria-hidden="true">
-            ☑️
-          </span>
+          <HabitCheck selected />
           <span className="onboarding__card-title">{title}</span>
         </div>
       </button>
@@ -254,6 +260,7 @@ export function LightPathStep({
             key={path.id}
             type="button"
             role="tab"
+            data-path={path.id}
             aria-selected={path.id === activePathId}
             className={[
               "onboarding__path-tab",
@@ -273,6 +280,8 @@ export function LightPathStep({
           </button>
         ))}
       </div>
+
+      <p className="onboarding__section-label">Привычки пути</p>
 
       <div className="onboarding__cards onboarding__cards--paths">
         {pathActivities.map((activity) => {
@@ -342,7 +351,6 @@ export function LightPathStep({
           }
 
           const selected = findHabitByActivityId(lightHabits, activity.id);
-          const totalFull = !selected && totalHabits >= MAX_ACTIVE_HABITS;
 
           if (selected) {
             return renderSelectedCard(
@@ -357,20 +365,11 @@ export function LightPathStep({
             <button
               key={activity.id}
               type="button"
-              className={[
-                "onboarding__card",
-                "onboarding__card--habit",
-                totalFull ? "onboarding__card--disabled" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
+              className="onboarding__card onboarding__card--habit"
               onClick={() => handleToggle(activity)}
-              disabled={totalFull}
             >
               <div className="onboarding__card-head">
-                <span className="onboarding__card-check" aria-hidden="true">
-                  ☐
-                </span>
+                <HabitCheck selected={false} />
                 <span className="onboarding__card-title">{activity.label}</span>
               </div>
             </button>

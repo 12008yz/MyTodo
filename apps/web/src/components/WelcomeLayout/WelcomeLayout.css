@@ -27,7 +27,10 @@
   grid-template-rows:
     minmax(0, calc(556 / var(--design-h) * 100%))
     minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
   width: min(100%, 26.875rem);
+  max-width: var(--container-max, 26.25rem);
   height: 100%;
   max-height: 100%;
   margin-inline: auto;

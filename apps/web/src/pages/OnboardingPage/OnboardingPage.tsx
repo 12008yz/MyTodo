@@ -3,18 +3,16 @@ import { useNavigate } from "react-router-dom";
 import {
   computeDailyBudgetMin,
   HABIT_TEMPLATES,
-  MAX_ACTIVE_HABITS,
   type HabitTemplateId,
 } from "@mytodo/shared";
 import { OnboardingLayout, type OnboardingTheme } from "../../components/OnboardingLayout";
 import {
+  DARK_ENEMY_META,
   DARK_TEMPLATE_IDS,
   getBaselineLabel,
-  getDarkSpeech,
   HARSHNESS_OPTIONS,
   ONBOARDING_STEPS,
   SUBSCRIPTION_PLANS,
-  unitLabel,
 } from "../../features/onboarding/constants";
 import {
   LIGHT_PATHS,
@@ -51,15 +49,13 @@ function getTemplateHabit(habits: SelectedHabit[], templateId: HabitTemplateId) 
   );
 }
 
-function toggleTemplate(
+function toggleDarkTemplate(
   habits: SelectedHabit[],
   templateId: HabitTemplateId,
-  totalCount: number,
 ): SelectedHabit[] {
   if (isTemplateSelected(habits, templateId)) {
     return habits.filter((h) => !(h.kind === "template" && h.templateId === templateId));
   }
-  if (totalCount >= MAX_ACTIVE_HABITS) return habits;
   return [...habits, { kind: "template", templateId, baseline: "" }];
 }
 
@@ -97,25 +93,14 @@ function validateHabits(habits: SelectedHabit[], side: "light" | "dark"): string
   return null;
 }
 
-function buildDarkSpeech(habits: SelectedHabit[]): string | null {
-  const first = habits[0];
-  if (!first) return null;
-
-  if (first.kind === "template" && first.templateId === "nail_biting") {
-    return getDarkSpeech(HABIT_TEMPLATES.nail_biting.name, 0, "отказ");
-  }
-
-  const baseline = parseNumber(first.baseline);
-  const unit =
-    first.kind === "template"
-      ? unitLabel(HABIT_TEMPLATES[first.templateId].unit)
-      : unitLabel(first.unit);
-  const name =
-    first.kind === "template"
-      ? HABIT_TEMPLATES[first.templateId].name
-      : first.name;
-
-  return getDarkSpeech(name, baseline, unit);
+function HabitCheck({ selected }: { selected: boolean }) {
+  return (
+    <span className="onboarding__card-check">
+      <span className={["onboarding__check", selected ? "onboarding__check--on" : ""].filter(Boolean).join(" ")}>
+        {selected ? "✓" : null}
+      </span>
+    </span>
+  );
 }
 
 const DEFAULT_BODY: BodyFormData = {
@@ -143,13 +128,8 @@ export function OnboardingPage() {
   const step = ONBOARDING_STEPS[stepIndex] ?? "welcome";
   const activeLightPathId = LIGHT_PATHS[lightPathIndex]?.id ?? "mindfulness";
   const isLastLightPath = lightPathIndex >= LIGHT_PATHS.length - 1;
-  const totalHabits = lightHabits.length + darkHabits.length;
   const progress = Math.round((stepIndex / (ONBOARDING_STEPS.length - 1)) * 100);
   const dailyBudget = useMemo(() => computeDailyBudgetMin(body.freeTimeMin), [body.freeTimeMin]);
-  const darkSpeech = useMemo(() => {
-    if (step !== "dark" || validateHabits(darkHabits, "dark")) return null;
-    return buildDarkSpeech(darkHabits);
-  }, [step, darkHabits]);
 
   const theme: OnboardingTheme =
     step === "light"
@@ -200,11 +180,6 @@ export function OnboardingPage() {
     if (darkValidation) {
       setError(darkValidation);
       setStepIndex(ONBOARDING_STEPS.indexOf("dark"));
-      return;
-    }
-
-    if (totalHabits > MAX_ACTIVE_HABITS) {
-      setError(`Максимум ${MAX_ACTIVE_HABITS} привычек`);
       return;
     }
 
@@ -326,39 +301,45 @@ export function OnboardingPage() {
     return "Далее";
   })();
 
-  const renderHabitCards = (
-    templateIds: HabitTemplateId[],
+  const renderDarkEnemyCards = (
     habits: SelectedHabit[],
     onChange: (next: SelectedHabit[]) => void,
   ) => (
-    <div className="onboarding__cards">
-      {templateIds.map((templateId) => {
+    <div className="onboarding__cards onboarding__cards--enemies">
+      {DARK_TEMPLATE_IDS.map((templateId) => {
         const template = HABIT_TEMPLATES[templateId];
+        const meta = DARK_ENEMY_META[templateId];
         const selected = getTemplateHabit(habits, templateId);
-        const totalFull = !selected && totalHabits >= MAX_ACTIVE_HABITS;
+        const isAbstinence = templateId === "nail_biting";
+
         return (
           <div key={templateId}>
             <button
               type="button"
               className={[
                 "onboarding__card",
+                "onboarding__card--enemy",
                 selected ? "onboarding__card--selected" : "",
-                totalFull ? "onboarding__card--disabled" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
-              onClick={() =>
-                onChange(toggleTemplate(habits, templateId, totalHabits))
-              }
-              disabled={totalFull}
+              onClick={() => onChange(toggleDarkTemplate(habits, templateId))}
             >
-              <div className="onboarding__card-head">
-                <span className="onboarding__card-icon">{template.icon.startsWith("/") ? "✨" : template.icon}</span>
-                <span className="onboarding__card-title">{template.name}</span>
-              </div>
+              <span className="onboarding__enemy-emoji">{meta.emoji}</span>
+              <span className="onboarding__enemy-body">
+                <span className="onboarding__enemy-name">{template.name}</span>
+                <span className="onboarding__enemy-hint">
+                  {isAbstinence ? "Режим полного отказа" : meta.unitHint}
+                </span>
+              </span>
+              {selected && isAbstinence ? (
+                <span className="onboarding__enemy-badge">❌</span>
+              ) : (
+                <HabitCheck selected={Boolean(selected)} />
+              )}
             </button>
-            {selected && templateId !== "nail_biting" ? (
-              <div style={{ marginTop: "0.5rem" }}>
+            {selected && !isAbstinence ? (
+              <div className="onboarding__enemy-baseline">
                 <label className="onboarding__label">
                   {getBaselineLabel(templateId)}
                   <input
@@ -398,7 +379,6 @@ export function OnboardingPage() {
             {step === "light" ? (
               <LightPathStep
                 lightHabits={lightHabits}
-                totalHabits={totalHabits}
                 activePathId={activeLightPathId}
                 onActivePathChange={(pathId) => {
                   const index = LIGHT_PATHS.findIndex((path) => path.id === pathId);
@@ -416,11 +396,10 @@ export function OnboardingPage() {
                   Пришло время отрубить хвосты. Выбери то, с чем ты хочешь покончить навсегда.
                   Я буду рядом, но рубить придётся тебе.
                 </p>
-                <p className="onboarding__counter">Выбрано {totalHabits}/{MAX_ACTIVE_HABITS}</p>
-                {renderHabitCards(DARK_TEMPLATE_IDS, darkHabits, setDarkHabits)}
-                {darkSpeech ? (
-                  <p className="onboarding__speech onboarding__speech--dark">{darkSpeech}</p>
-                ) : null}
+                <p className="onboarding__counter">
+                  Светлых: {lightHabits.length} · тёмных: {darkHabits.length}
+                </p>
+                {renderDarkEnemyCards(darkHabits, setDarkHabits)}
               </>
             ) : null}
 

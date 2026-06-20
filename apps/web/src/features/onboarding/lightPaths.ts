@@ -1,4 +1,4 @@
-import { HABIT_TEMPLATES, MAX_ACTIVE_HABITS, type HabitTemplateId } from "@mytodo/shared";
+import { HABIT_TEMPLATES, type HabitTemplateId } from "@mytodo/shared";
 import type { LightPathId, SelectedCustomHabit, SelectedHabit } from "./types";
 
 export type { LightPathId } from "./types";
@@ -271,7 +271,6 @@ function createHabitFromActivity(
 export function toggleLightActivity(
   habits: SelectedHabit[],
   activity: LightActivity,
-  totalWithDark: number,
 ): SelectedHabit[] {
   if (activity.kind === "custom_form") {
     return habits;
@@ -282,24 +281,15 @@ export function toggleLightActivity(
     return habits.filter((habit) => habit.activityId !== activity.id);
   }
 
-  if (totalWithDark >= MAX_ACTIVE_HABITS) {
-    return habits;
-  }
-
   return [...habits, createHabitFromActivity(activity)];
 }
 
 export function addCreatorCustomHabit(
   habits: SelectedHabit[],
   input: { name: string; unit: SelectedCustomHabit["unit"]; baseline: string },
-  totalWithDark: number,
 ): { habits: SelectedHabit[]; error: string | null } {
   if (!input.name.trim()) {
     return { habits, error: "Укажи название занятия" };
-  }
-
-  if (totalWithDark >= MAX_ACTIVE_HABITS) {
-    return { habits, error: `Максимум ${MAX_ACTIVE_HABITS} привычек` };
   }
 
   const activityId = `creator-custom-${Date.now()}`;

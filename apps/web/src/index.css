@@ -19,8 +19,10 @@
 }
 
 :root {
-  --app-max-width: 40rem;
-  --page-padding-x: 1.25rem;
+  --app-max-width: 26.25rem;
+  --container-max: 26.25rem;
+  --container-padding: 1rem;
+  --page-padding-x: 1rem;
   --page-padding-y: 2rem;
   --breakpoint-tablet: 48rem;
 
