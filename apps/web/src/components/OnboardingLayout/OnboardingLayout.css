@@ -7,11 +7,27 @@
   width: 100%;
   max-width: var(--container-max, 26.25rem);
   margin-inline: auto;
-  overflow: hidden;
   background:
-    radial-gradient(ellipse 120% 80% at 0% 0%, rgba(70, 240, 138, 0.18) 0%, transparent 55%),
-    radial-gradient(ellipse 100% 70% at 100% 100%, rgba(95, 51, 225, 0.16) 0%, transparent 50%),
-    linear-gradient(165deg, #f8fffb 0%, #ffffff 45%, #f7f3ff 100%);
+    radial-gradient(
+      ellipse 140% 100% at 0% 0%,
+      rgba(70, 240, 138, 0.16) 0%,
+      rgba(70, 240, 138, 0.06) 38%,
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 120% 85% at 100% 100%,
+      rgba(95, 51, 225, 0.14) 0%,
+      rgba(95, 51, 225, 0.05) 36%,
+      transparent 70%
+    ),
+    linear-gradient(165deg, #f8fffb 0%, #fafdfb 35%, #fefefe 68%, #f7f3ff 100%);
+}
+
+.onboarding-shell:has(.onboarding--welcome) {
+  background-color: #fcfefd;
+  background-image:
+    linear-gradient(180deg, rgba(70, 240, 138, 0.08) 0%, transparent 42%),
+    linear-gradient(0deg, rgba(95, 51, 225, 0.07) 0%, transparent 38%);
 }
 
 .onboarding-shell--light {

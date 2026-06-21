@@ -362,18 +362,46 @@ export function OnboardingPage() {
 
   return (
     <OnboardingLayout progress={progress} theme={theme}>
-      <div className="onboarding">
-        <form className="onboarding__form" onSubmit={handleContinue} noValidate>
+      <div className={["onboarding", step === "welcome" ? "onboarding--welcome" : ""].filter(Boolean).join(" ")}>
+        <form
+          className={["onboarding__form", step === "welcome" ? "onboarding__form--welcome" : ""]
+            .filter(Boolean)
+            .join(" ")}
+          onSubmit={handleContinue}
+          noValidate
+        >
           <div className="onboarding__scroll">
             {step === "welcome" ? (
-              <>
-                <p className="onboarding__eyebrow">Новая глава</p>
-                <h1 className="onboarding__title">Привет, воин!</h1>
-                <p className="onboarding__subtitle">
-                  Я — твой навигатор. Давай выясним, кто ты сейчас и куда хочешь прийти.
-                  Это займёт всего 3 минуты, но изменит твою жизнь на годы вперёд. Готов?
-                </p>
-              </>
+              <div className="onboarding__welcome">
+                <p className="onboarding__eyebrow onboarding__eyebrow--center">Новая глава</p>
+                <h1 className="onboarding__title onboarding__title--welcome">Привет, воин!</h1>
+                <div className="onboarding__navigator-card">
+                  <div className="onboarding__navigator-head">
+                    <div className="onboarding__navigator-avatar" aria-hidden="true">
+                      <img
+                        src="/loginAndRegister/blue-stopwatch-pink-arrow.png"
+                        width={34}
+                        height={42}
+                        decoding="async"
+                        alt=""
+                      />
+                    </div>
+                    <div className="onboarding__navigator-meta">
+                      <p className="onboarding__navigator-name">Твой навигатор</p>
+                      <p className="onboarding__navigator-role">Проведёт через все шаги</p>
+                    </div>
+                  </div>
+                  <p className="onboarding__speech onboarding__speech--navigator">
+                    Давай выясним, кто ты сейчас и куда хочешь прийти. Это займёт всего 3 минуты,
+                    но изменит твою жизнь на годы вперёд. <strong>Готов?</strong>
+                  </p>
+                </div>
+                <ul className="onboarding__welcome-pills" aria-label="Что тебя ждёт">
+                  <li className="onboarding__welcome-pill">⏱ 3 мин</li>
+                  <li className="onboarding__welcome-pill">🎯 План</li>
+                  <li className="onboarding__welcome-pill">💪 Поддержка</li>
+                </ul>
+              </div>
             ) : null}
 
             {step === "light" ? (
@@ -544,7 +572,14 @@ export function OnboardingPage() {
             {error ? <p className="onboarding__error">{error}</p> : null}
           </div>
 
-          <div className="onboarding__actions">
+          <div
+            className={[
+              "onboarding__actions",
+              step === "welcome" ? "onboarding__actions--welcome" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
             <button type="submit" className="onboarding__btn" disabled={pending}>
               {primaryLabel}
             </button>
