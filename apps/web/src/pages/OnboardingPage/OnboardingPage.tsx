@@ -1,10 +1,11 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useCallback, useMemo, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   computeDailyBudgetMin,
   HABIT_TEMPLATES,
   type HabitTemplateId,
 } from "@mytodo/shared";
+import "../../components/ContentPanels/ContentPanels.css";
 import { OnboardingLayout, type OnboardingTheme } from "../../components/OnboardingLayout";
 import {
   DARK_ENEMY_META,
@@ -21,18 +22,21 @@ import {
 } from "../../features/onboarding/lightPaths";
 import type {
   BodyFormData,
+  LightPathId,
+  OnboardingStepId,
   SelectedHabit,
   SelectedTemplateHabit,
 } from "../../features/onboarding/types";
 import { toCreateHabitRequest } from "../../features/onboarding/types";
 import { useAuth } from "../../features/auth/AuthProvider";
+import { useContentSwitchTransition } from "../../hooks/useContentSwitchTransition";
 import {
   ClientApiError,
   createHabit,
   updateEnglishSettings,
   updateMe as apiUpdateMe,
 } from "../../lib/api";
-import { LightPathStep } from "./LightPathStep";
+import { LightPathStep, type LightPathStepHandle } from "./LightPathStep";
 import "./OnboardingPage.css";
 
 function parseNumber(value: string): number {
@@ -114,6 +118,8 @@ const DEFAULT_BODY: BodyFormData = {
 export function OnboardingPage() {
   const { refreshUser } = useAuth();
   const navigate = useNavigate();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const lightPathStepRef = useRef<LightPathStepHandle>(null);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [lightHabits, setLightHabits] = useState<SelectedHabit[]>([]);
@@ -131,6 +137,32 @@ export function OnboardingPage() {
   const progress = Math.round((stepIndex / (ONBOARDING_STEPS.length - 1)) * 100);
   const dailyBudget = useMemo(() => computeDailyBudgetMin(body.freeTimeMin), [body.freeTimeMin]);
 
+  const handleStepChange = useCallback((nextStep: OnboardingStepId) => {
+    const nextIndex = ONBOARDING_STEPS.indexOf(nextStep);
+    if (nextIndex >= 0) {
+      setStepIndex(nextIndex);
+      scrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    }
+  }, []);
+
+  const handleActivePathChange = useCallback((pathId: LightPathId) => {
+    const index = LIGHT_PATHS.findIndex((path) => path.id === pathId);
+    if (index >= 0) setLightPathIndex(index);
+  }, []);
+
+  const {
+    wrapperRef: stepPanelsRef,
+    wrapperClassName: stepPanelsClassName,
+    switchTo: switchStep,
+    getPanelClassName: getStepPanelClassName,
+    getPanelState: getStepPanelState,
+    isTransitioning: isStepTransitioning,
+  } = useContentSwitchTransition<OnboardingStepId>({
+    activeKey: step,
+    onActiveKeyChange: handleStepChange,
+    disabled: pending,
+  });
+
   const theme: OnboardingTheme =
     step === "light"
       ? "light"
@@ -140,18 +172,33 @@ export function OnboardingPage() {
           ? "finale"
           : "default";
 
+  const goToStepIndex = (index: number) => {
+    const target = ONBOARDING_STEPS[index];
+    if (!target) return;
+
+    if (target === step) {
+      setStepIndex(index);
+      return;
+    }
+
+    switchStep(target);
+  };
+
   const goNext = () => {
     setError(null);
-    setStepIndex((current) => Math.min(current + 1, ONBOARDING_STEPS.length - 1));
+    goToStepIndex(Math.min(stepIndex + 1, ONBOARDING_STEPS.length - 1));
   };
 
   const goBack = () => {
     setError(null);
     if (step === "light" && lightPathIndex > 0) {
-      setLightPathIndex((current) => current - 1);
+      const prevPath = LIGHT_PATHS[lightPathIndex - 1];
+      if (prevPath) {
+        lightPathStepRef.current?.switchToPath(prevPath.id);
+      }
       return;
     }
-    setStepIndex((current) => Math.max(current - 1, 0));
+    goToStepIndex(Math.max(stepIndex - 1, 0));
   };
 
   const finishOnboarding = async () => {
@@ -231,7 +278,7 @@ export function OnboardingPage() {
 
   const handleContinue = async (event: FormEvent) => {
     event.preventDefault();
-    if (pending) return;
+    if (pending || isStepTransitioning) return;
     setError(null);
 
     switch (step) {
@@ -242,7 +289,10 @@ export function OnboardingPage() {
 
       case "light": {
         if (!isLastLightPath) {
-          setLightPathIndex((current) => current + 1);
+          const nextPath = LIGHT_PATHS[lightPathIndex + 1];
+          if (nextPath) {
+            lightPathStepRef.current?.switchToPath(nextPath.id);
+          }
           return;
         }
 
@@ -360,6 +410,212 @@ export function OnboardingPage() {
     </div>
   );
 
+  const renderStepContent = (stepId: OnboardingStepId) => {
+    switch (stepId) {
+      case "welcome":
+        return (
+          <div className="onboarding__welcome">
+            <p className="onboarding__eyebrow onboarding__eyebrow--center">Новая глава</p>
+            <h1 className="onboarding__title onboarding__title--welcome">Привет, воин!</h1>
+            <div className="onboarding__navigator-card">
+              <div className="onboarding__navigator-head">
+                <div className="onboarding__navigator-avatar" aria-hidden="true">
+                  <img
+                    src="/loginAndRegister/blue-stopwatch-pink-arrow.png"
+                    width={34}
+                    height={42}
+                    decoding="async"
+                    alt=""
+                  />
+                </div>
+                <div className="onboarding__navigator-meta">
+                  <p className="onboarding__navigator-name">Твой навигатор</p>
+                  <p className="onboarding__navigator-role">Проведёт через все шаги</p>
+                </div>
+              </div>
+              <p className="onboarding__speech onboarding__speech--navigator">
+                Давай выясним, кто ты сейчас и куда хочешь прийти. Это займёт всего 3 минуты,
+                но изменит твою жизнь на годы вперёд. <strong>Готов?</strong>
+              </p>
+            </div>
+            <ul className="onboarding__welcome-pills" aria-label="Что тебя ждёт">
+              <li className="onboarding__welcome-pill">⏱ 3 мин</li>
+              <li className="onboarding__welcome-pill">🎯 План</li>
+              <li className="onboarding__welcome-pill">💪 Поддержка</li>
+            </ul>
+          </div>
+        );
+
+      case "light":
+        return (
+          <LightPathStep
+            ref={lightPathStepRef}
+            lightHabits={lightHabits}
+            activePathId={activeLightPathId}
+            onActivePathChange={handleActivePathChange}
+            onChange={setLightHabits}
+          />
+        );
+
+      case "dark":
+        return (
+          <>
+            <p className="onboarding__eyebrow">Шаг 2 · Тёмная сторона 🌑</p>
+            <h1 className="onboarding__title">Что тянет тебя на дно?</h1>
+            <p className="onboarding__subtitle">
+              Пришло время отрубить хвосты. Выбери то, с чем ты хочешь покончить навсегда.
+              Я буду рядом, но рубить придётся тебе.
+            </p>
+            <p className="onboarding__counter">
+              Светлых: {lightHabits.length} · тёмных: {darkHabits.length}
+            </p>
+            {renderDarkEnemyCards(darkHabits, setDarkHabits)}
+          </>
+        );
+
+      case "body":
+        return (
+          <>
+            <p className="onboarding__eyebrow">Шаг 3</p>
+            <h1 className="onboarding__title">Давай заложим фундамент</h1>
+            <p className="onboarding__subtitle">
+              Ответь на несколько вопросов, чтобы я подстроил нагрузку под твой реальный день,
+              а не под абстрактный идеал.
+            </p>
+            <div className="onboarding__field-grid">
+              <div className="onboarding__field-grid onboarding__field-grid--2">
+                <label className="onboarding__label">
+                  Вес (кг)
+                  <input
+                    className="onboarding__input"
+                    type="number"
+                    value={body.weightKg}
+                    onChange={(e) => setBody((c) => ({ ...c, weightKg: e.target.value }))}
+                  />
+                </label>
+                <label className="onboarding__label">
+                  Рост (см)
+                  <input
+                    className="onboarding__input"
+                    type="number"
+                    value={body.heightCm}
+                    onChange={(e) => setBody((c) => ({ ...c, heightCm: e.target.value }))}
+                  />
+                </label>
+              </div>
+              <div className="onboarding__field-grid onboarding__field-grid--2">
+                <label className="onboarding__label">
+                  Подъём
+                  <input
+                    className="onboarding__input"
+                    type="time"
+                    value={body.wakeTime}
+                    onChange={(e) => setBody((c) => ({ ...c, wakeTime: e.target.value }))}
+                  />
+                </label>
+                <label className="onboarding__label">
+                  Сон
+                  <input
+                    className="onboarding__input"
+                    type="time"
+                    value={body.sleepTime}
+                    onChange={(e) => setBody((c) => ({ ...c, sleepTime: e.target.value }))}
+                  />
+                </label>
+              </div>
+              <div>
+                <p className="onboarding__label">Сколько свободного времени в день?</p>
+                <div className="onboarding__slider-value">{body.freeTimeMin} мин</div>
+                <input
+                  className="onboarding__slider"
+                  type="range"
+                  min={15}
+                  max={180}
+                  step={5}
+                  value={body.freeTimeMin}
+                  onChange={(e) =>
+                    setBody((c) => ({ ...c, freeTimeMin: Number(e.target.value) }))
+                  }
+                />
+                <div className="onboarding__slider-labels">
+                  <span>15 мин</span>
+                  <span>3 часа</span>
+                </div>
+              </div>
+            </div>
+            <p className="onboarding__preview">
+              Твой план на день займёт около {dailyBudget} минут. Это реально?
+            </p>
+          </>
+        );
+
+      case "harshness":
+        return (
+          <>
+            <p className="onboarding__eyebrow">Шаг 4</p>
+            <h1 className="onboarding__title">Как ты хочешь, чтобы я с тобой разговаривал?</h1>
+            <p className="onboarding__subtitle">
+              Выбери голос, который тебя заведёт. Ты всегда сможешь его сменить.
+            </p>
+            <div className="onboarding__choices">
+              {HARSHNESS_OPTIONS.map((option) => (
+                <button
+                  key={option.level}
+                  type="button"
+                  className={[
+                    "onboarding__choice",
+                    harshnessLevel === option.level ? "onboarding__choice--selected" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  onClick={() => setHarshnessLevel(option.level)}
+                >
+                  <span className="onboarding__choice-emoji">{option.emoji}</span>
+                  <span>
+                    <p className="onboarding__choice-title">{option.title}</p>
+                    <p className="onboarding__choice-quote">{option.quote}</p>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        );
+
+      case "finale":
+        return (
+          <>
+            <p className="onboarding__eyebrow">Шаг 5</p>
+            <h1 className="onboarding__title">Это твой момент</h1>
+            <p className="onboarding__subtitle">
+              Ты только что создал свою «Новую главу». Теперь у тебя есть план, цель и контроль.
+            </p>
+            <div className="onboarding__toggle-row">
+              <span>Учить английский? Это +5 минут в день</span>
+              <input
+                type="checkbox"
+                checked={englishEnabled}
+                onChange={(e) => setEnglishEnabled(e.target.checked)}
+              />
+            </div>
+            <div className="onboarding__plans">
+              <p className="onboarding__subtitle" style={{ marginBottom: 0 }}>
+                3 дня бесплатно, затем тариф «Боец»:
+              </p>
+              {SUBSCRIPTION_PLANS.map((plan) => (
+                <div key={plan.id} className="onboarding__plan">
+                  {plan.label} — <strong>{plan.price}</strong>
+                </div>
+              ))}
+            </div>
+            <p className="onboarding__speech onboarding__speech--finale">
+              Ты сделал первый шаг — самый трудный. Теперь приложение будет вести тебя
+              день за днём. Ты не один. Вперёд, к новой главе.
+            </p>
+          </>
+        );
+    }
+  };
+
   return (
     <OnboardingLayout progress={progress} theme={theme}>
       <div className={["onboarding", step === "welcome" ? "onboarding--welcome" : ""].filter(Boolean).join(" ")}>
@@ -370,204 +626,26 @@ export function OnboardingPage() {
           onSubmit={handleContinue}
           noValidate
         >
-          <div className="onboarding__scroll">
-            {step === "welcome" ? (
-              <div className="onboarding__welcome">
-                <p className="onboarding__eyebrow onboarding__eyebrow--center">Новая глава</p>
-                <h1 className="onboarding__title onboarding__title--welcome">Привет, воин!</h1>
-                <div className="onboarding__navigator-card">
-                  <div className="onboarding__navigator-head">
-                    <div className="onboarding__navigator-avatar" aria-hidden="true">
-                      <img
-                        src="/loginAndRegister/blue-stopwatch-pink-arrow.png"
-                        width={34}
-                        height={42}
-                        decoding="async"
-                        alt=""
-                      />
-                    </div>
-                    <div className="onboarding__navigator-meta">
-                      <p className="onboarding__navigator-name">Твой навигатор</p>
-                      <p className="onboarding__navigator-role">Проведёт через все шаги</p>
-                    </div>
+          <div ref={scrollRef} className="onboarding__scroll">
+            <div
+              ref={stepPanelsRef}
+              className={["onboarding__panels", stepPanelsClassName].filter(Boolean).join(" ")}
+            >
+              {ONBOARDING_STEPS.map((stepId) => {
+                const panelState = getStepPanelState(stepId);
+                const interactive = panelState === "visible";
+
+                return (
+                  <div
+                    key={stepId}
+                    className={getStepPanelClassName(stepId, "onboarding__panel content-panel")}
+                    aria-hidden={!interactive}
+                  >
+                    {renderStepContent(stepId)}
                   </div>
-                  <p className="onboarding__speech onboarding__speech--navigator">
-                    Давай выясним, кто ты сейчас и куда хочешь прийти. Это займёт всего 3 минуты,
-                    но изменит твою жизнь на годы вперёд. <strong>Готов?</strong>
-                  </p>
-                </div>
-                <ul className="onboarding__welcome-pills" aria-label="Что тебя ждёт">
-                  <li className="onboarding__welcome-pill">⏱ 3 мин</li>
-                  <li className="onboarding__welcome-pill">🎯 План</li>
-                  <li className="onboarding__welcome-pill">💪 Поддержка</li>
-                </ul>
-              </div>
-            ) : null}
-
-            {step === "light" ? (
-              <LightPathStep
-                lightHabits={lightHabits}
-                activePathId={activeLightPathId}
-                onActivePathChange={(pathId) => {
-                  const index = LIGHT_PATHS.findIndex((path) => path.id === pathId);
-                  if (index >= 0) setLightPathIndex(index);
-                }}
-                onChange={setLightHabits}
-              />
-            ) : null}
-
-            {step === "dark" ? (
-              <>
-                <p className="onboarding__eyebrow">Шаг 2 · Тёмная сторона 🌑</p>
-                <h1 className="onboarding__title">Что тянет тебя на дно?</h1>
-                <p className="onboarding__subtitle">
-                  Пришло время отрубить хвосты. Выбери то, с чем ты хочешь покончить навсегда.
-                  Я буду рядом, но рубить придётся тебе.
-                </p>
-                <p className="onboarding__counter">
-                  Светлых: {lightHabits.length} · тёмных: {darkHabits.length}
-                </p>
-                {renderDarkEnemyCards(darkHabits, setDarkHabits)}
-              </>
-            ) : null}
-
-            {step === "body" ? (
-              <>
-                <p className="onboarding__eyebrow">Шаг 3</p>
-                <h1 className="onboarding__title">Давай заложим фундамент</h1>
-                <p className="onboarding__subtitle">
-                  Ответь на несколько вопросов, чтобы я подстроил нагрузку под твой реальный день,
-                  а не под абстрактный идеал.
-                </p>
-                <div className="onboarding__field-grid">
-                  <div className="onboarding__field-grid onboarding__field-grid--2">
-                    <label className="onboarding__label">
-                      Вес (кг)
-                      <input
-                        className="onboarding__input"
-                        type="number"
-                        value={body.weightKg}
-                        onChange={(e) => setBody((c) => ({ ...c, weightKg: e.target.value }))}
-                      />
-                    </label>
-                    <label className="onboarding__label">
-                      Рост (см)
-                      <input
-                        className="onboarding__input"
-                        type="number"
-                        value={body.heightCm}
-                        onChange={(e) => setBody((c) => ({ ...c, heightCm: e.target.value }))}
-                      />
-                    </label>
-                  </div>
-                  <div className="onboarding__field-grid onboarding__field-grid--2">
-                    <label className="onboarding__label">
-                      Подъём
-                      <input
-                        className="onboarding__input"
-                        type="time"
-                        value={body.wakeTime}
-                        onChange={(e) => setBody((c) => ({ ...c, wakeTime: e.target.value }))}
-                      />
-                    </label>
-                    <label className="onboarding__label">
-                      Сон
-                      <input
-                        className="onboarding__input"
-                        type="time"
-                        value={body.sleepTime}
-                        onChange={(e) => setBody((c) => ({ ...c, sleepTime: e.target.value }))}
-                      />
-                    </label>
-                  </div>
-                  <div>
-                    <p className="onboarding__label">Сколько свободного времени в день?</p>
-                    <div className="onboarding__slider-value">{body.freeTimeMin} мин</div>
-                    <input
-                      className="onboarding__slider"
-                      type="range"
-                      min={15}
-                      max={180}
-                      step={5}
-                      value={body.freeTimeMin}
-                      onChange={(e) =>
-                        setBody((c) => ({ ...c, freeTimeMin: Number(e.target.value) }))
-                      }
-                    />
-                    <div className="onboarding__slider-labels">
-                      <span>15 мин</span>
-                      <span>3 часа</span>
-                    </div>
-                  </div>
-                </div>
-                <p className="onboarding__preview">
-                  Твой план на день займёт около {dailyBudget} минут. Это реально?
-                </p>
-              </>
-            ) : null}
-
-            {step === "harshness" ? (
-              <>
-                <p className="onboarding__eyebrow">Шаг 4</p>
-                <h1 className="onboarding__title">Как ты хочешь, чтобы я с тобой разговаривал?</h1>
-                <p className="onboarding__subtitle">
-                  Выбери голос, который тебя заведёт. Ты всегда сможешь его сменить.
-                </p>
-                <div className="onboarding__choices">
-                  {HARSHNESS_OPTIONS.map((option) => (
-                    <button
-                      key={option.level}
-                      type="button"
-                      className={[
-                        "onboarding__choice",
-                        harshnessLevel === option.level ? "onboarding__choice--selected" : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                      onClick={() => setHarshnessLevel(option.level)}
-                    >
-                      <span className="onboarding__choice-emoji">{option.emoji}</span>
-                      <span>
-                        <p className="onboarding__choice-title">{option.title}</p>
-                        <p className="onboarding__choice-quote">{option.quote}</p>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : null}
-
-            {step === "finale" ? (
-              <>
-                <p className="onboarding__eyebrow">Шаг 5</p>
-                <h1 className="onboarding__title">Это твой момент</h1>
-                <p className="onboarding__subtitle">
-                  Ты только что создал свою «Новую главу». Теперь у тебя есть план, цель и контроль.
-                </p>
-                <div className="onboarding__toggle-row">
-                  <span>Учить английский? Это +5 минут в день</span>
-                  <input
-                    type="checkbox"
-                    checked={englishEnabled}
-                    onChange={(e) => setEnglishEnabled(e.target.checked)}
-                  />
-                </div>
-                <div className="onboarding__plans">
-                  <p className="onboarding__subtitle" style={{ marginBottom: 0 }}>
-                    3 дня бесплатно, затем тариф «Боец»:
-                  </p>
-                  {SUBSCRIPTION_PLANS.map((plan) => (
-                    <div key={plan.id} className="onboarding__plan">
-                      {plan.label} — <strong>{plan.price}</strong>
-                    </div>
-                  ))}
-                </div>
-                <p className="onboarding__speech onboarding__speech--finale">
-                  Ты сделал первый шаг — самый трудный. Теперь приложение будет вести тебя
-                  день за днём. Ты не один. Вперёд, к новой главе.
-                </p>
-              </>
-            ) : null}
+                );
+              })}
+            </div>
 
             {error ? <p className="onboarding__error">{error}</p> : null}
           </div>
@@ -580,7 +658,11 @@ export function OnboardingPage() {
               .filter(Boolean)
               .join(" ")}
           >
-            <button type="submit" className="onboarding__btn" disabled={pending}>
+            <button
+              type="submit"
+              className="onboarding__btn"
+              disabled={pending || isStepTransitioning}
+            >
               {primaryLabel}
             </button>
             {stepIndex > 0 ? (
@@ -588,7 +670,7 @@ export function OnboardingPage() {
                 type="button"
                 className="onboarding__back"
                 onClick={goBack}
-                disabled={pending}
+                disabled={pending || isStepTransitioning}
               >
                 Назад
               </button>

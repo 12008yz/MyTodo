@@ -1,4 +1,5 @@
 .onboarding-shell {
+  --content-transition-duration: 350ms;
   position: relative;
   display: flex;
   flex-direction: column;

@@ -12,6 +12,28 @@
   min-height: 0;
 }
 
+.onboarding__panels {
+  flex: 1;
+  min-height: 0;
+}
+
+.onboarding__panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+}
+
+.onboarding__path-panels {
+  width: 100%;
+}
+
+.onboarding__path-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
 .onboarding__scroll {
   flex: 1;
   overflow-x: hidden;

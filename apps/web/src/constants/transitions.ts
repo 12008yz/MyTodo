@@ -19,9 +19,10 @@ export const ICON_TRANSITION_MS =
 export const CONTENT_TRANSITION_DURATION_MS = 350
 
 export function getContentTransitionDurationMs(): number {
-  const welcome = document.querySelector('.welcome')
-  const raw = welcome
-    ? getComputedStyle(welcome).getPropertyValue('--content-transition-duration').trim()
+  const root =
+    document.querySelector('.welcome') ?? document.querySelector('.onboarding-shell')
+  const raw = root
+    ? getComputedStyle(root).getPropertyValue('--content-transition-duration').trim()
     : ''
 
   if (raw.endsWith('ms')) {
