@@ -31,9 +31,8 @@
 }
 
 .onboarding-shell--light {
-  background:
-    radial-gradient(ellipse 120% 90% at 10% 0%, rgba(70, 240, 138, 0.28) 0%, transparent 60%),
-    linear-gradient(165deg, #f0fff6 0%, #ffffff 50%, #f5fff9 100%);
+  background-color: #fafafa;
+  background-image: none;
 }
 
 .onboarding-shell--dark {
@@ -59,7 +58,7 @@
   padding:
     max(0.75rem, env(safe-area-inset-top, 0px))
     var(--container-padding, 1rem)
-    max(0.5rem, env(safe-area-inset-bottom, 0px));
+    max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
 
 .onboarding-shell__progress {

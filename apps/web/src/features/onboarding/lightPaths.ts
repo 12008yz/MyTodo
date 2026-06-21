@@ -53,7 +53,9 @@ type LightActivityBase = {
   id: string;
   pathId: LightPathId;
   label: string;
+  emoji?: string;
   hint?: string;
+  description?: string;
 };
 
 export type LightActivityTemplate = LightActivityBase & {
@@ -82,7 +84,8 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "mindfulness",
     kind: "custom",
     label: "Медитация",
-    hint: "Сколько минут в день сейчас?",
+    emoji: "🧘",
+    hint: "Минут в день",
     name: "Медитация",
     unit: "minutes",
   },
@@ -90,8 +93,9 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     id: "mindfulness-books",
     pathId: "mindfulness",
     kind: "template",
-    label: "Читать книги",
-    hint: "Сколько страниц в день сейчас?",
+    label: "Чтение книг",
+    emoji: "📚",
+    hint: "Страниц в день",
     templateId: "books",
   },
   {
@@ -99,7 +103,9 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "mindfulness",
     kind: "custom",
     label: "Иностранный язык",
-    hint: "Сколько минут в день сейчас?",
+    emoji: "🗣️",
+    hint: "Минут в день",
+    description: "Английский — самый лёгкий язык, его и учим",
     name: "Иностранный язык",
     unit: "minutes",
   },
@@ -108,7 +114,9 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "mindfulness",
     kind: "custom",
     label: "Дневник благодарности",
-    hint: "Сколько минут в день сейчас?",
+    emoji: "📝",
+    hint: "Минут в день",
+    description: "Запиши 3–5 вещей, за которые благодарен",
     name: "Дневник благодарности",
     unit: "minutes",
   },
@@ -117,7 +125,8 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "strength",
     kind: "custom",
     label: "Силовая тренировка",
-    hint: "Сколько повторений в день сейчас? (отжимания, приседания, пресс)",
+    emoji: "🏋️",
+    hint: "Повторений в день",
     name: "Силовая тренировка",
     unit: "reps",
   },
@@ -126,7 +135,8 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "strength",
     kind: "template",
     label: "Бег",
-    hint: "Сколько минут бега или кардио в день сейчас?",
+    emoji: "🏃",
+    hint: "Минут в день",
     templateId: "running",
   },
   {
@@ -134,7 +144,8 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "strength",
     kind: "template",
     label: "Планка",
-    hint: "Сколько секунд планки или статики в день сейчас?",
+    emoji: "🧱",
+    hint: "Секунд в день",
     templateId: "plank",
   },
   {
@@ -142,7 +153,8 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "strength",
     kind: "custom",
     label: "Растяжка",
-    hint: "Сколько минут в день сейчас?",
+    emoji: "🤸",
+    hint: "Минут в день",
     name: "Растяжка",
     unit: "minutes",
   },
@@ -151,7 +163,8 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "creator",
     kind: "custom",
     label: "Программирование",
-    hint: "Сколько минут в день сейчас?",
+    emoji: "💻",
+    hint: "Минут в день",
     name: "Программирование",
     unit: "minutes",
   },
@@ -160,7 +173,8 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "creator",
     kind: "custom",
     label: "Изучение нового навыка",
-    hint: "Сколько минут в день сейчас?",
+    emoji: "🎯",
+    hint: "Минут в день",
     name: "Изучение нового навыка",
     unit: "minutes",
   },
@@ -176,7 +190,8 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "energy",
     kind: "custom",
     label: "Ходьба на свежем воздухе",
-    hint: "Сколько минут в день сейчас?",
+    emoji: "🚶",
+    hint: "Минут в день",
     name: "Ходьба на свежем воздухе",
     unit: "minutes",
   },
@@ -185,7 +200,8 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "energy",
     kind: "custom",
     label: "Ранний подъём",
-    hint: "Сколько минут утренней рутины сейчас?",
+    emoji: "🌅",
+    hint: "Минут утренней рутины",
     name: "Ранний подъём",
     unit: "minutes",
   },
@@ -194,7 +210,8 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "energy",
     kind: "custom",
     label: "Творчество / Хобби",
-    hint: "Сколько минут в день сейчас?",
+    emoji: "🎨",
+    hint: "Минут в день",
     name: "Творчество / Хобби",
     unit: "minutes",
   },
@@ -236,13 +253,40 @@ export function getBaselineHint(habit: SelectedHabit): string {
 
   if (habit.kind === "template") {
     const template = HABIT_TEMPLATES[habit.templateId];
-    if (template.unit === "pages") return "Сколько страниц в день сейчас?";
-    if (template.unit === "reps") return "Сколько раз в день сейчас?";
-    if (template.unit === "seconds") return "Сколько секунд в день сейчас?";
-    return "Сколько минут в день сейчас?";
+    if (template.unit === "pages") return "Сколько страниц в день?";
+    if (template.unit === "reps") return "Сколько раз в день?";
+    if (template.unit === "seconds") return "Сколько секунд в день?";
+    return "Сколько минут в день?";
   }
 
-  return "Сколько сейчас в день?";
+  return "Сколько в день?";
+}
+
+export function getAmountQuestion(habit: SelectedHabit, practicesNow: boolean): string {
+  const unit = habit.kind === "template"
+    ? HABIT_TEMPLATES[habit.templateId].unit
+    : habit.unit;
+
+  if (practicesNow) {
+    if (unit === "pages") return "Сколько страниц занимаешься сейчас в день?";
+    if (unit === "reps") return "Сколько повторений делаешь сейчас в день?";
+    if (unit === "seconds") return "Сколько секунд занимаешься сейчас в день?";
+    if (unit === "lessons") return "Сколько уроков проходишь сейчас в день?";
+    return "Сколько минут занимаешься сейчас в день?";
+  }
+
+  if (unit === "pages") return "Сколько страниц хочешь читать в день?";
+  if (unit === "reps") return "Сколько повторений хочешь делать в день?";
+  if (unit === "seconds") return "Сколько секунд хочешь заниматься в день?";
+  if (unit === "lessons") return "Сколько уроков хочешь проходить в день?";
+  return "Сколько минут хочешь заниматься в день?";
+}
+
+export function getActivityEmoji(activity: LightActivity): string {
+  if (activity.kind !== "custom_form" && activity.emoji) {
+    return activity.emoji;
+  }
+  return "✨";
 }
 
 function createHabitFromActivity(
@@ -286,7 +330,7 @@ export function toggleLightActivity(
 
 export function addCreatorCustomHabit(
   habits: SelectedHabit[],
-  input: { name: string; unit: SelectedCustomHabit["unit"]; baseline: string },
+  input: { name: string; unit: SelectedCustomHabit["unit"] },
 ): { habits: SelectedHabit[]; error: string | null } {
   if (!input.name.trim()) {
     return { habits, error: "Укажи название занятия" };
@@ -301,7 +345,7 @@ export function addCreatorCustomHabit(
         kind: "custom",
         name: input.name.trim(),
         unit: input.unit,
-        baseline: input.baseline,
+        baseline: "0",
         pathId: "creator",
         activityId,
       },
@@ -320,15 +364,87 @@ export function updateLightBaseline(
   );
 }
 
+export function getDefaultLightBaseline(habit: SelectedHabit): string {
+  if (habit.activityId === "mindfulness-meditation") {
+    return "5";
+  }
+  return "0";
+}
+
+export function getLightHabitSummary(habit: SelectedHabit): string {
+  if (habit.practicesNow === false) {
+    if (habit.activityId === "mindfulness-meditation") {
+      return "5 мин/день";
+    }
+    return "Рост понемногу";
+  }
+
+  if (habit.practicesNow === true && isLightBaselineValid(habit.baseline)) {
+    const unit =
+      habit.kind === "template"
+        ? HABIT_TEMPLATES[habit.templateId].unit
+        : habit.unit;
+    const label =
+      unit === "pages"
+        ? "стр"
+        : unit === "minutes"
+          ? "мин"
+          : unit === "reps"
+            ? "раз"
+            : unit === "seconds"
+              ? "сек"
+              : unit === "lessons"
+                ? "ур"
+                : unit;
+    return `Сейчас: ${habit.baseline} ${label}/день`;
+  }
+
+  return "";
+}
+
+export function isLightBaselineValid(value: string): boolean {
+  if (value.trim() === "") return false;
+  const baseline = Number(value.replace(",", "."));
+  return Number.isFinite(baseline) && baseline >= 0;
+}
+
+export function setLightPracticesNow(
+  habits: SelectedHabit[],
+  activityId: string,
+  practicesNow: boolean,
+): SelectedHabit[] {
+  return habits.map((habit) => {
+    if (habit.activityId !== activityId) return habit;
+
+    if (practicesNow) {
+      return { ...habit, practicesNow: true, baseline: "" };
+    }
+
+    return {
+      ...habit,
+      practicesNow: false,
+      baseline: getDefaultLightBaseline(habit),
+    };
+  });
+}
+
+export function isLightSetupComplete(habit: SelectedHabit): boolean {
+  if (habit.practicesNow === undefined) return false;
+  if (habit.practicesNow === false) return true;
+  return isLightBaselineValid(habit.baseline);
+}
+
 export function validateLightHabits(habits: SelectedHabit[]): string | null {
   if (habits.length === 0) {
     return "Выбери хотя бы одну суперсилу на Пути роста";
   }
 
   for (const habit of habits) {
-    const baseline = Number(habit.baseline.replace(",", "."));
-    if (!Number.isFinite(baseline) || baseline < 0) {
-      return `Укажи текущий уровень для «${getHabitDisplayName(habit)}»`;
+    if (!isLightSetupComplete(habit)) {
+      if (habit.practicesNow === undefined) {
+        return `Ответь, занимаешься ли сейчас «${getHabitDisplayName(habit)}»`;
+      }
+      return `Укажи, сколько занимаешься «${getHabitDisplayName(habit)}»`;
     }
   }
 

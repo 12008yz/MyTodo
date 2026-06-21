@@ -14,6 +14,7 @@ export type SelectedTemplateHabit = {
   kind: "template";
   templateId: HabitTemplateId;
   baseline: string;
+  practicesNow?: boolean;
   pathId?: LightPathId;
   activityId?: string;
 };
@@ -23,6 +24,7 @@ export type SelectedCustomHabit = {
   name: string;
   unit: "minutes" | "pages" | "reps" | "lessons";
   baseline: string;
+  practicesNow?: boolean;
   pathId?: LightPathId;
   activityId?: string;
 };
