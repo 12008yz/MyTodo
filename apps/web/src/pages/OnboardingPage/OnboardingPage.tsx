@@ -65,28 +65,22 @@ function isAgeFieldValid(value: string): boolean {
   return Number.isFinite(age) && Number.isInteger(age) && age >= 10 && age <= 99;
 }
 
-function shouldAutoCloseMetricField(value: string, isValid: (candidate: string) => boolean): boolean {
-  if (!isValid(value)) return false;
-  const digits = countDigits(value);
-  if (digits >= 3) return true;
-  if (digits >= 2) {
-    const amount = parseNumber(value);
-    return amount >= 10 && amount < 100;
-  }
-  return false;
+function shouldAutoCloseThreeDigitField(
+  value: string,
+  isValid: (candidate: string) => boolean,
+): boolean {
+  return isValid(value) && countDigits(value) >= 3;
 }
 
 function shouldAutoCloseAgeField(value: string): boolean {
   return isAgeFieldValid(value) && countDigits(value) >= 2;
 }
 
-function shouldDismissMetricFieldOnBlur(
+function shouldDismissThreeDigitFieldOnBlur(
   value: string,
   isValid: (candidate: string) => boolean,
 ): boolean {
-  if (!isValid(value)) return false;
-  if (shouldAutoCloseMetricField(value, isValid)) return true;
-  return countDigits(value) < 3;
+  return isValid(value);
 }
 
 function shouldDismissAgeFieldOnBlur(value: string): boolean {
@@ -514,13 +508,13 @@ export function OnboardingPage() {
                       const value = limitDigitInput(e.target.value, 3);
                       setBody((c) => ({ ...c, weightKg: value }));
                       dismissBodyKeyboard(
-                        shouldAutoCloseMetricField(value, isWeightFieldValid),
+                        shouldAutoCloseThreeDigitField(value, isWeightFieldValid),
                       );
                     }}
                     onBlur={() => {
                       if (bodyDismissPendingRef.current) return;
                       dismissBodyKeyboard(
-                        shouldDismissMetricFieldOnBlur(body.weightKg, isWeightFieldValid),
+                        shouldDismissThreeDigitFieldOnBlur(body.weightKg, isWeightFieldValid),
                       );
                     }}
                     onKeyDown={(e) => {
@@ -546,13 +540,13 @@ export function OnboardingPage() {
                       const value = limitDigitInput(e.target.value, 3);
                       setBody((c) => ({ ...c, heightCm: value }));
                       dismissBodyKeyboard(
-                        shouldAutoCloseMetricField(value, isHeightFieldValid),
+                        shouldAutoCloseThreeDigitField(value, isHeightFieldValid),
                       );
                     }}
                     onBlur={() => {
                       if (bodyDismissPendingRef.current) return;
                       dismissBodyKeyboard(
-                        shouldDismissMetricFieldOnBlur(body.heightCm, isHeightFieldValid),
+                        shouldDismissThreeDigitFieldOnBlur(body.heightCm, isHeightFieldValid),
                       );
                     }}
                     onKeyDown={(e) => {
