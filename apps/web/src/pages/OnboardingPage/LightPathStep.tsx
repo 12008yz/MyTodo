@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import {
   addCreatorCustomHabit,
   findHabitByActivityId,
@@ -167,6 +167,19 @@ function HabitSetupPanel({
   return null;
 }
 
+function scrollExpandedHabitIntoView(element: HTMLElement | null) {
+  if (!element) return;
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      element.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  });
+}
+
 export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>(
   function LightPathStep(
     { lightHabits, activePathId, onActivePathChange, onChange },
@@ -179,6 +192,15 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     const [customPracticesNow, setCustomPracticesNow] = useState<boolean | null>(null);
     const [customBaseline, setCustomBaseline] = useState("");
     const [localError, setLocalError] = useState<string | null>(null);
+    const activeSetupRef = useRef<HTMLDivElement | null>(null);
+    const activeSetupHabit = setupActivityId
+      ? findHabitByActivityId(lightHabits, setupActivityId)
+      : undefined;
+
+    useEffect(() => {
+      if (!setupActivityId && !customOpen) return;
+      scrollExpandedHabitIntoView(activeSetupRef.current);
+    }, [setupActivityId, customOpen, activeSetupHabit?.practicesNow, customPracticesNow]);
 
     const handlePathChange = useCallback(
       (pathId: LightPathId) => {
@@ -306,7 +328,10 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
           </button>
 
           {showPanel && selected ? (
-            <div className="onboarding__setup-panel onboarding__setup-panel--inline">
+            <div
+              ref={activeSetupRef}
+              className="onboarding__setup-panel onboarding__setup-panel--inline"
+            >
               <HabitSetupPanel
                 activityId={activity.id}
                 habit={selected}
@@ -362,7 +387,10 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
               </button>
 
               {customOpen ? (
-                <div className="onboarding__setup-panel onboarding__setup-panel--inline">
+                <div
+                  ref={activeSetupRef}
+                  className="onboarding__setup-panel onboarding__setup-panel--inline"
+                >
                   <div className="onboarding__setup-block">
                     <label className="onboarding__setup-field">
                       <span className="onboarding__setup-label">Название</span>

@@ -419,6 +419,8 @@
   padding: 0.625rem 0.75rem 0.75rem;
   border-color: rgba(34, 197, 94, 0.16);
   background: #fafafa;
+  scroll-margin-top: 0.5rem;
+  scroll-margin-bottom: 6rem;
 }
 
 .onboarding__habit-row,
