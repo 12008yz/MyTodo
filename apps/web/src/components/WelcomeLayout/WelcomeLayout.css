@@ -592,12 +592,6 @@
   );
 }
 
-@media (hover: none) and (pointer: coarse) {
-  .welcome {
-    --content-transition-duration: 650ms;
-  }
-}
-
 .welcome--login .auth-panels {
   flex: 1;
   min-height: 0;

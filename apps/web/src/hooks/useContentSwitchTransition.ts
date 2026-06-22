@@ -143,6 +143,21 @@ export function useContentSwitchTransition<T>({
     [activeKey, exitActive, switchPhase],
   );
 
+  const getTransitionModifiers = useCallback(
+    (baseClass: string, { includeEnter = true }: { includeEnter?: boolean } = {}) => {
+      const state = getPanelVisualState(activeKey, activeKey, switchPhase);
+
+      return [
+        state === "exiting" ? `${baseClass}--exiting` : "",
+        state === "exiting" && exitActive ? `${baseClass}--exit-active` : "",
+        includeEnter && enterPending ? `${baseClass}--enter-pending` : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+    },
+    [activeKey, enterPending, exitActive, switchPhase],
+  );
+
   const wrapperClassName = [
     "content-panels",
     enterPending ? "content-panels--enter-pending" : "",
@@ -156,6 +171,7 @@ export function useContentSwitchTransition<T>({
     switchTo,
     switchPhase,
     getPanelClassName,
+    getTransitionModifiers,
     getPanelState: (panel: T) => getPanelVisualState(panel, activeKey, switchPhase),
     isTransitioning: switchPhase !== "idle",
   };

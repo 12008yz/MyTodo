@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   computeDailyBudgetMin,
@@ -130,6 +130,8 @@ export function OnboardingPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [lightPathIndex, setLightPathIndex] = useState(0);
+  const [lightPathActionModifiers, setLightPathActionModifiers] = useState("");
+  const [isLightPathTransitioning, setIsLightPathTransitioning] = useState(false);
 
   const step = ONBOARDING_STEPS[stepIndex] ?? "welcome";
   const activeLightPathId = LIGHT_PATHS[lightPathIndex]?.id ?? "mindfulness";
@@ -150,18 +152,50 @@ export function OnboardingPage() {
     if (index >= 0) setLightPathIndex(index);
   }, []);
 
+  const handleLightPathActionsChange = useCallback(
+    (state: { modifiers: string; isTransitioning: boolean }) => {
+      setLightPathActionModifiers(state.modifiers);
+      setIsLightPathTransitioning(state.isTransitioning);
+    },
+    [],
+  );
+
   const {
     wrapperRef: stepPanelsRef,
     wrapperClassName: stepPanelsClassName,
     switchTo: switchStep,
     getPanelClassName: getStepPanelClassName,
+    getTransitionModifiers: getStepActionModifiers,
     getPanelState: getStepPanelState,
+    switchPhase: stepSwitchPhase,
     isTransitioning: isStepTransitioning,
   } = useContentSwitchTransition<OnboardingStepId>({
     activeKey: step,
     onActiveKeyChange: handleStepChange,
     disabled: pending,
   });
+
+  const actionTransitionModifiers =
+    step === "light" && stepSwitchPhase === "idle"
+      ? lightPathActionModifiers
+      : getStepActionModifiers("onboarding__actions", { includeEnter: false });
+
+  const actionsClassName = [
+    "onboarding__actions",
+    step === "welcome" ? "onboarding__actions--welcome" : "",
+    actionTransitionModifiers,
+    isStepTransitioning || isLightPathTransitioning ? "onboarding__actions--locked" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const isInteractionLocked = isStepTransitioning || isLightPathTransitioning;
+
+  useEffect(() => {
+    if (step === "light") return;
+    setLightPathActionModifiers("");
+    setIsLightPathTransitioning(false);
+  }, [step]);
 
   const theme: OnboardingTheme =
     step === "light"
@@ -190,6 +224,7 @@ export function OnboardingPage() {
   };
 
   const goBack = () => {
+    if (pending || isInteractionLocked) return;
     setError(null);
     if (step === "light" && lightPathIndex > 0) {
       const prevPath = LIGHT_PATHS[lightPathIndex - 1];
@@ -278,7 +313,7 @@ export function OnboardingPage() {
 
   const handleContinue = async (event: FormEvent) => {
     event.preventDefault();
-    if (pending || isStepTransitioning) return;
+    if (pending || isInteractionLocked) return;
     setError(null);
 
     switch (step) {
@@ -454,6 +489,7 @@ export function OnboardingPage() {
             activePathId={activeLightPathId}
             onActivePathChange={handleActivePathChange}
             onChange={setLightHabits}
+            onActionsClassNameChange={handleLightPathActionsChange}
           />
         );
 
@@ -629,52 +665,49 @@ export function OnboardingPage() {
           <div ref={scrollRef} className="onboarding__scroll">
             <div
               ref={stepPanelsRef}
-              className={["onboarding__panels", stepPanelsClassName].filter(Boolean).join(" ")}
+              className={["onboarding__step-surface", stepPanelsClassName].filter(Boolean).join(" ")}
             >
-              {ONBOARDING_STEPS.map((stepId) => {
-                const panelState = getStepPanelState(stepId);
-                const interactive = panelState === "visible";
+              <div className="onboarding__panels">
+                {ONBOARDING_STEPS.map((stepId) => {
+                  const panelState = getStepPanelState(stepId);
+                  const interactive = panelState === "visible";
 
-                return (
-                  <div
-                    key={stepId}
-                    className={getStepPanelClassName(stepId, "onboarding__panel content-panel")}
-                    aria-hidden={!interactive}
+                  return (
+                    <div
+                      key={stepId}
+                      className={getStepPanelClassName(stepId, "onboarding__panel content-panel")}
+                      aria-hidden={!interactive}
+                    >
+                      {renderStepContent(stepId)}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className={actionsClassName}>
+                <button
+                  type="submit"
+                  className="onboarding__btn"
+                  disabled={pending}
+                  aria-disabled={pending || isInteractionLocked}
+                >
+                  {primaryLabel}
+                </button>
+                {stepIndex > 0 ? (
+                  <button
+                    type="button"
+                    className="onboarding__back"
+                    onClick={goBack}
+                    disabled={pending}
+                    aria-disabled={pending || isInteractionLocked}
                   >
-                    {renderStepContent(stepId)}
-                  </div>
-                );
-              })}
+                    Назад
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             {error ? <p className="onboarding__error">{error}</p> : null}
-          </div>
-
-          <div
-            className={[
-              "onboarding__actions",
-              step === "welcome" ? "onboarding__actions--welcome" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-          >
-            <button
-              type="submit"
-              className="onboarding__btn"
-              disabled={pending || isStepTransitioning}
-            >
-              {primaryLabel}
-            </button>
-            {stepIndex > 0 ? (
-              <button
-                type="button"
-                className="onboarding__back"
-                onClick={goBack}
-                disabled={pending || isStepTransitioning}
-              >
-                Назад
-              </button>
-            ) : null}
           </div>
         </form>
       </div>

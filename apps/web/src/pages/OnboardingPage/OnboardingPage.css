@@ -15,6 +15,23 @@
 .onboarding__panels {
   flex: 1;
   min-height: 0;
+  position: relative;
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  width: 100%;
+}
+
+.onboarding__step-surface {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.onboarding--welcome .onboarding__step-surface {
+  flex: 0 1 auto;
+  gap: 1.25rem;
 }
 
 .onboarding__panel {
@@ -128,7 +145,6 @@
 
 .onboarding--welcome .onboarding__form--welcome {
   justify-content: center;
-  gap: 1.25rem;
   padding-top: clamp(0.75rem, 5vh, 2rem);
   padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
 }
@@ -247,6 +263,33 @@
   flex: 0 0 auto;
   padding-top: 0;
   border-top: none;
+}
+
+.onboarding__actions--exiting {
+  opacity: 1;
+  pointer-events: none;
+  transition: opacity var(--content-transition-duration, 350ms) ease;
+}
+
+.onboarding__actions--exiting.onboarding__actions--exit-active {
+  opacity: 0;
+}
+
+.onboarding__actions--enter-pending {
+  opacity: 0.01;
+  pointer-events: none;
+  transition: none;
+}
+
+.onboarding__actions--locked {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding__actions--exiting,
+  .onboarding__actions--enter-pending {
+    transition: none;
+  }
 }
 
 .onboarding__field-grid {
