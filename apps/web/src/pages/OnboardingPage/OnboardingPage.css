@@ -60,6 +60,7 @@
   overscroll-behavior-y: contain;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  transition: padding-bottom 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .onboarding__scroll::-webkit-scrollbar {
@@ -619,7 +620,8 @@
   .onboarding__habit-row-subline,
   .onboarding__habit-row-hint,
   .onboarding__habit-row-meta,
-  .onboarding__option-radio {
+  .onboarding__option-radio,
+  .onboarding__scroll {
     transition: none;
   }
 

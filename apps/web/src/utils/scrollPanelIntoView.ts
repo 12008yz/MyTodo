@@ -254,3 +254,54 @@ export function focusSetupInputAfterPanelOpen(
     window.clearTimeout(timer);
   };
 }
+
+const KEYBOARD_DISMISS_FALLBACK_MS = 420;
+
+/** Wait for the mobile keyboard to hide, then run callback (panel close, padding reset, etc.). */
+export function afterKeyboardDismiss(callback: () => void): () => void {
+  const active = document.activeElement;
+  if (
+    active instanceof HTMLInputElement ||
+    active instanceof HTMLTextAreaElement ||
+    active instanceof HTMLSelectElement
+  ) {
+    active.blur();
+  }
+
+  let finished = false;
+  let fallbackTimer = 0;
+  const viewport = window.visualViewport;
+
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    viewport?.removeEventListener("resize", onViewportChange);
+    window.clearTimeout(fallbackTimer);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(callback);
+    });
+  };
+
+  const onViewportChange = () => {
+    if (getKeyboardInsetPx() < 12) {
+      finish();
+    }
+  };
+
+  if (getKeyboardInsetPx() < 12) {
+    finish();
+    return () => {
+      finished = true;
+      window.clearTimeout(fallbackTimer);
+    };
+  }
+
+  viewport?.addEventListener("resize", onViewportChange);
+  fallbackTimer = window.setTimeout(finish, KEYBOARD_DISMISS_FALLBACK_MS);
+
+  return () => {
+    finished = true;
+    viewport?.removeEventListener("resize", onViewportChange);
+    window.clearTimeout(fallbackTimer);
+  };
+}

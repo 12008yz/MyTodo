@@ -19,6 +19,7 @@ import {
 import type { SelectedHabit, SelectedTemplateHabit } from "../../features/onboarding/types";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import { HabitRowHint, HabitRowMeta } from "../../components/HabitRowAnimated/HabitRowAnimated";
+import { useDeferredBaselineCommit } from "../../hooks/useDeferredBaselineCommit";
 import {
   clearKeyboardScrollPadding,
   focusSetupInputAfterPanelOpen,
@@ -84,10 +85,15 @@ function DarkSetupPanel({
     return focusSetupInputAfterPanelOpen(() => inputRef.current, onPanelScroll);
   }, [showAmountStep, templateId, onPanelScroll]);
 
-  const commitBaseline = (value: string) => {
-    if (!isDarkBaselineValid(value)) return;
-    onChange(updateDarkBaseline(darkHabits, templateId, value));
-  };
+  const applyBaseline = useCallback(
+    (value: string) => {
+      onChange(updateDarkBaseline(darkHabits, templateId, value));
+      onInputBlur?.();
+    },
+    [darkHabits, onChange, onInputBlur, templateId],
+  );
+
+  const { commit: commitBaseline, isPending } = useDeferredBaselineCommit(applyBaseline);
 
   if (abstinence && !isDarkSetupComplete(habit)) {
     return (
@@ -127,19 +133,21 @@ function DarkSetupPanel({
               const value = e.target.value;
               setDraft(value);
               if (shouldAutoCloseDarkBaseline(templateId, value)) {
-                commitBaseline(value);
+                commitBaseline(value, isDarkBaselineValid);
               }
             }}
             onBlur={() => {
-              onInputBlur?.();
+              if (isPending()) return;
               if (shouldCommitDarkBaselineOnBlur(templateId, draft)) {
-                commitBaseline(draft);
+                commitBaseline(draft, isDarkBaselineValid);
+                return;
               }
+              onInputBlur?.();
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && isDarkBaselineValid(draft)) {
                 e.preventDefault();
-                commitBaseline(draft);
+                commitBaseline(draft, isDarkBaselineValid);
               }
             }}
           />

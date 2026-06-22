@@ -21,6 +21,7 @@ import {
 import type { SelectedCustomHabit, SelectedHabit } from "../../features/onboarding/types";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import { HabitRowHint, HabitRowMeta } from "../../components/HabitRowAnimated/HabitRowAnimated";
+import { useDeferredBaselineCommit } from "../../hooks/useDeferredBaselineCommit";
 import { scrollPanelIntoViewAfterKeyboard } from "../../utils/scrollPanelIntoView";
 import { useContentSwitchTransition } from "../../hooks/useContentSwitchTransition";
 import "../../components/ContentPanels/ContentPanels.css";
@@ -89,10 +90,14 @@ function HabitSetupPanel({
     }
   }, [showAmountStep, activityId, habit.baseline]);
 
-  const commitBaseline = (value: string) => {
-    if (!isLightBaselineValid(value)) return;
-    onChange(updateLightBaseline(lightHabits, activityId, value));
-  };
+  const applyBaseline = useCallback(
+    (value: string) => {
+      onChange(updateLightBaseline(lightHabits, activityId, value));
+    },
+    [activityId, lightHabits, onChange],
+  );
+
+  const { commit: commitBaseline, isPending } = useDeferredBaselineCommit(applyBaseline);
 
   if (showPracticesStep) {
     return (
@@ -140,22 +145,23 @@ function HabitSetupPanel({
               const value = e.target.value;
               setDraft(value);
               if (shouldAutoCloseBaseline(value)) {
-                commitBaseline(value);
+                commitBaseline(value, isLightBaselineValid);
               }
             }}
             onBlur={() => {
+              if (isPending()) return;
               if (shouldAutoCloseBaseline(draft)) {
-                commitBaseline(draft);
+                commitBaseline(draft, isLightBaselineValid);
                 return;
               }
               if (isLightBaselineValid(draft) && countDigits(draft) === 1) {
-                commitBaseline(draft);
+                commitBaseline(draft, isLightBaselineValid);
               }
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && isLightBaselineValid(draft)) {
                 e.preventDefault();
-                commitBaseline(draft);
+                commitBaseline(draft, isLightBaselineValid);
               }
             }}
           />
