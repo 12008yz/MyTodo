@@ -319,11 +319,23 @@
 }
 
 .onboarding__body-form {
-  gap: 0.875rem;
+  --body-section-gap: 0.875rem;
+  --body-label-gap: 0.35rem;
+  --body-row-gap: 0.75rem;
+  gap: var(--body-section-gap);
 }
 
-.onboarding__body-form .onboarding__field-grid--3 {
-  gap: 0.75rem;
+.onboarding__body-form .onboarding__label {
+  gap: var(--body-label-gap);
+}
+
+.onboarding__body-form .onboarding__field-grid--3,
+.onboarding__body-form .onboarding__time-fields {
+  gap: var(--body-row-gap);
+}
+
+.onboarding__body-form .onboarding__gender-options {
+  gap: var(--body-row-gap);
 }
 
 @media (max-width: 22rem) {
@@ -392,6 +404,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  margin: 0;
   font-size: 0.75rem;
   color: #6e6a7c;
 }
@@ -1260,7 +1273,7 @@ button.onboarding__card--habit {
 }
 
 .onboarding__slider-value {
-  margin: 0.5rem 0 0.75rem;
+  margin: 0;
   font-size: 2rem;
   font-weight: 700;
   text-align: center;
@@ -1273,6 +1286,19 @@ button.onboarding__card--habit {
   width: 100%;
   min-width: 0;
   max-width: 100%;
+}
+
+.onboarding__slider-control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--body-row-gap, 0.75rem);
+  width: 100%;
+  min-width: 0;
+}
+
+.onboarding__slider-control .onboarding__slider-warning,
+.onboarding__slider-control .onboarding__slider-labels {
+  margin: 0;
 }
 
 .onboarding__slider-value--invalid {

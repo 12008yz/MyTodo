@@ -38,6 +38,10 @@ function parseNumber(value: string): number {
   return Number(value.replace(",", "."));
 }
 
+function limitDigitInput(value: string, maxDigits: number): string {
+  return value.replace(/\D/g, "").slice(0, maxDigits);
+}
+
 const FREE_TIME_SLIDER_MIN = 0;
 const FREE_TIME_SLIDER_MAX = 120;
 const FREE_TIME_MIN = 15;
@@ -54,8 +58,8 @@ function validateBodyForm(body: BodyFormData): string | null {
   if (!Number.isFinite(height) || !Number.isInteger(height) || height <= 0 || height > 300) {
     return "Укажи рост от 1 до 300 см";
   }
-  if (!Number.isFinite(age) || !Number.isInteger(age) || age < 10 || age > 120) {
-    return "Укажи возраст от 10 до 120 лет";
+  if (!Number.isFinite(age) || !Number.isInteger(age) || age < 10 || age > 99) {
+    return "Укажи возраст от 10 до 99 лет";
   }
   if (!body.gender) {
     return "Выбери пол";
@@ -425,11 +429,15 @@ export function OnboardingPage() {
                   <input
                     className="onboarding__input"
                     type="text"
-                    inputMode="decimal"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     enterKeyHint="done"
                     autoComplete="off"
+                    maxLength={3}
                     value={body.weightKg}
-                    onChange={(e) => setBody((c) => ({ ...c, weightKg: e.target.value }))}
+                    onChange={(e) =>
+                      setBody((c) => ({ ...c, weightKg: limitDigitInput(e.target.value, 3) }))
+                    }
                   />
                 </label>
                 <label className="onboarding__label">
@@ -441,8 +449,11 @@ export function OnboardingPage() {
                     pattern="[0-9]*"
                     enterKeyHint="done"
                     autoComplete="off"
+                    maxLength={3}
                     value={body.heightCm}
-                    onChange={(e) => setBody((c) => ({ ...c, heightCm: e.target.value }))}
+                    onChange={(e) =>
+                      setBody((c) => ({ ...c, heightCm: limitDigitInput(e.target.value, 3) }))
+                    }
                   />
                 </label>
                 <label className="onboarding__label">
@@ -454,13 +465,16 @@ export function OnboardingPage() {
                     pattern="[0-9]*"
                     enterKeyHint="done"
                     autoComplete="off"
+                    maxLength={2}
                     value={body.age}
-                    onChange={(e) => setBody((c) => ({ ...c, age: e.target.value }))}
+                    onChange={(e) =>
+                      setBody((c) => ({ ...c, age: limitDigitInput(e.target.value, 2) }))
+                    }
                   />
                 </label>
               </div>
-              <div>
-                <p className="onboarding__label">Пол</p>
+              <div className="onboarding__label">
+                Пол
                 <div className="onboarding__gender-options" role="radiogroup" aria-label="Пол">
                   {GENDER_OPTIONS.map((option) => (
                     <button
@@ -499,52 +513,54 @@ export function OnboardingPage() {
                   />
                 </label>
               </div>
-              <div className="onboarding__slider-field">
-                <p className="onboarding__label">Сколько свободного времени в день?</p>
-                <div
-                  className={[
-                    "onboarding__slider-value",
-                    isFreeTimeTooLow ? "onboarding__slider-value--invalid" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
-                  {body.freeTimeMin} мин
-                </div>
-                <div
-                  className={[
-                    "onboarding__slider-wrap",
-                    isFreeTimeTooLow ? "onboarding__slider-wrap--invalid" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
-                  <input
-                    className="onboarding__slider"
-                    type="range"
-                    min={FREE_TIME_SLIDER_MIN}
-                    max={FREE_TIME_SLIDER_MAX}
-                    step={FREE_TIME_STEP}
-                    value={body.freeTimeMin}
-                    aria-invalid={isFreeTimeTooLow}
-                    aria-valuemin={FREE_TIME_MIN}
-                    aria-valuemax={FREE_TIME_SLIDER_MAX}
-                    onChange={(e) =>
-                      setBody((c) => ({ ...c, freeTimeMin: Number(e.target.value) }))
-                    }
-                    onMouseUp={commitFreeTimeSlider}
-                    onTouchEnd={commitFreeTimeSlider}
-                    onKeyUp={commitFreeTimeSlider}
-                  />
-                </div>
-                {isFreeTimeTooLow ? (
-                  <p className="onboarding__slider-warning" role="alert">
-                    Минимум 15 минут — меньше выбрать нельзя
-                  </p>
-                ) : null}
-                <div className="onboarding__slider-labels">
-                  <span>15 мин</span>
-                  <span>2 часа</span>
+              <div className="onboarding__label onboarding__slider-field">
+                Сколько свободного времени в день?
+                <div className="onboarding__slider-control">
+                  <div
+                    className={[
+                      "onboarding__slider-value",
+                      isFreeTimeTooLow ? "onboarding__slider-value--invalid" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    {body.freeTimeMin} мин
+                  </div>
+                  <div
+                    className={[
+                      "onboarding__slider-wrap",
+                      isFreeTimeTooLow ? "onboarding__slider-wrap--invalid" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    <input
+                      className="onboarding__slider"
+                      type="range"
+                      min={FREE_TIME_SLIDER_MIN}
+                      max={FREE_TIME_SLIDER_MAX}
+                      step={FREE_TIME_STEP}
+                      value={body.freeTimeMin}
+                      aria-invalid={isFreeTimeTooLow}
+                      aria-valuemin={FREE_TIME_MIN}
+                      aria-valuemax={FREE_TIME_SLIDER_MAX}
+                      onChange={(e) =>
+                        setBody((c) => ({ ...c, freeTimeMin: Number(e.target.value) }))
+                      }
+                      onMouseUp={commitFreeTimeSlider}
+                      onTouchEnd={commitFreeTimeSlider}
+                      onKeyUp={commitFreeTimeSlider}
+                    />
+                  </div>
+                  {isFreeTimeTooLow ? (
+                    <p className="onboarding__slider-warning" role="alert">
+                      Минимум 15 минут — меньше выбрать нельзя
+                    </p>
+                  ) : null}
+                  <div className="onboarding__slider-labels">
+                    <span>15 мин</span>
+                    <span>2 часа</span>
+                  </div>
                 </div>
               </div>
             </div>
