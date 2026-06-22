@@ -8,6 +8,7 @@ import {
   getLightHabitSummary,
   isLightBaselineValid,
   isLightSetupComplete,
+  keepCompleteLightHabits,
   LIGHT_PATH_STEP_HERO,
   LIGHT_PATHS,
   LIGHT_PATH_TAB_LABELS,
@@ -19,6 +20,7 @@ import {
 } from "../../features/onboarding/lightPaths";
 import type { SelectedCustomHabit, SelectedHabit } from "../../features/onboarding/types";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
+import { HabitRowHint, HabitRowMeta } from "../../components/HabitRowAnimated/HabitRowAnimated";
 import { scrollPanelIntoView } from "../../utils/scrollPanelIntoView";
 import { useContentSwitchTransition } from "../../hooks/useContentSwitchTransition";
 import "../../components/ContentPanels/ContentPanels.css";
@@ -199,9 +201,10 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
         setCustomOpen(false);
         setSetupActivityId(null);
         setLocalError(null);
+        onChange(keepCompleteLightHabits(lightHabits));
         onActivePathChange(pathId);
       },
-      [onActivePathChange],
+      [lightHabits, onActivePathChange, onChange],
     );
 
     const {
@@ -238,8 +241,14 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
         return;
       }
 
-      onChange(toggleLightActivity(lightHabits, activity));
+      onChange(toggleLightActivity(keepCompleteLightHabits(lightHabits), activity));
       setSetupActivityId(activity.id);
+    };
+
+    const discardIncompleteHabit = (activityId: string) => {
+      const habit = findHabitByActivityId(lightHabits, activityId);
+      if (!habit || isLightSetupComplete(habit)) return;
+      onChange(lightHabits.filter((item) => item.activityId !== activityId));
     };
 
     const handleRemoveCustom = (activityId: string) => {
@@ -299,6 +308,13 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
       const isSetupTarget = setupActivityId === activity.id && selected;
       const showPanel = isSetupTarget && !complete;
       const setupSettled = setupActivityId !== activity.id;
+      const hintVisible =
+        activity.kind !== "custom_form" &&
+        Boolean(activity.description) &&
+        !isSetupTarget &&
+        !(complete && setupSettled);
+      const metaVisible = Boolean(complete && selected && setupSettled);
+      const metaText = selected && complete ? getLightHabitSummary(selected) : "";
 
       return (
         <div
@@ -310,25 +326,24 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
             type="button"
             className={[
               "onboarding__habit-row",
-              selected ? "onboarding__habit-row--selected" : "",
+              complete ? "onboarding__habit-row--selected" : "",
               setupActivityId === activity.id && selected
                 ? "onboarding__habit-row--active"
                 : "",
+              hintVisible ? "onboarding__habit-row--subline-open" : "",
             ]
               .filter(Boolean)
               .join(" ")}
             onClick={onClick}
           >
-            <OptionRadio selected={Boolean(selected)} />
+            <OptionRadio selected={complete} />
             <span className="onboarding__habit-row-copy">
               <span className="onboarding__habit-row-label">{activity.label}</span>
-              {activity.kind !== "custom_form" && activity.description && !(complete && selected && setupSettled) ? (
-                <span className="onboarding__habit-row-hint">{activity.description}</span>
+              {activity.kind !== "custom_form" && activity.description ? (
+                <HabitRowHint text={activity.description} visible={hintVisible} />
               ) : null}
             </span>
-            {complete && selected && setupSettled ? (
-              <span className="onboarding__habit-row-meta">{getLightHabitSummary(selected)}</span>
-            ) : null}
+            {metaText ? <HabitRowMeta text={metaText} visible={metaVisible} /> : null}
           </button>
 
           <CollapsibleReveal
@@ -337,6 +352,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
             scrollAnchorRef={activeSetupRef}
             onCollapsed={() => {
               setSetupActivityId((current) => (current === activity.id ? null : current));
+              discardIncompleteHabit(activity.id);
             }}
             contentClassName="onboarding__setup-panel onboarding__setup-panel--inline"
           >
@@ -390,13 +406,26 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
             >
               <button
                 type="button"
-                className="onboarding__habit-row onboarding__habit-row--add"
+                className={[
+                  "onboarding__habit-row",
+                  "onboarding__habit-row--add",
+                  customOpen ? "onboarding__habit-row--active" : "",
+                  !customOpen ? "onboarding__habit-row--subline-open" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 onClick={() => {
                   setCustomOpen((value) => !value);
                   setLocalError(null);
                 }}
               >
-                + Своё занятие
+                <span className="onboarding__habit-row-copy">
+                  <span className="onboarding__habit-row-label">+ Своё занятие</span>
+                  <HabitRowHint
+                    text="Назови идею — подскажем, с чего начать"
+                    visible={!customOpen}
+                  />
+                </span>
               </button>
 
               <CollapsibleReveal

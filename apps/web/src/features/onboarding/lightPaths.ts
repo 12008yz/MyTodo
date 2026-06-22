@@ -118,6 +118,7 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     kind: "custom",
     label: "Силовая тренировка",
     hint: "Повторений в день",
+    description: "Упражнения под твой вес, рост и возраст",
     name: "Силовая тренировка",
     unit: "reps",
   },
@@ -127,6 +128,7 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     kind: "template",
     label: "Бег",
     hint: "Минут в день",
+    description: "Время и темп бега под твой уровень",
     templateId: "running",
   },
   {
@@ -135,6 +137,7 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     kind: "template",
     label: "Планка",
     hint: "Секунд в день",
+    description: "Длительность планки под вес и форму",
     templateId: "plank",
   },
   {
@@ -143,6 +146,7 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     kind: "custom",
     label: "Растяжка",
     hint: "Минут в день",
+    description: "Растяжка под твои цели и гибкость",
     name: "Растяжка",
     unit: "minutes",
   },
@@ -152,16 +156,18 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     kind: "custom",
     label: "Программирование",
     hint: "Минут в день",
+    description: "С чего начать код под твой уровень",
     name: "Программирование",
     unit: "minutes",
   },
   {
-    id: "creator-skill",
+    id: "creator-creative",
     pathId: "creator",
     kind: "custom",
-    label: "Изучение нового навыка",
+    label: "Творческий проект",
     hint: "Минут в день",
-    name: "Изучение нового навыка",
+    description: "Первый шаг в рисовании, музыке или дизайне",
+    name: "Творческий проект",
     unit: "minutes",
   },
   {
@@ -170,6 +176,7 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     kind: "custom_form",
     label: "+ Своё занятие",
     hint: "Blender, 3D, музыка, дизайн…",
+    description: "Назови идею — подскажем, с чего начать",
   },
   {
     id: "energy-walk",
@@ -408,6 +415,10 @@ export function isLightSetupComplete(habit: SelectedHabit): boolean {
   if (habit.practicesNow === undefined) return false;
   if (habit.practicesNow === false) return true;
   return isLightBaselineValid(habit.baseline);
+}
+
+export function keepCompleteLightHabits(habits: SelectedHabit[]): SelectedHabit[] {
+  return habits.filter(isLightSetupComplete);
 }
 
 export function validateLightHabits(habits: SelectedHabit[]): string | null {
