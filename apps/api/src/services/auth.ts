@@ -276,6 +276,8 @@ export class UserService {
     const updates: Partial<typeof users.$inferInsert> = {};
 
     if (patch.name !== undefined) updates.name = patch.name;
+    if (patch.age !== undefined) updates.age = patch.age;
+    if (patch.gender !== undefined) updates.gender = patch.gender;
     if (patch.weight_kg !== undefined) updates.weightKg = String(patch.weight_kg);
     if (patch.height_cm !== undefined) updates.heightCm = String(patch.height_cm);
     if (patch.free_time_min !== undefined) {

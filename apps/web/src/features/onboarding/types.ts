@@ -32,6 +32,8 @@ export type SelectedCustomHabit = {
 export type SelectedHabit = SelectedTemplateHabit | SelectedCustomHabit;
 
 export type BodyFormData = {
+  age: string;
+  gender: "male" | "female" | null;
   weightKg: string;
   heightCm: string;
   wakeTime: string;

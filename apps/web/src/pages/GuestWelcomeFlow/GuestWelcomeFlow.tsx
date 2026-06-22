@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import type { Gender } from "@mytodo/shared";
 import { AuthPanels, type AuthPanel } from "../../components/AuthPanels";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { WelcomeLayout } from "../../components/WelcomeLayout";
@@ -94,17 +93,15 @@ export function GuestWelcomeFlow() {
   );
 
   const handleRegister = useCallback(
-    async (data: {
-      email: string;
-      password: string;
-      name: string;
-      age: number;
-      gender: Gender;
-    }) => {
+    async (data: { email: string; password: string; name: string }) => {
       setError(null);
       setPending(true);
       try {
-        await register(data);
+        await register({
+          ...data,
+          age: 25,
+          gender: "male",
+        });
         afterAuth(false);
       } catch (err) {
         setError(

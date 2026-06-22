@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Gender } from "@mytodo/shared";
 import { getContentTransitionDurationMs } from "../../constants/transitions";
 import { LoginPage } from "../../pages/LoginPage/LoginPage";
 import { RegistrationPage } from "../../pages/RegisterPage/RegistrationPage";
@@ -18,13 +17,7 @@ type AuthPanelsProps = {
   activePanel: AuthPanel;
   onPanelChange: (panel: AuthPanel) => void;
   onLogin: (data: { email: string; password: string }) => Promise<void>;
-  onRegister: (data: {
-    email: string;
-    password: string;
-    name: string;
-    age: number;
-    gender: Gender;
-  }) => Promise<void>;
+  onRegister: (data: { email: string; password: string; name: string }) => Promise<void>;
   authError?: string | null;
   pending?: boolean;
 };

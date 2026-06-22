@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../../components/ContentPanels/ContentPanels.css";
 import { OnboardingLayout, type OnboardingTheme } from "../../components/OnboardingLayout";
 import {
+  GENDER_OPTIONS,
   HARSHNESS_OPTIONS,
   ONBOARDING_STEPS,
   SUBSCRIPTION_PLANS,
@@ -37,6 +38,35 @@ function parseNumber(value: string): number {
   return Number(value.replace(",", "."));
 }
 
+const FREE_TIME_SLIDER_MIN = 0;
+const FREE_TIME_SLIDER_MAX = 120;
+const FREE_TIME_MIN = 15;
+const FREE_TIME_STEP = 5;
+
+function validateBodyForm(body: BodyFormData): string | null {
+  const weight = parseNumber(body.weightKg);
+  const height = parseNumber(body.heightCm);
+  const age = parseNumber(body.age);
+
+  if (!Number.isFinite(weight) || weight <= 0 || weight > 500) {
+    return "Укажи вес от 1 до 500 кг";
+  }
+  if (!Number.isFinite(height) || !Number.isInteger(height) || height <= 0 || height > 300) {
+    return "Укажи рост от 1 до 300 см";
+  }
+  if (!Number.isFinite(age) || !Number.isInteger(age) || age < 10 || age > 120) {
+    return "Укажи возраст от 10 до 120 лет";
+  }
+  if (!body.gender) {
+    return "Выбери пол";
+  }
+  if (body.freeTimeMin < FREE_TIME_MIN) {
+    return "Минимум 15 минут свободного времени";
+  }
+
+  return null;
+}
+
 function validateHabits(habits: SelectedHabit[], side: "light" | "dark"): string | null {
   if (side === "light") {
     return validateLightHabits(habits);
@@ -46,6 +76,8 @@ function validateHabits(habits: SelectedHabit[], side: "light" | "dark"): string
 }
 
 const DEFAULT_BODY: BodyFormData = {
+  age: "",
+  gender: null,
   weightKg: "",
   heightCm: "",
   wakeTime: "07:00",
@@ -135,6 +167,14 @@ export function OnboardingPage() {
           ? "finale"
           : "default";
 
+  const commitFreeTimeSlider = useCallback(() => {
+    setBody((current) =>
+      current.freeTimeMin < FREE_TIME_MIN
+        ? { ...current, freeTimeMin: FREE_TIME_MIN }
+        : current,
+    );
+  }, []);
+
   const goToStepIndex = (index: number) => {
     const target = ONBOARDING_STEPS[index];
     if (!target) return;
@@ -166,31 +206,28 @@ export function OnboardingPage() {
   };
 
   const finishOnboarding = async () => {
+    const bodyValidation = validateBodyForm(body);
+    if (bodyValidation) {
+      setError(bodyValidation);
+      goToStepIndex(ONBOARDING_STEPS.indexOf("body"));
+      return;
+    }
+
     const weight = parseNumber(body.weightKg);
     const height = parseNumber(body.heightCm);
-
-    if (!Number.isFinite(weight) || weight <= 0 || weight > 500) {
-      setError("Укажи вес от 1 до 500 кг");
-      setStepIndex(ONBOARDING_STEPS.indexOf("body"));
-      return;
-    }
-    if (!Number.isFinite(height) || height <= 0 || height > 300) {
-      setError("Укажи рост от 1 до 300 см");
-      setStepIndex(ONBOARDING_STEPS.indexOf("body"));
-      return;
-    }
+    const age = parseNumber(body.age);
 
     const lightValidation = validateHabits(lightHabits, "light");
     if (lightValidation) {
       setError(lightValidation);
-      setStepIndex(ONBOARDING_STEPS.indexOf("light"));
+      goToStepIndex(ONBOARDING_STEPS.indexOf("light"));
       return;
     }
 
     const darkValidation = validateHabits(darkHabits, "dark");
     if (darkValidation) {
       setError(darkValidation);
-      setStepIndex(ONBOARDING_STEPS.indexOf("dark"));
+      goToStepIndex(ONBOARDING_STEPS.indexOf("dark"));
       return;
     }
 
@@ -201,6 +238,8 @@ export function OnboardingPage() {
 
     try {
       const profile = await apiUpdateMe({
+        age,
+        gender: body.gender!,
         weight_kg: weight,
         height_cm: height,
         wake_time: body.wakeTime,
@@ -280,14 +319,9 @@ export function OnboardingPage() {
       }
 
       case "body": {
-        const weight = parseNumber(body.weightKg);
-        const height = parseNumber(body.heightCm);
-        if (!Number.isFinite(weight) || weight <= 0 || weight > 500) {
-          setError("Укажи вес от 1 до 500 кг");
-          return;
-        }
-        if (!Number.isFinite(height) || height <= 0 || height > 300) {
-          setError("Укажи рост от 1 до 300 см");
+        const validation = validateBodyForm(body);
+        if (validation) {
+          setError(validation);
           return;
         }
         goNext();
@@ -373,7 +407,9 @@ export function OnboardingPage() {
           />
         );
 
-      case "body":
+      case "body": {
+        const isFreeTimeTooLow = body.freeTimeMin < FREE_TIME_MIN;
+
         return (
           <>
             <p className="onboarding__eyebrow">Шаг 3</p>
@@ -383,12 +419,15 @@ export function OnboardingPage() {
               а не под абстрактный идеал.
             </p>
             <div className="onboarding__field-grid">
-              <div className="onboarding__field-grid onboarding__field-grid--2">
+              <div className="onboarding__field-grid onboarding__field-grid--3">
                 <label className="onboarding__label">
                   Вес (кг)
                   <input
                     className="onboarding__input"
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
+                    enterKeyHint="done"
+                    autoComplete="off"
                     value={body.weightKg}
                     onChange={(e) => setBody((c) => ({ ...c, weightKg: e.target.value }))}
                   />
@@ -397,11 +436,50 @@ export function OnboardingPage() {
                   Рост (см)
                   <input
                     className="onboarding__input"
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    enterKeyHint="done"
+                    autoComplete="off"
                     value={body.heightCm}
                     onChange={(e) => setBody((c) => ({ ...c, heightCm: e.target.value }))}
                   />
                 </label>
+                <label className="onboarding__label">
+                  Возраст
+                  <input
+                    className="onboarding__input"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    enterKeyHint="done"
+                    autoComplete="off"
+                    value={body.age}
+                    onChange={(e) => setBody((c) => ({ ...c, age: e.target.value }))}
+                  />
+                </label>
+              </div>
+              <div>
+                <p className="onboarding__label">Пол</p>
+                <div className="onboarding__gender-options" role="radiogroup" aria-label="Пол">
+                  {GENDER_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={body.gender === option.value}
+                      className={[
+                        "onboarding__gender-option",
+                        body.gender === option.value ? "onboarding__gender-option--selected" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      onClick={() => setBody((c) => ({ ...c, gender: option.value }))}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="onboarding__time-fields">
                 <label className="onboarding__label" htmlFor="onboarding-wake-hour">
@@ -421,20 +499,49 @@ export function OnboardingPage() {
                   />
                 </label>
               </div>
-              <div>
+              <div className="onboarding__slider-field">
                 <p className="onboarding__label">Сколько свободного времени в день?</p>
-                <div className="onboarding__slider-value">{body.freeTimeMin} мин</div>
-                <input
-                  className="onboarding__slider"
-                  type="range"
-                  min={15}
-                  max={120}
-                  step={5}
-                  value={body.freeTimeMin}
-                  onChange={(e) =>
-                    setBody((c) => ({ ...c, freeTimeMin: Number(e.target.value) }))
-                  }
-                />
+                <div
+                  className={[
+                    "onboarding__slider-value",
+                    isFreeTimeTooLow ? "onboarding__slider-value--invalid" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  {body.freeTimeMin} мин
+                </div>
+                <div
+                  className={[
+                    "onboarding__slider-wrap",
+                    isFreeTimeTooLow ? "onboarding__slider-wrap--invalid" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  <input
+                    className="onboarding__slider"
+                    type="range"
+                    min={FREE_TIME_SLIDER_MIN}
+                    max={FREE_TIME_SLIDER_MAX}
+                    step={FREE_TIME_STEP}
+                    value={body.freeTimeMin}
+                    aria-invalid={isFreeTimeTooLow}
+                    aria-valuemin={FREE_TIME_MIN}
+                    aria-valuemax={FREE_TIME_SLIDER_MAX}
+                    onChange={(e) =>
+                      setBody((c) => ({ ...c, freeTimeMin: Number(e.target.value) }))
+                    }
+                    onMouseUp={commitFreeTimeSlider}
+                    onTouchEnd={commitFreeTimeSlider}
+                    onKeyUp={commitFreeTimeSlider}
+                  />
+                </div>
+                {isFreeTimeTooLow ? (
+                  <p className="onboarding__slider-warning" role="alert">
+                    Минимум 15 минут — меньше выбрать нельзя
+                  </p>
+                ) : null}
                 <div className="onboarding__slider-labels">
                   <span>15 мин</span>
                   <span>2 часа</span>
@@ -448,6 +555,7 @@ export function OnboardingPage() {
             </p>
           </>
         );
+      }
 
       case "harshness":
         return (

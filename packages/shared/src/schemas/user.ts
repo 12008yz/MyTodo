@@ -46,6 +46,8 @@ export type AuthResponse = z.infer<typeof authResponseSchema>;
 export const patchMeRequestSchema = z
   .object({
     name: z.string().min(1).max(255).optional(),
+    age: z.number().int().min(10).max(120).optional(),
+    gender: z.enum(GENDERS).optional(),
     weight_kg: z.number().positive().max(500).optional(),
     height_cm: z.number().positive().max(300).optional(),
     free_time_min: z.number().int().positive().max(24 * 60).optional(),

@@ -1,4 +1,4 @@
-import { HABIT_TEMPLATES, type HabitTemplateId } from "@mytodo/shared";
+import { type Gender, HABIT_TEMPLATES, type HabitTemplateId } from "@mytodo/shared";
 import type { OnboardingStepId } from "./types";
 
 export const ONBOARDING_STEPS: OnboardingStepId[] = [
@@ -9,6 +9,11 @@ export const ONBOARDING_STEPS: OnboardingStepId[] = [
   "harshness",
   "finale",
 ];
+
+export const GENDER_OPTIONS = [
+  { value: "male", label: "Мужской" },
+  { value: "female", label: "Женский" },
+] as const satisfies ReadonlyArray<{ value: Gender; label: string }>;
 
 export const DARK_TEMPLATE_IDS = [
   "smoking",

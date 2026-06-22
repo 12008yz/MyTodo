@@ -185,6 +185,8 @@ function createHabitResponse(
 function applyPatchMe(user: UserProfile, patch: PatchMeRequest): UserProfile {
   const next: UserProfile = { ...user, ...patch };
   const onboardingFieldsProvided =
+    patch.age !== undefined ||
+    patch.gender !== undefined ||
     patch.weight_kg !== undefined ||
     patch.height_cm !== undefined ||
     patch.free_time_min !== undefined ||

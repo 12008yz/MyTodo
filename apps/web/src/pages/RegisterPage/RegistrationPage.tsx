@@ -1,6 +1,5 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
-import type { Gender } from "@mytodo/shared";
 import type { PanelVisualState } from "../../components/AuthPanels";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { getDemoPrefillCredentials } from "../../lib/demo-api";
@@ -12,13 +11,7 @@ type RegistrationPageProps = {
   panelState?: PanelVisualState;
   exitActive?: boolean;
   onLogin?: () => void;
-  onSubmit?: (data: {
-    email: string;
-    password: string;
-    name: string;
-    age: number;
-    gender: Gender;
-  }) => Promise<void>;
+  onSubmit?: (data: { email: string; password: string; name: string }) => Promise<void>;
   error?: string | null;
   pending?: boolean;
 };
@@ -42,7 +35,7 @@ export function RegistrationPage({
     event.preventDefault();
     if (!interactive) return;
     const name = email.split("@")[0]?.trim() || "User";
-    void onSubmit?.({ email, password, name, age: 25, gender: "other" as Gender });
+    void onSubmit?.({ email, password, name });
   };
 
   const panelClassName = [
