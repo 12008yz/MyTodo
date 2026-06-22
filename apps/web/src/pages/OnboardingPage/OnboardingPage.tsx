@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../components/ContentPanels/ContentPanels.css";
 import { OnboardingLayout, type OnboardingTheme } from "../../components/OnboardingLayout";
@@ -32,6 +32,7 @@ import {
 import { LightPathStep, type LightPathStepHandle } from "./LightPathStep";
 import { DarkPathStep } from "./DarkPathStep";
 import { TimeInput24 } from "./TimeInput24";
+import { afterKeyboardDismiss } from "../../utils/scrollPanelIntoView";
 import "./OnboardingPage.css";
 
 function parseNumber(value: string): number {
@@ -40,6 +41,17 @@ function parseNumber(value: string): number {
 
 function limitDigitInput(value: string, maxDigits: number): string {
   return value.replace(/\D/g, "").slice(0, maxDigits);
+}
+
+function dismissInputKeyboard(event: KeyboardEvent<HTMLInputElement>) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    event.currentTarget.blur();
+  }
+}
+
+function isBodyInputFocused(): boolean {
+  return document.activeElement instanceof HTMLInputElement;
 }
 
 const FREE_TIME_SLIDER_MIN = 0;
@@ -323,12 +335,21 @@ export function OnboardingPage() {
       }
 
       case "body": {
-        const validation = validateBodyForm(body);
-        if (validation) {
-          setError(validation);
+        const advanceBody = () => {
+          const validation = validateBodyForm(body);
+          if (validation) {
+            setError(validation);
+            return;
+          }
+          goNext();
+        };
+
+        if (isBodyInputFocused()) {
+          afterKeyboardDismiss(advanceBody);
           return;
         }
-        goNext();
+
+        advanceBody();
         return;
       }
 
@@ -438,6 +459,7 @@ export function OnboardingPage() {
                     onChange={(e) =>
                       setBody((c) => ({ ...c, weightKg: limitDigitInput(e.target.value, 3) }))
                     }
+                    onKeyDown={dismissInputKeyboard}
                   />
                 </label>
                 <label className="onboarding__label">
@@ -454,6 +476,7 @@ export function OnboardingPage() {
                     onChange={(e) =>
                       setBody((c) => ({ ...c, heightCm: limitDigitInput(e.target.value, 3) }))
                     }
+                    onKeyDown={dismissInputKeyboard}
                   />
                 </label>
                 <label className="onboarding__label">
@@ -470,6 +493,7 @@ export function OnboardingPage() {
                     onChange={(e) =>
                       setBody((c) => ({ ...c, age: limitDigitInput(e.target.value, 2) }))
                     }
+                    onKeyDown={dismissInputKeyboard}
                   />
                 </label>
               </div>
