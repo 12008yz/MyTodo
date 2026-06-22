@@ -411,14 +411,14 @@ export function OnboardingPage() {
         const isFreeTimeTooLow = body.freeTimeMin < FREE_TIME_MIN;
 
         return (
-          <>
+          <div className="onboarding__body-step">
             <p className="onboarding__eyebrow">Шаг 3</p>
             <h1 className="onboarding__title">Давай заложим фундамент</h1>
             <p className="onboarding__subtitle">
               Ответь на несколько вопросов, чтобы я подстроил нагрузку под твой реальный день,
               а не под абстрактный идеал.
             </p>
-            <div className="onboarding__field-grid">
+            <div className="onboarding__field-grid onboarding__body-form">
               <div className="onboarding__field-grid onboarding__field-grid--3">
                 <label className="onboarding__label">
                   Вес (кг)
@@ -553,7 +553,7 @@ export function OnboardingPage() {
               <br />
               Это реально?
             </p>
-          </>
+          </div>
         );
       }
 
