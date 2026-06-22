@@ -130,7 +130,6 @@ export function OnboardingPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [lightPathIndex, setLightPathIndex] = useState(0);
-  const [lightPathActionModifiers, setLightPathActionModifiers] = useState("");
   const [isLightPathTransitioning, setIsLightPathTransitioning] = useState(false);
 
   const step = ONBOARDING_STEPS[stepIndex] ?? "welcome";
@@ -152,13 +151,9 @@ export function OnboardingPage() {
     if (index >= 0) setLightPathIndex(index);
   }, []);
 
-  const handleLightPathActionsChange = useCallback(
-    (state: { modifiers: string; isTransitioning: boolean }) => {
-      setLightPathActionModifiers(state.modifiers);
-      setIsLightPathTransitioning(state.isTransitioning);
-    },
-    [],
-  );
+  const handlePathTransitionChange = useCallback((isTransitioning: boolean) => {
+    setIsLightPathTransitioning(isTransitioning);
+  }, []);
 
   const {
     wrapperRef: stepPanelsRef,
@@ -167,7 +162,6 @@ export function OnboardingPage() {
     getPanelClassName: getStepPanelClassName,
     getTransitionModifiers: getStepActionModifiers,
     getPanelState: getStepPanelState,
-    switchPhase: stepSwitchPhase,
     isTransitioning: isStepTransitioning,
   } = useContentSwitchTransition<OnboardingStepId>({
     activeKey: step,
@@ -175,10 +169,9 @@ export function OnboardingPage() {
     disabled: pending,
   });
 
-  const actionTransitionModifiers =
-    step === "light" && stepSwitchPhase === "idle"
-      ? lightPathActionModifiers
-      : getStepActionModifiers("onboarding__actions", { includeEnter: false });
+  const actionTransitionModifiers = getStepActionModifiers("onboarding__actions", {
+    includeEnter: false,
+  });
 
   const actionsClassName = [
     "onboarding__actions",
@@ -193,7 +186,6 @@ export function OnboardingPage() {
 
   useEffect(() => {
     if (step === "light") return;
-    setLightPathActionModifiers("");
     setIsLightPathTransitioning(false);
   }, [step]);
 
@@ -489,7 +481,7 @@ export function OnboardingPage() {
             activePathId={activeLightPathId}
             onActivePathChange={handleActivePathChange}
             onChange={setLightHabits}
-            onActionsClassNameChange={handleLightPathActionsChange}
+            onPathTransitionChange={handlePathTransitionChange}
           />
         );
 

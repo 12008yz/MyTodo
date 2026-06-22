@@ -275,19 +275,12 @@
   opacity: 0;
 }
 
-.onboarding__actions--enter-pending {
-  opacity: 0.01;
-  pointer-events: none;
-  transition: none;
-}
-
 .onboarding__actions--locked {
   pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .onboarding__actions--exiting,
-  .onboarding__actions--enter-pending {
+  .onboarding__actions--exiting {
     transition: none;
   }
 }

@@ -26,10 +26,7 @@ type LightPathStepProps = {
   activePathId: LightPathId;
   onActivePathChange: (pathId: LightPathId) => void;
   onChange: (habits: SelectedHabit[]) => void;
-  onActionsClassNameChange?: (state: {
-    modifiers: string;
-    isTransitioning: boolean;
-  }) => void;
+  onPathTransitionChange?: (isTransitioning: boolean) => void;
 };
 
 export type LightPathStepHandle = {
@@ -185,7 +182,7 @@ function scrollExpandedHabitIntoView(element: HTMLElement | null) {
 
 export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>(
   function LightPathStep(
-    { lightHabits, activePathId, onActivePathChange, onChange, onActionsClassNameChange },
+    { lightHabits, activePathId, onActivePathChange, onChange, onPathTransitionChange },
     ref,
   ) {
     const [setupActivityId, setSetupActivityId] = useState<string | null>(null);
@@ -221,21 +218,15 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
       switchTo: switchPath,
       getPanelClassName: getPathPanelClassName,
       getPanelState: getPathPanelState,
-      getTransitionModifiers: getPathActionModifiers,
       isTransitioning: isPathTransitioning,
     } = useContentSwitchTransition<LightPathId>({
       activeKey: activePathId,
       onActiveKeyChange: handlePathChange,
     });
 
-    const pathActionModifiers = getPathActionModifiers("onboarding__actions");
-
     useEffect(() => {
-      onActionsClassNameChange?.({
-        modifiers: pathActionModifiers,
-        isTransitioning: isPathTransitioning,
-      });
-    }, [isPathTransitioning, onActionsClassNameChange, pathActionModifiers]);
+      onPathTransitionChange?.(isPathTransitioning);
+    }, [isPathTransitioning, onPathTransitionChange]);
 
     useImperativeHandle(
       ref,
