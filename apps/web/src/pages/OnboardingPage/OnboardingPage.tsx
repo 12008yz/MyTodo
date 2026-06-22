@@ -557,31 +557,31 @@ export function OnboardingPage() {
                   );
                 })}
               </div>
-
-              <div className={actionsClassName}>
-                <button
-                  type="submit"
-                  className="onboarding__btn"
-                  disabled={pending}
-                  aria-disabled={pending || isInteractionLocked}
-                >
-                  {primaryLabel}
-                </button>
-                {stepIndex > 0 ? (
-                  <button
-                    type="button"
-                    className="onboarding__back"
-                    onClick={goBack}
-                    disabled={pending}
-                    aria-disabled={pending || isInteractionLocked}
-                  >
-                    Назад
-                  </button>
-                ) : null}
-              </div>
             </div>
+          </div>
 
-            {error ? <p className="onboarding__error">{error}</p> : null}
+          {error ? <p className="onboarding__error">{error}</p> : null}
+
+          <div className={actionsClassName}>
+            <button
+              type="submit"
+              className="onboarding__btn"
+              disabled={pending}
+              aria-disabled={pending || isInteractionLocked}
+            >
+              {primaryLabel}
+            </button>
+            {stepIndex > 0 ? (
+              <button
+                type="button"
+                className="onboarding__back"
+                onClick={goBack}
+                disabled={pending}
+                aria-disabled={pending || isInteractionLocked}
+              >
+                Назад
+              </button>
+            ) : null}
           </div>
         </form>
       </div>

@@ -31,7 +31,6 @@
 
 .onboarding--welcome .onboarding__step-surface {
   flex: 0 1 auto;
-  gap: 1.25rem;
 }
 
 .onboarding__panel {
@@ -145,6 +144,7 @@
 
 .onboarding--welcome .onboarding__form--welcome {
   justify-content: center;
+  gap: 1.25rem;
   padding-top: clamp(0.75rem, 5vh, 2rem);
   padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
 }
@@ -1186,60 +1186,23 @@ button.onboarding__card--habit {
   flex-direction: column;
   gap: 0.75rem;
   padding-top: 0.5rem;
+  padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
   border-top: 1px solid rgba(95, 51, 225, 0.08);
   background: inherit;
 }
 
-/* Light path — actions follow content instead of sticking to viewport bottom */
-.onboarding-shell--light .onboarding__form {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+.onboarding-shell--dark .onboarding__actions {
+  border-top-color: rgba(255, 255, 255, 0.08);
 }
 
-.onboarding-shell--light .onboarding__scroll {
-  flex: 0 1 auto;
-  overflow-y: visible;
-  padding-top: clamp(0.875rem, 5vh, 1.5rem);
-  padding-bottom: 0.25rem;
+.onboarding__error + .onboarding__actions {
+  padding-top: 0.25rem;
+  border-top: none;
 }
 
-.onboarding-shell--light .onboarding__actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-  padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
-  border-top-color: rgba(34, 197, 94, 0.12);
-  background: #fafafa;
-}
-
-/* Dark step — scroll layout + cohesive dark UI (not white cards on black) */
-.onboarding-shell--dark .onboarding__form {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.onboarding-shell--dark .onboarding__scroll {
-  flex: 0 1 auto;
-  overflow-y: visible;
-  padding-top: clamp(0.875rem, 5vh, 1.5rem);
-  padding-bottom: 0.25rem;
-}
-
+/* Dark step — cohesive dark UI (not white cards on black) */
 .onboarding-shell--dark .onboarding__section-label {
   color: rgba(245, 243, 255, 0.42);
-}
-
-.onboarding-shell--dark .onboarding__actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-  padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
-  border-top-color: rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(15, 10, 20, 0) 0%, #0f0a14 40%);
 }
 
 .onboarding--dark-step .onboarding__habit-row,
@@ -1309,7 +1272,7 @@ button.onboarding__card--habit {
   border: none;
   border-radius: 0.875rem;
   background: linear-gradient(135deg, #5f33e1 0%, #7c52ff 100%);
-  box-shadow: 0 12px 28px rgba(95, 51, 225, 0.28);
+  box-shadow: 0 4px 14px rgba(95, 51, 225, 0.22);
   font: inherit;
   font-size: 1rem;
   font-weight: 600;
@@ -1319,6 +1282,7 @@ button.onboarding__card--habit {
 
 .onboarding-shell--dark .onboarding__btn {
   background: linear-gradient(135deg, #ff6b6b 0%, #5f33e1 100%);
+  box-shadow: none;
 }
 
 .onboarding__btn:disabled {
