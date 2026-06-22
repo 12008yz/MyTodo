@@ -486,13 +486,8 @@
 }
 
 .onboarding__habit-row--subline-open {
-  align-items: flex-start;
   padding-top: 0.625rem;
   padding-bottom: 0.625rem;
-}
-
-.onboarding__habit-row--subline-open .onboarding__option-radio {
-  margin-top: 0.125rem;
 }
 
 .onboarding__habit-row:hover,
