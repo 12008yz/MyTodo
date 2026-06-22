@@ -1,8 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  computeDailyBudgetMin,
-} from "@mytodo/shared";
 import "../../components/ContentPanels/ContentPanels.css";
 import { OnboardingLayout, type OnboardingTheme } from "../../components/OnboardingLayout";
 import {
@@ -33,6 +30,7 @@ import {
 } from "../../lib/api";
 import { LightPathStep, type LightPathStepHandle } from "./LightPathStep";
 import { DarkPathStep } from "./DarkPathStep";
+import { TimeInput24 } from "./TimeInput24";
 import "./OnboardingPage.css";
 
 function parseNumber(value: string): number {
@@ -76,7 +74,6 @@ export function OnboardingPage() {
   const activeLightPathId = LIGHT_PATHS[lightPathIndex]?.id ?? "mindfulness";
   const isLastLightPath = lightPathIndex >= LIGHT_PATHS.length - 1;
   const progress = Math.round((stepIndex / (ONBOARDING_STEPS.length - 1)) * 100);
-  const dailyBudget = useMemo(() => computeDailyBudgetMin(body.freeTimeMin), [body.freeTimeMin]);
 
   const handleStepChange = useCallback((nextStep: OnboardingStepId) => {
     const nextIndex = ONBOARDING_STEPS.indexOf(nextStep);
@@ -406,23 +403,21 @@ export function OnboardingPage() {
                   />
                 </label>
               </div>
-              <div className="onboarding__field-grid onboarding__field-grid--2">
-                <label className="onboarding__label">
+              <div className="onboarding__time-fields">
+                <label className="onboarding__label" htmlFor="onboarding-wake-hour">
                   Подъём
-                  <input
-                    className="onboarding__input"
-                    type="time"
+                  <TimeInput24
+                    id="onboarding-wake"
                     value={body.wakeTime}
-                    onChange={(e) => setBody((c) => ({ ...c, wakeTime: e.target.value }))}
+                    onChange={(wakeTime) => setBody((c) => ({ ...c, wakeTime }))}
                   />
                 </label>
-                <label className="onboarding__label">
+                <label className="onboarding__label" htmlFor="onboarding-sleep-hour">
                   Сон
-                  <input
-                    className="onboarding__input"
-                    type="time"
+                  <TimeInput24
+                    id="onboarding-sleep"
                     value={body.sleepTime}
-                    onChange={(e) => setBody((c) => ({ ...c, sleepTime: e.target.value }))}
+                    onChange={(sleepTime) => setBody((c) => ({ ...c, sleepTime }))}
                   />
                 </label>
               </div>
@@ -433,7 +428,7 @@ export function OnboardingPage() {
                   className="onboarding__slider"
                   type="range"
                   min={15}
-                  max={180}
+                  max={120}
                   step={5}
                   value={body.freeTimeMin}
                   onChange={(e) =>
@@ -442,12 +437,14 @@ export function OnboardingPage() {
                 />
                 <div className="onboarding__slider-labels">
                   <span>15 мин</span>
-                  <span>3 часа</span>
+                  <span>2 часа</span>
                 </div>
               </div>
             </div>
             <p className="onboarding__preview">
-              Твой план на день займёт около {dailyBudget} минут. Это реально?
+              Ты готов выделять {body.freeTimeMin} мин в день на привычки.
+              <br />
+              Это реально?
             </p>
           </>
         );
