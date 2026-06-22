@@ -548,11 +548,6 @@ export function OnboardingPage() {
                 </div>
               </div>
             </div>
-            <p className="onboarding__preview">
-              Ты готов выделять {body.freeTimeMin} мин в день на привычки.
-              <br />
-              Это реально?
-            </p>
           </div>
         );
       }
