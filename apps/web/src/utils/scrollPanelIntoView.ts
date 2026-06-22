@@ -1,5 +1,4 @@
 const SCROLL_PADDING_PX = 12;
-const STICKY_BOTTOM_INSET_PX = 88;
 
 export function getScrollParent(element: HTMLElement): HTMLElement | null {
   let parent = element.parentElement;
@@ -20,6 +19,62 @@ function clampScrollTop(scrollParent: HTMLElement, value: number): number {
   return Math.max(0, Math.min(value, max));
 }
 
+function getVisibleViewportBottom(scrollParent: HTMLElement): number {
+  const parentRect = scrollParent.getBoundingClientRect();
+  const viewport = window.visualViewport;
+
+  if (viewport) {
+    const viewportBottom = viewport.offsetTop + viewport.height;
+    return Math.min(parentRect.bottom, viewportBottom) - SCROLL_PADDING_PX;
+  }
+
+  return parentRect.bottom - SCROLL_PADDING_PX;
+}
+
+function getVisibleViewportTop(scrollParent: HTMLElement): number {
+  const parentRect = scrollParent.getBoundingClientRect();
+  const viewport = window.visualViewport;
+
+  if (viewport) {
+    const viewportTop = viewport.offsetTop;
+    return Math.max(parentRect.top, viewportTop) + SCROLL_PADDING_PX;
+  }
+
+  return parentRect.top + SCROLL_PADDING_PX;
+}
+
+function getScrollTarget(element: HTMLElement): HTMLElement {
+  return (
+    element.querySelector<HTMLElement>("input, textarea, select") ??
+    element.querySelector<HTMLElement>(".collapsible-reveal") ??
+    element.querySelector<HTMLElement>(".onboarding__setup-block") ??
+    element
+  );
+}
+
+function scrollElementIntoScrollParent(element: HTMLElement): void {
+  const scrollParent = getScrollParent(element);
+  if (!scrollParent) return;
+
+  const target = getScrollTarget(element);
+  const saved = scrollParent.scrollTop;
+  const targetRect = target.getBoundingClientRect();
+  const visibleBottom = getVisibleViewportBottom(scrollParent);
+  const visibleTop = getVisibleViewportTop(scrollParent);
+
+  let delta = 0;
+  if (targetRect.bottom > visibleBottom) {
+    delta = targetRect.bottom - visibleBottom;
+  }
+  if (targetRect.top < visibleTop) {
+    delta += targetRect.top - visibleTop;
+  }
+
+  if (Math.abs(delta) >= 1) {
+    scrollParent.scrollTop = clampScrollTop(scrollParent, saved + delta);
+  }
+}
+
 /** How far scrollTop must change once the panel is fully open. */
 export function measureScrollDeltaForPanel(
   scrollParent: HTMLElement,
@@ -32,9 +87,8 @@ export function measureScrollDeltaForPanel(
   panelOuter.style.height = `${panelHeightPx}px`;
   void panelOuter.offsetHeight;
 
-  const parentRect = scrollParent.getBoundingClientRect();
   const panelBottom = panelOuter.getBoundingClientRect().bottom;
-  const visibleBottom = parentRect.bottom - STICKY_BOTTOM_INSET_PX - SCROLL_PADDING_PX;
+  const visibleBottom = getVisibleViewportBottom(scrollParent);
 
   let delta = 0;
   if (panelBottom > visibleBottom) {
@@ -42,7 +96,7 @@ export function measureScrollDeltaForPanel(
   }
 
   const panelTop = panelOuter.getBoundingClientRect().top;
-  const visibleTop = parentRect.top + SCROLL_PADDING_PX;
+  const visibleTop = getVisibleViewportTop(scrollParent);
   if (panelTop < visibleTop) {
     delta += panelTop - visibleTop;
   }
@@ -63,20 +117,29 @@ export function scrollPanelIntoView(element: HTMLElement | null) {
   if (!element) return;
 
   requestAnimationFrame(() => {
-    const scrollParent = getScrollParent(element);
-    const panel = element.querySelector<HTMLElement>(".collapsible-reveal") ?? element;
-    if (!scrollParent) return;
-
-    const saved = scrollParent.scrollTop;
-    const parentRect = scrollParent.getBoundingClientRect();
-    const panelBottom = panel.getBoundingClientRect().bottom;
-    const visibleBottom = parentRect.bottom - STICKY_BOTTOM_INSET_PX - SCROLL_PADDING_PX;
-
-    if (panelBottom > visibleBottom) {
-      scrollParent.scrollTop = clampScrollTop(
-        scrollParent,
-        saved + (panelBottom - visibleBottom),
-      );
-    }
+    scrollElementIntoScrollParent(element);
   });
+}
+
+/** Re-scroll while the mobile keyboard opens (visualViewport resize). */
+export function scrollPanelIntoViewAfterKeyboard(element: HTMLElement | null) {
+  if (!element) return;
+
+  const run = () => scrollElementIntoScrollParent(element);
+
+  requestAnimationFrame(run);
+  window.setTimeout(run, 120);
+  window.setTimeout(run, 320);
+
+  const viewport = window.visualViewport;
+  if (!viewport) return;
+
+  const onViewportChange = () => run();
+  viewport.addEventListener("resize", onViewportChange);
+  viewport.addEventListener("scroll", onViewportChange);
+
+  window.setTimeout(() => {
+    viewport.removeEventListener("resize", onViewportChange);
+    viewport.removeEventListener("scroll", onViewportChange);
+  }, 900);
 }

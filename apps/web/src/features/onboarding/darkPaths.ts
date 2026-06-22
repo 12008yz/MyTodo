@@ -13,7 +13,7 @@ export const DARK_ENEMIES: DarkEnemy[] = [
   {
     templateId: "smoking",
     unitHint: "сиг./день",
-    description: "Снижаем по 1 сигарете в день — до отказа",
+    description: "Снижаем постепенно - до полного отказа",
   },
   {
     templateId: "sugar",
@@ -56,6 +56,31 @@ function parseNumber(value: string): number {
 export function isDarkBaselineValid(baseline: string): boolean {
   const parsed = parseNumber(baseline);
   return Number.isFinite(parsed) && parsed >= 0 && baseline.trim() !== "";
+}
+
+export function countBaselineDigits(value: string): number {
+  return value.replace(/\D/g, "").length;
+}
+
+export function getDarkBaselineAutoCloseDigits(templateId: HabitTemplateId): number {
+  return templateId === "social_media" ? 3 : 2;
+}
+
+export function shouldAutoCloseDarkBaseline(
+  templateId: HabitTemplateId,
+  value: string,
+): boolean {
+  if (!isDarkBaselineValid(value)) return false;
+  return countBaselineDigits(value) >= getDarkBaselineAutoCloseDigits(templateId);
+}
+
+export function shouldCommitDarkBaselineOnBlur(
+  templateId: HabitTemplateId,
+  value: string,
+): boolean {
+  if (!isDarkBaselineValid(value)) return false;
+  if (shouldAutoCloseDarkBaseline(templateId, value)) return true;
+  return countBaselineDigits(value) < getDarkBaselineAutoCloseDigits(templateId);
 }
 
 export function findDarkHabit(

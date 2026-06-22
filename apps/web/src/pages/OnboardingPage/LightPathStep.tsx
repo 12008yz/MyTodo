@@ -21,7 +21,7 @@ import {
 import type { SelectedCustomHabit, SelectedHabit } from "../../features/onboarding/types";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import { HabitRowHint, HabitRowMeta } from "../../components/HabitRowAnimated/HabitRowAnimated";
-import { scrollPanelIntoView } from "../../utils/scrollPanelIntoView";
+import { scrollPanelIntoViewAfterKeyboard } from "../../utils/scrollPanelIntoView";
 import { useContentSwitchTransition } from "../../hooks/useContentSwitchTransition";
 import "../../components/ContentPanels/ContentPanels.css";
 
@@ -192,7 +192,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
       if (isLightBaselineValid(activeSetupHabit.baseline)) return;
 
       const frame = requestAnimationFrame(() => {
-        scrollPanelIntoView(activeSetupRef.current);
+        scrollPanelIntoViewAfterKeyboard(activeSetupRef.current);
       });
 
       return () => cancelAnimationFrame(frame);
