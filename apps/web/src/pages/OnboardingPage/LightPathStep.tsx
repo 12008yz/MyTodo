@@ -134,7 +134,6 @@ function HabitSetupPanel({
             type="number"
             min={0}
             autoFocus
-            placeholder="0"
             value={draft}
             onChange={(e) => {
               const value = e.target.value;

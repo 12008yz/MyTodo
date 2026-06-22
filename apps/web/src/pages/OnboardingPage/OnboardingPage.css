@@ -553,6 +553,17 @@
   box-shadow: none;
 }
 
+.onboarding__input--setup[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.onboarding__input--setup[type="number"]::-webkit-outer-spin-button,
+.onboarding__input--setup[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .onboarding__setup-submit {
   height: 3.125rem;
   margin-top: 0.125rem;
