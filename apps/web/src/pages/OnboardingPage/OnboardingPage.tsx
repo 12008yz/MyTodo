@@ -2,19 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { useNavigate } from "react-router-dom";
 import {
   computeDailyBudgetMin,
-  HABIT_TEMPLATES,
-  type HabitTemplateId,
 } from "@mytodo/shared";
 import "../../components/ContentPanels/ContentPanels.css";
 import { OnboardingLayout, type OnboardingTheme } from "../../components/OnboardingLayout";
 import {
-  DARK_ENEMY_META,
-  DARK_TEMPLATE_IDS,
-  getBaselineLabel,
   HARSHNESS_OPTIONS,
   ONBOARDING_STEPS,
   SUBSCRIPTION_PLANS,
 } from "../../features/onboarding/constants";
+import { validateDarkHabits } from "../../features/onboarding/darkPaths";
 import {
   LIGHT_PATHS,
   LIGHT_PATH_TAB_LABELS,
@@ -25,7 +21,6 @@ import type {
   LightPathId,
   OnboardingStepId,
   SelectedHabit,
-  SelectedTemplateHabit,
 } from "../../features/onboarding/types";
 import { toCreateHabitRequest } from "../../features/onboarding/types";
 import { useAuth } from "../../features/auth/AuthProvider";
@@ -37,40 +32,11 @@ import {
   updateMe as apiUpdateMe,
 } from "../../lib/api";
 import { LightPathStep, type LightPathStepHandle } from "./LightPathStep";
+import { DarkPathStep } from "./DarkPathStep";
 import "./OnboardingPage.css";
 
 function parseNumber(value: string): number {
   return Number(value.replace(",", "."));
-}
-
-function isTemplateSelected(habits: SelectedHabit[], templateId: HabitTemplateId): boolean {
-  return habits.some((h) => h.kind === "template" && h.templateId === templateId);
-}
-
-function getTemplateHabit(habits: SelectedHabit[], templateId: HabitTemplateId) {
-  return habits.find(
-    (h): h is SelectedTemplateHabit => h.kind === "template" && h.templateId === templateId,
-  );
-}
-
-function toggleDarkTemplate(
-  habits: SelectedHabit[],
-  templateId: HabitTemplateId,
-): SelectedHabit[] {
-  if (isTemplateSelected(habits, templateId)) {
-    return habits.filter((h) => !(h.kind === "template" && h.templateId === templateId));
-  }
-  return [...habits, { kind: "template", templateId, baseline: "" }];
-}
-
-function updateTemplateBaseline(
-  habits: SelectedHabit[],
-  templateId: HabitTemplateId,
-  baseline: string,
-): SelectedHabit[] {
-  return habits.map((h) =>
-    h.kind === "template" && h.templateId === templateId ? { ...h, baseline } : h,
-  );
 }
 
 function validateHabits(habits: SelectedHabit[], side: "light" | "dark"): string | null {
@@ -78,33 +44,7 @@ function validateHabits(habits: SelectedHabit[], side: "light" | "dark"): string
     return validateLightHabits(habits);
   }
 
-  if (habits.length === 0) {
-    return "Выбери хотя бы одну привычку для контроля";
-  }
-
-  for (const habit of habits) {
-    if (habit.kind === "template" && habit.templateId === "nail_biting") continue;
-    const baseline = parseNumber(habit.baseline);
-    if (!Number.isFinite(baseline) || baseline < 0) {
-      const name =
-        habit.kind === "template"
-          ? HABIT_TEMPLATES[habit.templateId].name
-          : habit.name;
-      return `Укажи текущий уровень для «${name}»`;
-    }
-  }
-
-  return null;
-}
-
-function HabitCheck({ selected }: { selected: boolean }) {
-  return (
-    <span className="onboarding__card-check">
-      <span className={["onboarding__check", selected ? "onboarding__check--on" : ""].filter(Boolean).join(" ")}>
-        {selected ? "✓" : null}
-      </span>
-    </span>
-  );
+  return validateDarkHabits(habits);
 }
 
 const DEFAULT_BODY: BodyFormData = {
@@ -378,65 +318,6 @@ export function OnboardingPage() {
     return "Далее";
   })();
 
-  const renderDarkEnemyCards = (
-    habits: SelectedHabit[],
-    onChange: (next: SelectedHabit[]) => void,
-  ) => (
-    <div className="onboarding__cards onboarding__cards--enemies">
-      {DARK_TEMPLATE_IDS.map((templateId) => {
-        const template = HABIT_TEMPLATES[templateId];
-        const meta = DARK_ENEMY_META[templateId];
-        const selected = getTemplateHabit(habits, templateId);
-        const isAbstinence = templateId === "nail_biting";
-
-        return (
-          <div key={templateId}>
-            <button
-              type="button"
-              className={[
-                "onboarding__card",
-                "onboarding__card--enemy",
-                selected ? "onboarding__card--selected" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              onClick={() => onChange(toggleDarkTemplate(habits, templateId))}
-            >
-              <span className="onboarding__enemy-emoji">{meta.emoji}</span>
-              <span className="onboarding__enemy-body">
-                <span className="onboarding__enemy-name">{template.name}</span>
-                <span className="onboarding__enemy-hint">
-                  {isAbstinence ? "Режим полного отказа" : meta.unitHint}
-                </span>
-              </span>
-              {selected && isAbstinence ? (
-                <span className="onboarding__enemy-badge">❌</span>
-              ) : (
-                <HabitCheck selected={Boolean(selected)} />
-              )}
-            </button>
-            {selected && !isAbstinence ? (
-              <div className="onboarding__enemy-baseline">
-                <label className="onboarding__label">
-                  {getBaselineLabel(templateId)}
-                  <input
-                    className="onboarding__input"
-                    type="number"
-                    min={0}
-                    value={selected.baseline}
-                    onChange={(e) =>
-                      onChange(updateTemplateBaseline(habits, templateId, e.target.value))
-                    }
-                  />
-                </label>
-              </div>
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
-  );
-
   const renderStepContent = (stepId: OnboardingStepId) => {
     switch (stepId) {
       case "welcome":
@@ -487,18 +368,11 @@ export function OnboardingPage() {
 
       case "dark":
         return (
-          <>
-            <p className="onboarding__eyebrow">Шаг 2 · Тёмная сторона 🌑</p>
-            <h1 className="onboarding__title">Что тянет тебя на дно?</h1>
-            <p className="onboarding__subtitle">
-              Пришло время отрубить хвосты. Выбери то, с чем ты хочешь покончить навсегда.
-              Я буду рядом, но рубить придётся тебе.
-            </p>
-            <p className="onboarding__counter">
-              Светлых: {lightHabits.length} · тёмных: {darkHabits.length}
-            </p>
-            {renderDarkEnemyCards(darkHabits, setDarkHabits)}
-          </>
+          <DarkPathStep
+            darkHabits={darkHabits}
+            onChange={setDarkHabits}
+            isPathTransitioning={isStepTransitioning}
+          />
         );
 
       case "body":
@@ -646,7 +520,15 @@ export function OnboardingPage() {
 
   return (
     <OnboardingLayout progress={progress} theme={theme}>
-      <div className={["onboarding", step === "welcome" ? "onboarding--welcome" : ""].filter(Boolean).join(" ")}>
+      <div
+        className={[
+          "onboarding",
+          step === "welcome" ? "onboarding--welcome" : "",
+          step === "dark" ? "onboarding--dark-step" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <form
           className={["onboarding__form", step === "welcome" ? "onboarding__form--welcome" : ""]
             .filter(Boolean)

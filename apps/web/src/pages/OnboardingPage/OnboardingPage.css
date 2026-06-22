@@ -672,6 +672,7 @@
   border-color: rgba(36, 37, 44, 0.1);
   border-radius: 0.625rem;
   background: #ffffff;
+  color: #24252c;
   box-shadow: none;
 }
 
@@ -1213,8 +1214,93 @@ button.onboarding__card--habit {
   background: #fafafa;
 }
 
+/* Dark step — scroll layout + cohesive dark UI (not white cards on black) */
+.onboarding-shell--dark .onboarding__form {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.onboarding-shell--dark .onboarding__scroll {
+  flex: 0 1 auto;
+  overflow-y: visible;
+  padding-top: clamp(0.875rem, 5vh, 1.5rem);
+  padding-bottom: 0.25rem;
+}
+
+.onboarding-shell--dark .onboarding__section-label {
+  color: rgba(245, 243, 255, 0.42);
+}
+
 .onboarding-shell--dark .onboarding__actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
   border-top-color: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(15, 10, 20, 0) 0%, #0f0a14 40%);
+}
+
+.onboarding--dark-step .onboarding__habit-row,
+.onboarding--dark-step .onboarding__option-row {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f5f3ff;
+}
+
+.onboarding--dark-step .onboarding__habit-row:hover,
+.onboarding--dark-step .onboarding__option-row:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.onboarding--dark-step .onboarding__habit-row--selected,
+.onboarding--dark-step .onboarding__habit-row--active {
+  border-color: rgba(255, 107, 107, 0.42);
+  background: rgba(255, 107, 107, 0.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+}
+
+.onboarding--dark-step .onboarding__option-radio {
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.onboarding--dark-step .onboarding__option-radio--on {
+  border-color: #ff6b6b;
+  background: #ff6b6b;
+}
+
+.onboarding--dark-step .onboarding__habit-row-hint {
+  color: rgba(245, 243, 255, 0.5);
+}
+
+.onboarding--dark-step .onboarding__habit-row-meta {
+  color: rgba(255, 200, 200, 0.88);
+}
+
+.onboarding--dark-step .onboarding__setup-panel--inline {
+  border-color: rgba(255, 107, 107, 0.18);
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.onboarding--dark-step .onboarding__setup-label {
+  color: rgba(245, 243, 255, 0.82);
+}
+
+.onboarding--dark-step .onboarding__setup-hint {
+  color: rgba(245, 243, 255, 0.48);
+}
+
+.onboarding--dark-step .onboarding__input--setup,
+.onboarding--dark-step .onboarding__select.onboarding__input--setup {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  color: #ffffff;
+}
+
+.onboarding--dark-step .onboarding__input--setup::placeholder {
+  color: rgba(245, 243, 255, 0.35);
 }
 
 .onboarding__btn {
@@ -1240,88 +1326,6 @@ button.onboarding__card--habit {
   cursor: not-allowed;
   box-shadow: none;
   transform: none;
-}
-
-/* Dark side — «враги» */
-
-.onboarding__cards--enemies {
-  gap: 0.625rem;
-}
-
-.onboarding__card--enemy {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.625rem;
-  min-height: 3rem;
-  padding: 0.625rem 0.75rem;
-  border-color: rgba(217, 45, 32, 0.18);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.onboarding-shell--dark .onboarding__card--enemy {
-  border-color: rgba(255, 107, 107, 0.22);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.onboarding__card--enemy:hover {
-  border-color: rgba(217, 45, 32, 0.35);
-  transform: translateY(-1px);
-}
-
-.onboarding__card--enemy.onboarding__card--selected {
-  border-color: #ff6b6b;
-  box-shadow: 0 8px 24px rgba(217, 45, 32, 0.22);
-  background:
-    linear-gradient(135deg, rgba(217, 45, 32, 0.14) 0%, rgba(255, 255, 255, 0.08) 100%);
-}
-
-.onboarding__enemy-emoji {
-  font-size: 1.375rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.onboarding__enemy-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  flex: 1;
-  min-width: 0;
-}
-
-.onboarding__enemy-name {
-  font-size: 0.9375rem;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.onboarding__enemy-hint {
-  font-size: 0.75rem;
-  color: rgba(245, 243, 255, 0.62);
-}
-
-.onboarding-shell:not(.onboarding-shell--dark) .onboarding__enemy-hint {
-  color: #9b97a8;
-}
-
-.onboarding__enemy-baseline {
-  margin-top: 0.625rem;
-  width: 100%;
-}
-
-.onboarding__enemy-badge {
-  flex-shrink: 0;
-  padding: 0.25rem 0.5rem;
-  border-radius: 999px;
-  background: rgba(255, 107, 107, 0.16);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #fecaca;
-}
-
-.onboarding-shell:not(.onboarding-shell--dark) .onboarding__enemy-badge {
-  background: rgba(217, 45, 32, 0.1);
-  color: #b91c1c;
 }
 
 .onboarding__back {

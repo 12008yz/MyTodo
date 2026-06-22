@@ -18,17 +18,6 @@ export const DARK_TEMPLATE_IDS = [
   "nail_biting",
 ] as const satisfies readonly HabitTemplateId[];
 
-export const DARK_ENEMY_META: Record<
-  (typeof DARK_TEMPLATE_IDS)[number],
-  { emoji: string; unitHint: string }
-> = {
-  smoking: { emoji: "🚬", unitHint: "сиг./день" },
-  sugar: { emoji: "🍬", unitHint: "лож./день" },
-  sweets: { emoji: "🍭", unitHint: "шт./день" },
-  social_media: { emoji: "📱", unitHint: "мин/день" },
-  nail_biting: { emoji: "✋", unitHint: "отказ" },
-};
-
 export const HARSHNESS_OPTIONS = [
   {
     level: 1 as const,
@@ -83,7 +72,7 @@ export function getDarkSpeech(habitName: string, baseline: number, unit: string)
     return `Хорошо. Ты выбрал «${habitName}». Мы включим режим отказа и будем держать дисциплину каждый день. Тёмная сторона берёт тебя под контроль.`;
   }
 
-  return `Хорошо. Ты ${habitName.toLowerCase()} ${baseline} ${unit} в день. Мы будем снижать по 1 в день. Через ${baseline} дней ты будешь свободен. Тёмная сторона берёт тебя под контроль.`;
+  return `«${habitName}»: ${baseline} ${unit} в день. Снижаем по 1 в день — через ${baseline} ${baseline === 1 ? "день" : baseline < 5 ? "дня" : "дней"} будешь свободен. Тёмная сторона берёт тебя под контроль.`;
 }
 
 export function unitLabel(unit: string): string {

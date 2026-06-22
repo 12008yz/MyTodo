@@ -180,6 +180,8 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     const [customBaseline, setCustomBaseline] = useState("");
     const [localError, setLocalError] = useState<string | null>(null);
     const activeSetupRef = useRef<HTMLDivElement | null>(null);
+    const lightHabitsRef = useRef(lightHabits);
+    lightHabitsRef.current = lightHabits;
     const activeSetupHabit = setupActivityId
       ? findHabitByActivityId(lightHabits, setupActivityId)
       : undefined;
@@ -246,9 +248,10 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     };
 
     const discardIncompleteHabit = (activityId: string) => {
-      const habit = findHabitByActivityId(lightHabits, activityId);
+      const habits = lightHabitsRef.current;
+      const habit = findHabitByActivityId(habits, activityId);
       if (!habit || isLightSetupComplete(habit)) return;
-      onChange(lightHabits.filter((item) => item.activityId !== activityId));
+      onChange(habits.filter((item) => item.activityId !== activityId));
     };
 
     const handleRemoveCustom = (activityId: string) => {
