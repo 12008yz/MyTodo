@@ -289,6 +289,9 @@
 .onboarding__field-grid {
   display: grid;
   gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .onboarding__field-grid--2 {
@@ -339,11 +342,15 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .onboarding__gender-option {
   box-sizing: border-box;
   min-height: 2.75rem;
+  min-width: 0;
   padding: 0.5rem 0.625rem;
   border: 1.5px solid rgba(95, 51, 225, 0.22);
   border-radius: 0.875rem;
@@ -355,16 +362,18 @@
   color: #24252c;
   text-align: center;
   cursor: pointer;
+  outline: none;
   transition:
     border-color 0.2s ease,
     background-color 0.2s ease,
     box-shadow 0.2s ease;
 }
 
-.onboarding__gender-option--selected {
+.onboarding__gender-option--selected,
+.onboarding__gender-option:focus-visible {
   border-color: #5f33e1;
   background: rgba(95, 51, 225, 0.08);
-  box-shadow: 0 0 0 3px rgba(95, 51, 225, 0.12);
+  box-shadow: inset 0 0 0 1.5px rgba(95, 51, 225, 0.32);
 }
 
 .onboarding-shell--dark .onboarding__gender-option {
@@ -373,10 +382,11 @@
   color: #ffffff;
 }
 
-.onboarding-shell--dark .onboarding__gender-option--selected {
+.onboarding-shell--dark .onboarding__gender-option--selected,
+.onboarding-shell--dark .onboarding__gender-option:focus-visible {
   border-color: rgba(255, 255, 255, 0.55);
   background: rgba(255, 255, 255, 0.14);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.22);
 }
 
 .onboarding__label {
@@ -415,10 +425,12 @@
 }
 
 .onboarding__input:focus,
-.onboarding__select:focus {
+.onboarding__input:focus-visible,
+.onboarding__select:focus,
+.onboarding__select:focus-visible {
   outline: none;
   border-color: #5f33e1;
-  box-shadow: 0 0 0 3px rgba(95, 51, 225, 0.12);
+  box-shadow: inset 0 0 0 1.5px rgba(95, 51, 225, 0.32);
 }
 
 .onboarding__time-fields {
@@ -456,7 +468,7 @@
 
 .onboarding__time-field:focus-within {
   border-color: #5f33e1;
-  box-shadow: 0 0 0 3px rgba(95, 51, 225, 0.12);
+  box-shadow: inset 0 0 0 1.5px rgba(95, 51, 225, 0.32);
 }
 
 .onboarding-shell--dark .onboarding__time-field {
@@ -1338,15 +1350,11 @@ button.onboarding__card--habit {
 }
 
 .onboarding__slider:focus-visible::-webkit-slider-thumb {
-  box-shadow:
-    0 2px 10px rgba(95, 51, 225, 0.28),
-    0 0 0 3px rgba(95, 51, 225, 0.2);
+  box-shadow: 0 2px 8px rgba(95, 51, 225, 0.32);
 }
 
 .onboarding__slider:focus-visible::-moz-range-thumb {
-  box-shadow:
-    0 2px 10px rgba(95, 51, 225, 0.28),
-    0 0 0 3px rgba(95, 51, 225, 0.2);
+  box-shadow: 0 2px 8px rgba(95, 51, 225, 0.32);
 }
 
 .onboarding__slider-wrap--invalid .onboarding__slider {
