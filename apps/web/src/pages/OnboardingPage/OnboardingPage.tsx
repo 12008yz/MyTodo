@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../components/ContentPanels/ContentPanels.css";
 import { OnboardingLayout, type OnboardingTheme } from "../../components/OnboardingLayout";
@@ -32,7 +32,10 @@ import {
 import { LightPathStep, type LightPathStepHandle } from "./LightPathStep";
 import { DarkPathStep } from "./DarkPathStep";
 import { TimeInput24 } from "./TimeInput24";
-import { afterKeyboardDismiss } from "../../utils/scrollPanelIntoView";
+import {
+  afterKeyboardDismiss,
+  clearKeyboardScrollPadding,
+} from "../../utils/scrollPanelIntoView";
 import "./OnboardingPage.css";
 
 function parseNumber(value: string): number {
@@ -43,11 +46,51 @@ function limitDigitInput(value: string, maxDigits: number): string {
   return value.replace(/\D/g, "").slice(0, maxDigits);
 }
 
-function dismissInputKeyboard(event: KeyboardEvent<HTMLInputElement>) {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    event.currentTarget.blur();
+function countDigits(value: string): number {
+  return value.replace(/\D/g, "").length;
+}
+
+function isWeightFieldValid(value: string): boolean {
+  const weight = parseNumber(value);
+  return Number.isFinite(weight) && weight > 0 && weight <= 500;
+}
+
+function isHeightFieldValid(value: string): boolean {
+  const height = parseNumber(value);
+  return Number.isFinite(height) && Number.isInteger(height) && height > 0 && height <= 300;
+}
+
+function isAgeFieldValid(value: string): boolean {
+  const age = parseNumber(value);
+  return Number.isFinite(age) && Number.isInteger(age) && age >= 10 && age <= 99;
+}
+
+function shouldAutoCloseMetricField(value: string, isValid: (candidate: string) => boolean): boolean {
+  if (!isValid(value)) return false;
+  const digits = countDigits(value);
+  if (digits >= 3) return true;
+  if (digits >= 2) {
+    const amount = parseNumber(value);
+    return amount >= 10 && amount < 100;
   }
+  return false;
+}
+
+function shouldAutoCloseAgeField(value: string): boolean {
+  return isAgeFieldValid(value) && countDigits(value) >= 2;
+}
+
+function shouldDismissMetricFieldOnBlur(
+  value: string,
+  isValid: (candidate: string) => boolean,
+): boolean {
+  if (!isValid(value)) return false;
+  if (shouldAutoCloseMetricField(value, isValid)) return true;
+  return countDigits(value) < 3;
+}
+
+function shouldDismissAgeFieldOnBlur(value: string): boolean {
+  return isAgeFieldValid(value);
 }
 
 function isBodyInputFocused(): boolean {
@@ -106,6 +149,17 @@ export function OnboardingPage() {
   const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
   const lightPathStepRef = useRef<LightPathStepHandle>(null);
+  const bodyDismissPendingRef = useRef(false);
+
+  const dismissBodyKeyboard = useCallback((ready: boolean) => {
+    if (!ready || bodyDismissPendingRef.current) return;
+    bodyDismissPendingRef.current = true;
+
+    afterKeyboardDismiss(() => {
+      clearKeyboardScrollPadding(scrollRef.current);
+      bodyDismissPendingRef.current = false;
+    });
+  }, []);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [lightHabits, setLightHabits] = useState<SelectedHabit[]>([]);
@@ -456,10 +510,25 @@ export function OnboardingPage() {
                     autoComplete="off"
                     maxLength={3}
                     value={body.weightKg}
-                    onChange={(e) =>
-                      setBody((c) => ({ ...c, weightKg: limitDigitInput(e.target.value, 3) }))
-                    }
-                    onKeyDown={dismissInputKeyboard}
+                    onChange={(e) => {
+                      const value = limitDigitInput(e.target.value, 3);
+                      setBody((c) => ({ ...c, weightKg: value }));
+                      dismissBodyKeyboard(
+                        shouldAutoCloseMetricField(value, isWeightFieldValid),
+                      );
+                    }}
+                    onBlur={() => {
+                      if (bodyDismissPendingRef.current) return;
+                      dismissBodyKeyboard(
+                        shouldDismissMetricFieldOnBlur(body.weightKg, isWeightFieldValid),
+                      );
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && isWeightFieldValid(e.currentTarget.value)) {
+                        e.preventDefault();
+                        dismissBodyKeyboard(true);
+                      }
+                    }}
                   />
                 </label>
                 <label className="onboarding__label">
@@ -473,10 +542,25 @@ export function OnboardingPage() {
                     autoComplete="off"
                     maxLength={3}
                     value={body.heightCm}
-                    onChange={(e) =>
-                      setBody((c) => ({ ...c, heightCm: limitDigitInput(e.target.value, 3) }))
-                    }
-                    onKeyDown={dismissInputKeyboard}
+                    onChange={(e) => {
+                      const value = limitDigitInput(e.target.value, 3);
+                      setBody((c) => ({ ...c, heightCm: value }));
+                      dismissBodyKeyboard(
+                        shouldAutoCloseMetricField(value, isHeightFieldValid),
+                      );
+                    }}
+                    onBlur={() => {
+                      if (bodyDismissPendingRef.current) return;
+                      dismissBodyKeyboard(
+                        shouldDismissMetricFieldOnBlur(body.heightCm, isHeightFieldValid),
+                      );
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && isHeightFieldValid(e.currentTarget.value)) {
+                        e.preventDefault();
+                        dismissBodyKeyboard(true);
+                      }
+                    }}
                   />
                 </label>
                 <label className="onboarding__label">
@@ -490,10 +574,21 @@ export function OnboardingPage() {
                     autoComplete="off"
                     maxLength={2}
                     value={body.age}
-                    onChange={(e) =>
-                      setBody((c) => ({ ...c, age: limitDigitInput(e.target.value, 2) }))
-                    }
-                    onKeyDown={dismissInputKeyboard}
+                    onChange={(e) => {
+                      const value = limitDigitInput(e.target.value, 2);
+                      setBody((c) => ({ ...c, age: value }));
+                      dismissBodyKeyboard(shouldAutoCloseAgeField(value));
+                    }}
+                    onBlur={() => {
+                      if (bodyDismissPendingRef.current) return;
+                      dismissBodyKeyboard(shouldDismissAgeFieldOnBlur(body.age));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && isAgeFieldValid(e.currentTarget.value)) {
+                        e.preventDefault();
+                        dismissBodyKeyboard(true);
+                      }
+                    }}
                   />
                 </label>
               </div>
@@ -512,7 +607,12 @@ export function OnboardingPage() {
                       ]
                         .filter(Boolean)
                         .join(" ")}
-                      onClick={() => setBody((c) => ({ ...c, gender: option.value }))}
+                      onClick={() => {
+                        if (isBodyInputFocused()) {
+                          dismissBodyKeyboard(true);
+                        }
+                        setBody((c) => ({ ...c, gender: option.value }));
+                      }}
                     >
                       {option.label}
                     </button>
