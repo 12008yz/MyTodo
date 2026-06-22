@@ -372,6 +372,7 @@ export function OnboardingPage() {
             darkHabits={darkHabits}
             onChange={setDarkHabits}
             isPathTransitioning={isStepTransitioning}
+            scrollContainerRef={scrollRef}
           />
         );
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { HABIT_TEMPLATES } from "@mytodo/shared";
 import {
   confirmDarkAbstinence,
@@ -19,11 +19,17 @@ import {
 import type { SelectedHabit, SelectedTemplateHabit } from "../../features/onboarding/types";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import { HabitRowHint, HabitRowMeta } from "../../components/HabitRowAnimated/HabitRowAnimated";
-import { scrollPanelIntoViewAfterKeyboard } from "../../utils/scrollPanelIntoView";
+import {
+  clearKeyboardScrollPadding,
+  focusSetupInputAfterPanelOpen,
+  scrollPanelIntoViewAfterKeyboard,
+} from "../../utils/scrollPanelIntoView";
+
 type DarkPathStepProps = {
   darkHabits: SelectedHabit[];
   onChange: (habits: SelectedHabit[]) => void;
   isPathTransitioning?: boolean;
+  scrollContainerRef?: RefObject<HTMLDivElement | null>;
 };
 
 function OptionRadio({ selected }: { selected: boolean }) {
@@ -51,10 +57,18 @@ type DarkSetupPanelProps = {
   darkHabits: SelectedHabit[];
   onChange: (habits: SelectedHabit[]) => void;
   onPanelScroll?: () => void;
+  onInputBlur?: () => void;
 };
 
-function DarkSetupPanel({ habit, darkHabits, onChange, onPanelScroll }: DarkSetupPanelProps) {
+function DarkSetupPanel({
+  habit,
+  darkHabits,
+  onChange,
+  onPanelScroll,
+  onInputBlur,
+}: DarkSetupPanelProps) {
   const [draft, setDraft] = useState(habit.baseline);
+  const inputRef = useRef<HTMLInputElement>(null);
   const templateId = habit.templateId;
   const abstinence = isDarkAbstinence(templateId);
   const showAmountStep = !abstinence && !isDarkBaselineValid(habit.baseline);
@@ -64,6 +78,11 @@ function DarkSetupPanel({ habit, darkHabits, onChange, onPanelScroll }: DarkSetu
       setDraft(habit.baseline);
     }
   }, [showAmountStep, templateId, habit.baseline]);
+
+  useEffect(() => {
+    if (!showAmountStep) return;
+    return focusSetupInputAfterPanelOpen(() => inputRef.current, onPanelScroll);
+  }, [showAmountStep, templateId, onPanelScroll]);
 
   const commitBaseline = (value: string) => {
     if (!isDarkBaselineValid(value)) return;
@@ -97,12 +116,13 @@ function DarkSetupPanel({ habit, darkHabits, onChange, onPanelScroll }: DarkSetu
         <label className="onboarding__setup-field">
           <span className="onboarding__setup-label">{getDarkBaselineQuestion(templateId)}</span>
           <input
+            ref={inputRef}
             className="onboarding__input onboarding__input--setup"
             type="number"
             min={0}
-            autoFocus
+            inputMode="numeric"
+            enterKeyHint="done"
             value={draft}
-            onFocus={onPanelScroll}
             onChange={(e) => {
               const value = e.target.value;
               setDraft(value);
@@ -111,6 +131,7 @@ function DarkSetupPanel({ habit, darkHabits, onChange, onPanelScroll }: DarkSetu
               }
             }}
             onBlur={() => {
+              onInputBlur?.();
               if (shouldCommitDarkBaselineOnBlur(templateId, draft)) {
                 commitBaseline(draft);
               }
@@ -137,26 +158,25 @@ export function DarkPathStep({
   darkHabits,
   onChange,
   isPathTransitioning = false,
+  scrollContainerRef,
 }: DarkPathStepProps) {
   const [setupTemplateId, setSetupTemplateId] = useState<string | null>(null);
   const activeSetupRef = useRef<HTMLDivElement | null>(null);
   const darkHabitsRef = useRef(darkHabits);
   darkHabitsRef.current = darkHabits;
 
-  const activeSetupHabit = setupTemplateId
-    ? findDarkHabit(darkHabits, setupTemplateId as SelectedTemplateHabit["templateId"])
-    : undefined;
-
   const scrollActivePanel = useCallback(() => {
-    scrollPanelIntoViewAfterKeyboard(activeSetupRef.current);
-  }, []);
+    scrollPanelIntoViewAfterKeyboard(activeSetupRef.current, scrollContainerRef?.current);
+  }, [scrollContainerRef]);
+
+  const clearScrollPadding = useCallback(() => {
+    clearKeyboardScrollPadding(scrollContainerRef?.current);
+  }, [scrollContainerRef]);
 
   useEffect(() => {
-    if (!setupTemplateId || !activeSetupHabit) return;
-    if (isDarkSetupComplete(activeSetupHabit)) return;
-
-    scrollPanelIntoViewAfterKeyboard(activeSetupRef.current);
-  }, [activeSetupHabit, setupTemplateId]);
+    if (setupTemplateId) return;
+    clearScrollPadding();
+  }, [clearScrollPadding, setupTemplateId]);
 
   const handleSelectEnemy = (templateId: SelectedTemplateHabit["templateId"]) => {
     const existing = findDarkHabit(darkHabits, templateId);
@@ -164,6 +184,7 @@ export function DarkPathStep({
     if (existing) {
       onChange(toggleDarkEnemy(darkHabits, templateId));
       setSetupTemplateId(null);
+      clearScrollPadding();
       return;
     }
 
@@ -176,6 +197,7 @@ export function DarkPathStep({
     const habit = findDarkHabit(habits, templateId as SelectedTemplateHabit["templateId"]);
     if (!habit || isDarkSetupComplete(habit)) return;
     onChange(habits.filter((item) => !(item.kind === "template" && item.templateId === templateId)));
+    clearScrollPadding();
   };
 
   return (
@@ -236,7 +258,6 @@ export function DarkPathStep({
                 open={showPanel}
                 immediate={isPathTransitioning}
                 scrollAnchorRef={activeSetupRef}
-                onExpanded={scrollActivePanel}
                 onCollapsed={() => {
                   setSetupTemplateId((current) =>
                     current === enemy.templateId ? null : current,
@@ -251,6 +272,7 @@ export function DarkPathStep({
                     darkHabits={darkHabits}
                     onChange={onChange}
                     onPanelScroll={scrollActivePanel}
+                    onInputBlur={clearScrollPadding}
                   />
                 ) : null}
               </CollapsibleReveal>

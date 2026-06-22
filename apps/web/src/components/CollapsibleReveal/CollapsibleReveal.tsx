@@ -105,13 +105,8 @@ function animateOpen(
       if (scrollParent) {
         const targetScroll = startScroll + scrollDelta;
         scrollParent.scrollTop = targetScroll;
-        const lockedScroll = scrollParent.scrollTop;
         outer.style.height = "auto";
-        scrollParent.scrollTop = lockedScroll;
-        applyScrollDelta(
-          scrollParent,
-          measureScrollDeltaForPanel(scrollParent, outer, outer.offsetHeight),
-        );
+        scrollParent.scrollTop = targetScroll;
       } else {
         outer.style.height = "auto";
       }
