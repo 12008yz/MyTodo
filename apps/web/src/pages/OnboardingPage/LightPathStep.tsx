@@ -18,6 +18,7 @@ import {
   type LightPathId,
 } from "../../features/onboarding/lightPaths";
 import type { SelectedCustomHabit, SelectedHabit } from "../../features/onboarding/types";
+import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import { useContentSwitchTransition } from "../../hooks/useContentSwitchTransition";
 import "../../components/ContentPanels/ContentPanels.css";
 
@@ -66,7 +67,6 @@ type HabitSetupPanelProps = {
   habit: SelectedHabit;
   lightHabits: SelectedHabit[];
   onChange: (habits: SelectedHabit[]) => void;
-  onComplete: () => void;
 };
 
 function HabitSetupPanel({
@@ -74,7 +74,6 @@ function HabitSetupPanel({
   habit,
   lightHabits,
   onChange,
-  onComplete,
 }: HabitSetupPanelProps) {
   const [draft, setDraft] = useState(habit.baseline);
   const showPracticesStep = habit.practicesNow === undefined;
@@ -90,7 +89,6 @@ function HabitSetupPanel({
   const commitBaseline = (value: string) => {
     if (!isLightBaselineValid(value)) return;
     onChange(updateLightBaseline(lightHabits, activityId, value));
-    onComplete();
   };
 
   if (showPracticesStep) {
@@ -111,7 +109,6 @@ function HabitSetupPanel({
             className="onboarding__option-row"
             onClick={() => {
               onChange(setLightPracticesNow(lightHabits, activityId, false));
-              onComplete();
             }}
           >
             <OptionRadio selected={false} />
@@ -171,11 +168,9 @@ function scrollExpandedHabitIntoView(element: HTMLElement | null) {
   if (!element) return;
 
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      element.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+    element.scrollIntoView({
+      behavior: "auto",
+      block: "nearest",
     });
   });
 }
@@ -193,14 +188,10 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     const [customBaseline, setCustomBaseline] = useState("");
     const [localError, setLocalError] = useState<string | null>(null);
     const activeSetupRef = useRef<HTMLDivElement | null>(null);
-    const activeSetupHabit = setupActivityId
-      ? findHabitByActivityId(lightHabits, setupActivityId)
-      : undefined;
 
-    useEffect(() => {
-      if (!setupActivityId && !customOpen) return;
+    const handlePanelExpanded = useCallback(() => {
       scrollExpandedHabitIntoView(activeSetupRef.current);
-    }, [setupActivityId, customOpen, activeSetupHabit?.practicesNow, customPracticesNow]);
+    }, []);
 
     const handlePathChange = useCallback(
       (pathId: LightPathId) => {
@@ -304,7 +295,9 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     const renderHabitItem = (activity: LightActivity, onClick: () => void) => {
       const selected = findHabitByActivityId(lightHabits, activity.id);
       const complete = selected ? isLightSetupComplete(selected) : false;
-      const showPanel = setupActivityId === activity.id && selected && !complete;
+      const isSetupTarget = setupActivityId === activity.id && selected;
+      const showPanel = isSetupTarget && !complete;
+      const setupSettled = setupActivityId !== activity.id;
 
       return (
         <div key={activity.id} className="onboarding__habit-item">
@@ -313,7 +306,9 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
             className={[
               "onboarding__habit-row",
               selected ? "onboarding__habit-row--selected" : "",
-              showPanel ? "onboarding__habit-row--active" : "",
+              setupActivityId === activity.id && selected
+                ? "onboarding__habit-row--active"
+                : "",
             ]
               .filter(Boolean)
               .join(" ")}
@@ -322,29 +317,35 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
             <OptionRadio selected={Boolean(selected)} />
             <span className="onboarding__habit-row-copy">
               <span className="onboarding__habit-row-label">{activity.label}</span>
-              {activity.kind !== "custom_form" && activity.description && !(complete && selected) ? (
+              {activity.kind !== "custom_form" && activity.description && !(complete && selected && setupSettled) ? (
                 <span className="onboarding__habit-row-hint">{activity.description}</span>
               ) : null}
             </span>
-            {complete && selected ? (
+            {complete && selected && setupSettled ? (
               <span className="onboarding__habit-row-meta">{getLightHabitSummary(selected)}</span>
             ) : null}
           </button>
 
-          {showPanel && selected ? (
-            <div
-              ref={activeSetupRef}
-              className="onboarding__setup-panel onboarding__setup-panel--inline"
-            >
-              <HabitSetupPanel
-                activityId={activity.id}
-                habit={selected}
-                lightHabits={lightHabits}
-                onChange={onChange}
-                onComplete={() => setSetupActivityId(null)}
-              />
-            </div>
-          ) : null}
+          <CollapsibleReveal
+            open={showPanel}
+            immediate={isPathTransitioning}
+            onExpanded={handlePanelExpanded}
+            onCollapsed={() => {
+              setSetupActivityId((current) => (current === activity.id ? null : current));
+            }}
+            contentClassName="onboarding__setup-panel onboarding__setup-panel--inline"
+          >
+            {isSetupTarget ? (
+              <div ref={showPanel ? activeSetupRef : undefined}>
+                <HabitSetupPanel
+                  activityId={activity.id}
+                  habit={selected}
+                  lightHabits={lightHabits}
+                  onChange={onChange}
+                />
+              </div>
+            ) : null}
+          </CollapsibleReveal>
         </div>
       );
     };
@@ -390,11 +391,13 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
                 + Своё занятие
               </button>
 
-              {customOpen ? (
-                <div
-                  ref={activeSetupRef}
-                  className="onboarding__setup-panel onboarding__setup-panel--inline"
-                >
+              <CollapsibleReveal
+                open={customOpen}
+                immediate={isPathTransitioning}
+                onExpanded={handlePanelExpanded}
+                contentClassName="onboarding__setup-panel onboarding__setup-panel--inline"
+              >
+                <div ref={customOpen ? activeSetupRef : undefined}>
                   <div className="onboarding__setup-block">
                     <label className="onboarding__setup-field">
                       <span className="onboarding__setup-label">Название</span>
@@ -472,7 +475,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
                     </button>
                   </div>
                 </div>
-              ) : null}
+              </CollapsibleReveal>
             </div>
           ) : null}
         </div>
@@ -509,7 +512,13 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
                 .filter(Boolean)
                 .join(" ")}
               disabled={isPathTransitioning}
-              onClick={() => switchPath(path.id)}
+              onClick={() => {
+                if (path.id === activePathId) return;
+                setCustomOpen(false);
+                setSetupActivityId(null);
+                setLocalError(null);
+                switchPath(path.id);
+              }}
             >
               {LIGHT_PATH_TAB_LABELS[path.id]}
             </button>

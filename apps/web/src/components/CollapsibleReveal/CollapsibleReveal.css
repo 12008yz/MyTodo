@@ -1,0 +1,24 @@
+.collapsible-reveal {
+  overflow: hidden;
+  width: 100%;
+  height: 0;
+  pointer-events: none;
+}
+
+.collapsible-reveal--open {
+  pointer-events: auto;
+}
+
+.collapsible-reveal__inner {
+  padding-top: 0.3125rem;
+}
+
+.collapsible-reveal__content {
+  min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collapsible-reveal {
+    transition: none;
+  }
+}

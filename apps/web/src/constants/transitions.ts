@@ -17,6 +17,8 @@ export const ICON_TRANSITION_MS =
   (FLOAT_ITEM_COUNT - 1) * ICON_ITEM_STAGGER_MS + ICON_ITEM_DURATION_MS
 
 export const CONTENT_TRANSITION_DURATION_MS = 350
+export const COLLAPSE_TRANSITION_DURATION_MS = 420
+export const COLLAPSE_TRANSITION_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)'
 
 export function getContentTransitionDurationMs(): number {
   const root =
@@ -36,6 +38,26 @@ export function getContentTransitionDurationMs(): number {
   }
 
   return CONTENT_TRANSITION_DURATION_MS
+}
+
+export function getCollapseTransitionDurationMs(): number {
+  const root =
+    document.querySelector('.onboarding-shell') ?? document.querySelector('.welcome')
+  const raw = root
+    ? getComputedStyle(root).getPropertyValue('--collapse-transition-duration').trim()
+    : ''
+
+  if (raw.endsWith('ms')) {
+    const parsed = Number.parseFloat(raw)
+    return Number.isFinite(parsed) ? parsed : COLLAPSE_TRANSITION_DURATION_MS
+  }
+
+  if (raw.endsWith('s')) {
+    const parsed = Number.parseFloat(raw)
+    return Number.isFinite(parsed) ? parsed * 1000 : COLLAPSE_TRANSITION_DURATION_MS
+  }
+
+  return COLLAPSE_TRANSITION_DURATION_MS
 }
 
 export type IconTransition = 'idle' | 'exit-up' | 'enter-from-bottom'

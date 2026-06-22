@@ -437,7 +437,7 @@
 .onboarding__habit-item {
   display: flex;
   flex-direction: column;
-  gap: 0.3125rem;
+  gap: 0;
   width: 100%;
 }
 
