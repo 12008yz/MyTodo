@@ -421,9 +421,9 @@ export function OnboardingPage() {
               <div className="onboarding__navigator-head">
                 <div className="onboarding__navigator-avatar" aria-hidden="true">
                   <img
-                    src="/loginAndRegister/blue-stopwatch-pink-arrow.png"
-                    width={34}
-                    height={42}
+                    src="/iconsApp/clock.png"
+                    width={52}
+                    height={52}
                     decoding="async"
                     alt=""
                   />
