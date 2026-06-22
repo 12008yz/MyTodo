@@ -324,6 +324,21 @@
   margin-bottom: 0.5rem;
 }
 
+.onboarding__step-hero {
+  display: flex;
+  justify-content: center;
+  margin: 0.125rem 0 0.75rem;
+}
+
+.onboarding__step-hero img {
+  display: block;
+  width: 8.75rem;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  background: transparent;
+}
+
 .onboarding__section-label {
   margin: 0.5rem 0 0.375rem;
   font-size: 0.625rem;

@@ -5,7 +5,6 @@ export type { LightPathId } from "./types";
 
 export type LightPath = {
   id: LightPathId;
-  emoji: string;
   title: string;
   powers: string;
   description: string;
@@ -14,28 +13,24 @@ export type LightPath = {
 export const LIGHT_PATHS: LightPath[] = [
   {
     id: "mindfulness",
-    emoji: "🧘",
     title: "Путь Осознанности",
     powers: "фокус и гармония",
     description: "Для тех, кто хочет ясности и внутреннего покоя.",
   },
   {
     id: "strength",
-    emoji: "💪",
     title: "Путь Силы",
     powers: "мощь и дисциплина",
     description: "Для тех, кто хочет стать крепче и увереннее.",
   },
   {
     id: "creator",
-    emoji: "🧠",
     title: "Путь Творца",
     powers: "креатив и мастерство",
     description: "Для тех, кто создаёт новое и прокачивает навыки.",
   },
   {
     id: "energy",
-    emoji: "🔥",
     title: "Путь Энергии",
     powers: "энергия и позитив",
     description: "Для тех, кто хочет драйв и лёгкость каждый день.",
@@ -49,11 +44,12 @@ export const LIGHT_PATH_TAB_LABELS: Record<LightPathId, string> = {
   energy: "Энергия",
 };
 
+export const LIGHT_PATH_STEP_HERO = "/iconsApp/man-with-todo-clipboard.png";
+
 type LightActivityBase = {
   id: string;
   pathId: LightPathId;
   label: string;
-  emoji?: string;
   hint?: string;
   description?: string;
 };
@@ -84,7 +80,6 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "mindfulness",
     kind: "custom",
     label: "Медитация",
-    emoji: "🧘",
     hint: "Минут в день",
     name: "Медитация",
     unit: "minutes",
@@ -94,7 +89,6 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "mindfulness",
     kind: "template",
     label: "Чтение книг",
-    emoji: "📚",
     hint: "Страниц в день",
     templateId: "books",
   },
@@ -103,7 +97,6 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "mindfulness",
     kind: "custom",
     label: "Иностранный язык",
-    emoji: "🗣️",
     hint: "Минут в день",
     description: "Английский — самый лёгкий язык, его и учим",
     name: "Иностранный язык",
@@ -114,7 +107,6 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "mindfulness",
     kind: "custom",
     label: "Дневник благодарности",
-    emoji: "📝",
     hint: "Минут в день",
     description: "Запиши 3–5 вещей, за которые благодарен",
     name: "Дневник благодарности",
@@ -125,7 +117,6 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "strength",
     kind: "custom",
     label: "Силовая тренировка",
-    emoji: "🏋️",
     hint: "Повторений в день",
     name: "Силовая тренировка",
     unit: "reps",
@@ -135,7 +126,6 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "strength",
     kind: "template",
     label: "Бег",
-    emoji: "🏃",
     hint: "Минут в день",
     templateId: "running",
   },
@@ -144,7 +134,6 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "strength",
     kind: "template",
     label: "Планка",
-    emoji: "🧱",
     hint: "Секунд в день",
     templateId: "plank",
   },
@@ -153,7 +142,6 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "strength",
     kind: "custom",
     label: "Растяжка",
-    emoji: "🤸",
     hint: "Минут в день",
     name: "Растяжка",
     unit: "minutes",
@@ -163,7 +151,6 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "creator",
     kind: "custom",
     label: "Программирование",
-    emoji: "💻",
     hint: "Минут в день",
     name: "Программирование",
     unit: "minutes",
@@ -173,7 +160,6 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "creator",
     kind: "custom",
     label: "Изучение нового навыка",
-    emoji: "🎯",
     hint: "Минут в день",
     name: "Изучение нового навыка",
     unit: "minutes",
@@ -190,7 +176,6 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "energy",
     kind: "custom",
     label: "Ходьба на свежем воздухе",
-    emoji: "🚶",
     hint: "Минут в день",
     name: "Ходьба на свежем воздухе",
     unit: "minutes",
@@ -200,7 +185,6 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "energy",
     kind: "custom",
     label: "Ранний подъём",
-    emoji: "🌅",
     hint: "Минут утренней рутины",
     name: "Ранний подъём",
     unit: "minutes",
@@ -210,7 +194,6 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "energy",
     kind: "custom",
     label: "Творчество / Хобби",
-    emoji: "🎨",
     hint: "Минут в день",
     name: "Творчество / Хобби",
     unit: "minutes",
@@ -280,13 +263,6 @@ export function getAmountQuestion(habit: SelectedHabit, practicesNow: boolean): 
   if (unit === "seconds") return "Сколько секунд хочешь заниматься в день?";
   if (unit === "lessons") return "Сколько уроков хочешь проходить в день?";
   return "Сколько минут хочешь заниматься в день?";
-}
-
-export function getActivityEmoji(activity: LightActivity): string {
-  if (activity.kind !== "custom_form" && activity.emoji) {
-    return activity.emoji;
-  }
-  return "✨";
 }
 
 function createHabitFromActivity(

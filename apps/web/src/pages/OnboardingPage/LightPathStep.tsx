@@ -8,6 +8,7 @@ import {
   getLightHabitSummary,
   isLightBaselineValid,
   isLightSetupComplete,
+  LIGHT_PATH_STEP_HERO,
   LIGHT_PATHS,
   LIGHT_PATH_TAB_LABELS,
   setLightPracticesNow,
@@ -451,6 +452,16 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
         <p className="onboarding__eyebrow">Шаг 1 · Светлая сторона</p>
         <h1 className="onboarding__title">Выбери свой путь</h1>
         <p className="onboarding__subtitle">Отметь привычки, которые возьмёшь в эту главу.</p>
+
+        <div className="onboarding__step-hero" aria-hidden="true">
+          <img
+            src={LIGHT_PATH_STEP_HERO}
+            alt=""
+            width={140}
+            height={120}
+            decoding="async"
+          />
+        </div>
 
         <div className="onboarding__path-tabs onboarding__path-tabs--minimal" role="tablist" aria-label="Пути">
           {LIGHT_PATHS.map((path) => (
