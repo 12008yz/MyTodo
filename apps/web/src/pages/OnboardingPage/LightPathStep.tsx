@@ -19,6 +19,7 @@ import {
 } from "../../features/onboarding/lightPaths";
 import type { SelectedCustomHabit, SelectedHabit } from "../../features/onboarding/types";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
+import { scrollPanelIntoView } from "../../utils/scrollPanelIntoView";
 import { useContentSwitchTransition } from "../../hooks/useContentSwitchTransition";
 import "../../components/ContentPanels/ContentPanels.css";
 
@@ -164,17 +165,6 @@ function HabitSetupPanel({
   return null;
 }
 
-function scrollExpandedHabitIntoView(element: HTMLElement | null) {
-  if (!element) return;
-
-  requestAnimationFrame(() => {
-    element.scrollIntoView({
-      behavior: "auto",
-      block: "nearest",
-    });
-  });
-}
-
 export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>(
   function LightPathStep(
     { lightHabits, activePathId, onActivePathChange, onChange, onPathTransitionChange },
@@ -188,10 +178,21 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     const [customBaseline, setCustomBaseline] = useState("");
     const [localError, setLocalError] = useState<string | null>(null);
     const activeSetupRef = useRef<HTMLDivElement | null>(null);
+    const activeSetupHabit = setupActivityId
+      ? findHabitByActivityId(lightHabits, setupActivityId)
+      : undefined;
 
-    const handlePanelExpanded = useCallback(() => {
-      scrollExpandedHabitIntoView(activeSetupRef.current);
-    }, []);
+    useEffect(() => {
+      if (!setupActivityId || !activeSetupHabit) return;
+      if (activeSetupHabit.practicesNow !== true) return;
+      if (isLightBaselineValid(activeSetupHabit.baseline)) return;
+
+      const frame = requestAnimationFrame(() => {
+        scrollPanelIntoView(activeSetupRef.current);
+      });
+
+      return () => cancelAnimationFrame(frame);
+    }, [activeSetupHabit?.baseline, activeSetupHabit?.practicesNow, setupActivityId]);
 
     const handlePathChange = useCallback(
       (pathId: LightPathId) => {
@@ -300,7 +301,11 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
       const setupSettled = setupActivityId !== activity.id;
 
       return (
-        <div key={activity.id} className="onboarding__habit-item">
+        <div
+          key={activity.id}
+          ref={isSetupTarget ? activeSetupRef : undefined}
+          className="onboarding__habit-item"
+        >
           <button
             type="button"
             className={[
@@ -329,14 +334,14 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
           <CollapsibleReveal
             open={showPanel}
             immediate={isPathTransitioning}
-            onExpanded={handlePanelExpanded}
+            scrollAnchorRef={activeSetupRef}
             onCollapsed={() => {
               setSetupActivityId((current) => (current === activity.id ? null : current));
             }}
             contentClassName="onboarding__setup-panel onboarding__setup-panel--inline"
           >
             {isSetupTarget ? (
-              <div ref={showPanel ? activeSetupRef : undefined}>
+              <div>
                 <HabitSetupPanel
                   activityId={activity.id}
                   habit={selected}
@@ -379,7 +384,10 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
             : null}
 
           {pathId === "creator" ? (
-            <div className="onboarding__habit-item">
+            <div
+              ref={customOpen ? activeSetupRef : undefined}
+              className="onboarding__habit-item"
+            >
               <button
                 type="button"
                 className="onboarding__habit-row onboarding__habit-row--add"
@@ -394,10 +402,10 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
               <CollapsibleReveal
                 open={customOpen}
                 immediate={isPathTransitioning}
-                onExpanded={handlePanelExpanded}
+                scrollAnchorRef={activeSetupRef}
                 contentClassName="onboarding__setup-panel onboarding__setup-panel--inline"
               >
-                <div ref={customOpen ? activeSetupRef : undefined}>
+                <div>
                   <div className="onboarding__setup-block">
                     <label className="onboarding__setup-field">
                       <span className="onboarding__setup-label">Название</span>

@@ -1,4 +1,9 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import {
+  applyScrollDelta,
+  getScrollParent,
+  measureScrollDeltaForPanel,
+} from "../../utils/scrollPanelIntoView";
 import "./CollapsibleReveal.css";
 
 export type CollapsibleRevealProps = {
@@ -8,18 +13,22 @@ export type CollapsibleRevealProps = {
   contentClassName?: string;
   onExpanded?: () => void;
   onCollapsed?: () => void;
+  scrollAnchorRef?: RefObject<HTMLElement | null>;
   /** Skip animation when a parent transition is already running */
   immediate?: boolean;
 };
 
 const DURATION_OPEN_MS = 420;
 const DURATION_CLOSE_MS = 360;
-const EASE_OPEN = "cubic-bezier(0.16, 1, 0.3, 1)";
 const EASE_CLOSE = "cubic-bezier(0.4, 0, 0.72, 1)";
 const CONTENT_OFFSET_PX = 6;
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function easeOut(t: number): number {
+  return 1 - Math.pow(1 - t, 2.6);
 }
 
 function clearInlineStyles(element: HTMLElement) {
@@ -32,6 +41,8 @@ function runInstant(
   outer: HTMLDivElement,
   inner: HTMLDivElement,
   open: boolean,
+  scrollParent: HTMLElement | null,
+  panelHeight: number,
   onExpanded?: () => void,
   onCollapsed?: () => void,
 ) {
@@ -42,6 +53,10 @@ function runInstant(
     outer.style.height = "auto";
     inner.style.opacity = "1";
     inner.style.transform = "translateY(0)";
+    if (scrollParent) {
+      const delta = measureScrollDeltaForPanel(scrollParent, outer, panelHeight);
+      applyScrollDelta(scrollParent, delta);
+    }
     onExpanded?.();
     return;
   }
@@ -52,14 +67,12 @@ function runInstant(
   onCollapsed?.();
 }
 
-function releaseHeight(outer: HTMLDivElement) {
-  outer.style.height = "auto";
-}
-
 function animateOpen(
   outer: HTMLDivElement,
   inner: HTMLDivElement,
   signal: AbortSignal,
+  scrollParent: HTMLElement | null,
+  onExpanded?: () => void,
 ): Promise<void> {
   outer.style.height = "0px";
   inner.style.opacity = "0";
@@ -67,34 +80,73 @@ function animateOpen(
 
   const targetHeight = inner.offsetHeight;
   if (targetHeight <= 0) {
-    releaseHeight(outer);
+    outer.style.height = "auto";
     inner.style.opacity = "1";
     inner.style.transform = "translateY(0)";
     return Promise.resolve();
   }
 
-  const heightAnim = outer.animate(
-    [{ height: "0px" }, { height: `${targetHeight}px` }],
-    { duration: DURATION_OPEN_MS, easing: EASE_OPEN, fill: "forwards" },
-  );
-  const fadeAnim = inner.animate(
-    [
-      { opacity: 0, transform: `translateY(-${CONTENT_OFFSET_PX}px)` },
-      { opacity: 1, transform: "translateY(0)" },
-    ],
-    { duration: DURATION_OPEN_MS, easing: EASE_OPEN, fill: "forwards" },
-  );
+  const scrollDelta =
+    scrollParent != null
+      ? measureScrollDeltaForPanel(scrollParent, outer, targetHeight)
+      : 0;
+  const startScroll = scrollParent?.scrollTop ?? 0;
+  const startTime = performance.now();
 
-  signal.addEventListener("abort", () => {
-    heightAnim.cancel();
-    fadeAnim.cancel();
-  });
+  return new Promise((resolve) => {
+    let frame = 0;
 
-  return Promise.all([heightAnim.finished, fadeAnim.finished]).then(() => {
-    heightAnim.cancel();
-    fadeAnim.cancel();
-    releaseHeight(outer);
-    clearInlineStyles(inner);
+    const finish = () => {
+      cancelAnimationFrame(frame);
+      outer.style.height = `${targetHeight}px`;
+      inner.style.opacity = "1";
+      inner.style.transform = "translateY(0)";
+
+      if (scrollParent) {
+        const targetScroll = startScroll + scrollDelta;
+        scrollParent.scrollTop = targetScroll;
+        const lockedScroll = scrollParent.scrollTop;
+        outer.style.height = "auto";
+        scrollParent.scrollTop = lockedScroll;
+        applyScrollDelta(
+          scrollParent,
+          measureScrollDeltaForPanel(scrollParent, outer, outer.offsetHeight),
+        );
+      } else {
+        outer.style.height = "auto";
+      }
+
+      clearInlineStyles(inner);
+      onExpanded?.();
+      resolve();
+    };
+
+    const step = (now: number) => {
+      if (signal.aborted) {
+        finish();
+        return;
+      }
+
+      const t = Math.min(1, (now - startTime) / DURATION_OPEN_MS);
+      const e = easeOut(t);
+
+      outer.style.height = `${targetHeight * e}px`;
+      inner.style.opacity = String(e);
+      inner.style.transform = `translateY(-${CONTENT_OFFSET_PX * (1 - e)}px)`;
+
+      if (scrollParent) {
+        scrollParent.scrollTop = startScroll + scrollDelta * e;
+      }
+
+      if (t < 1) {
+        frame = requestAnimationFrame(step);
+      } else {
+        finish();
+      }
+    };
+
+    frame = requestAnimationFrame(step);
+    signal.addEventListener("abort", finish, { once: true });
   });
 }
 
@@ -104,9 +156,7 @@ function animateClose(
   signal: AbortSignal,
   storedHeight: number,
 ): Promise<void> {
-  const measured = outer.offsetHeight;
-  const currentHeight = Math.max(measured, storedHeight, inner.offsetHeight);
-
+  const currentHeight = Math.max(outer.offsetHeight, storedHeight, inner.offsetHeight);
   outer.style.height = `${currentHeight}px`;
 
   const heightAnim = outer.animate(
@@ -134,6 +184,7 @@ export function CollapsibleReveal({
   onExpanded,
   onCollapsed,
   immediate = false,
+  scrollAnchorRef,
 }: CollapsibleRevealProps) {
   const [rendered, setRendered] = useState(open);
   const outerRef = useRef<HTMLDivElement>(null);
@@ -161,7 +212,7 @@ export function CollapsibleReveal({
     if (height > 0) {
       storedHeightRef.current = height;
     }
-  });
+  }, [open, rendered]);
 
   useLayoutEffect(() => {
     if (open) {
@@ -195,7 +246,7 @@ export function CollapsibleReveal({
     };
 
     if (reduced) {
-      runInstant(outer, inner, false, undefined, finish);
+      runInstant(outer, inner, false, null, 0, undefined, finish);
       return () => controller.abort();
     }
 
@@ -214,21 +265,25 @@ export function CollapsibleReveal({
     const controller = new AbortController();
     const reduced = prefersReducedMotion() || immediate;
 
+    const anchor = scrollAnchorRef?.current ?? outer.closest<HTMLElement>(".onboarding__habit-item");
+    const scrollParent = anchor ? getScrollParent(anchor) : null;
+    const panelHeight = inner.offsetHeight;
+
     if (reduced) {
-      runInstant(outer, inner, true, () => {
+      runInstant(outer, inner, true, scrollParent, panelHeight, () => {
         if (runIdRef.current !== runId) return;
         onExpandedRef.current?.();
       });
       return () => controller.abort();
     }
 
-    void animateOpen(outer, inner, controller.signal).then(() => {
+    void animateOpen(outer, inner, controller.signal, scrollParent, () => {
       if (runIdRef.current !== runId) return;
       onExpandedRef.current?.();
     });
 
     return () => controller.abort();
-  }, [immediate, open, rendered]);
+  }, [immediate, open, rendered, scrollAnchorRef]);
 
   if (!rendered) {
     return null;
