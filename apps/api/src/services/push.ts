@@ -8,6 +8,7 @@ import {
 } from "@mytodo/domain";
 import {
   ApiError,
+  buildDefaultPushTemplates,
   ERROR_CODES,
   HTTP_STATUS,
   type PushEventType,
@@ -417,42 +418,7 @@ export class PushService {
   }
 }
 
-export const DEFAULT_PUSH_TEMPLATES: Array<{
-  eventType: PushEventType;
-  harshnessLevel: number;
-  message: string;
-}> = [
-  { eventType: "morning", harshnessLevel: 1, message: "Доброе утро! Сегодня отличный день." },
-  { eventType: "morning", harshnessLevel: 2, message: "Подъём! Не забывай про свои цели." },
-  { eventType: "morning", harshnessLevel: 3, message: "Встал? Отлично. Сегодня не ссы, а делай." },
-  { eventType: "afternoon", harshnessLevel: 1, message: "Как дела? Ты справляешься!" },
-  { eventType: "afternoon", harshnessLevel: 2, message: "Проверь себя. Ты выполнил план?" },
-  { eventType: "afternoon", harshnessLevel: 3, message: "Что там по привычкам? Не тормози!" },
-  { eventType: "evening", harshnessLevel: 1, message: "Осталось немного. Отметь сегодняшний день." },
-  { eventType: "evening", harshnessLevel: 2, message: "Не затягивай. Отметь сейчас." },
-  { eventType: "evening", harshnessLevel: 3, message: "Последний шанс. Если не отметишь — завтра будет стыдно." },
-  { eventType: "relapse", harshnessLevel: 1, message: "Бывает. Главное — не сдаваться." },
-  { eventType: "relapse", harshnessLevel: 2, message: "Сорвался. Соберись и продолжай." },
-  { eventType: "relapse", harshnessLevel: 3, message: "Сорвался. Вставай и иди дальше." },
-  { eventType: "success", harshnessLevel: 1, message: "Отлично! Цель на сегодня выполнена." },
-  { eventType: "success", harshnessLevel: 2, message: "Цель выполнена. Так держать." },
-  { eventType: "success", harshnessLevel: 3, message: "Цель выполнена. Не расслабляйся." },
-  { eventType: "smoke_cheer", harshnessLevel: 1, message: "Ты на правильном пути без сигарет." },
-  { eventType: "smoke_cheer", harshnessLevel: 2, message: "Без курева. Не расслабляйся." },
-  { eventType: "smoke_cheer", harshnessLevel: 3, message: "Без дыма. Так держать." },
-  { eventType: "doom_scroll_start", harshnessLevel: 1, message: "15 минут. Потом — стоп." },
-  { eventType: "doom_scroll_start", harshnessLevel: 2, message: "15 минут. Потом — стоп." },
-  { eventType: "doom_scroll_start", harshnessLevel: 3, message: "15 минут. Потом — стоп." },
-  { eventType: "doom_scroll_end", harshnessLevel: 1, message: "Время вышло. Отложи телефон." },
-  { eventType: "doom_scroll_end", harshnessLevel: 2, message: "Время вышло. Отложи телефон." },
-  { eventType: "doom_scroll_end", harshnessLevel: 3, message: "Время вышло. Отложи телефон." },
-  { eventType: "doom_scroll_limit", harshnessLevel: 1, message: "Лимит на сегодня исчерпан." },
-  { eventType: "doom_scroll_limit", harshnessLevel: 2, message: "Лимит на сегодня исчерпан." },
-  { eventType: "doom_scroll_limit", harshnessLevel: 3, message: "Лимит на сегодня исчерпан." },
-  { eventType: "test", harshnessLevel: 1, message: "Тестовое уведомление" },
-  { eventType: "test", harshnessLevel: 2, message: "Тестовое уведомление" },
-  { eventType: "test", harshnessLevel: 3, message: "Тестовое уведомление" },
-];
+export const DEFAULT_PUSH_TEMPLATES = buildDefaultPushTemplates();
 
 export async function seedPushTemplates(db: DbExecutor): Promise<void> {
   const existing = await db.select({ id: notificationTemplates.id }).from(notificationTemplates).limit(1);

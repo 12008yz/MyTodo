@@ -1,4 +1,4 @@
-import { type Gender, HABIT_TEMPLATES, type HabitTemplateId } from "@mytodo/shared";
+import { type Gender, HABIT_TEMPLATES, HARSHNESS_ONBOARDING_QUOTES, type HabitTemplateId } from "@mytodo/shared";
 import type { OnboardingStepId } from "./types";
 
 export const ONBOARDING_STEPS: OnboardingStepId[] = [
@@ -28,19 +28,19 @@ export const HARSHNESS_OPTIONS = [
     level: 1 as const,
     emoji: "🌿",
     title: "Мягкий наставник",
-    quote: "Ты сможешь, я верю в тебя.",
+    quote: HARSHNESS_ONBOARDING_QUOTES[1],
   },
   {
     level: 2 as const,
     emoji: "📐",
     title: "Строгий тренер",
-    quote: "Соберись, тряпка. Ты лучше этого.",
+    quote: HARSHNESS_ONBOARDING_QUOTES[2],
   },
   {
     level: 3 as const,
     emoji: "🗡️",
     title: "Армейский сержант",
-    quote: "Ты еблан, если сейчас сорвёшься. Делай!",
+    quote: HARSHNESS_ONBOARDING_QUOTES[3],
   },
 ];
 
