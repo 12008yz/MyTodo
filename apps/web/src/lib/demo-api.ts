@@ -3,6 +3,7 @@ import {
   HABIT_TEMPLATES,
   todayDarkResponseSchema,
   todayLightResponseSchema,
+  type DayColorValue,
   type AuthResponse,
   type CheckinResponse,
   type CreateCheckinRequest,
@@ -145,8 +146,8 @@ function resolveTemplateIcon(templateId: keyof typeof HABIT_TEMPLATES): string |
 function createHabitResponse(
   user: UserProfile,
   data: CreateHabitRequest,
+  createdAt = nowIso(),
 ): HabitResponse {
-  const createdAt = nowIso();
 
   if ("template_id" in data) {
     const template = HABIT_TEMPLATES[data.template_id];
@@ -230,8 +231,16 @@ function applyPatchMe(user: UserProfile, patch: PatchMeRequest): UserProfile {
 }
 
 export function demoLogin(_data: LoginRequest): AuthResponse {
-  const state = ensureState();
-  return toAuthResponse(state.user);
+  const state = loadState();
+  if (!state?.user.onboarding_completed) {
+    saveState(buildShowcaseState());
+  }
+  return toAuthResponse(ensureState().user);
+}
+
+export function demoEnterShowcase(): AuthResponse {
+  saveState(buildShowcaseState());
+  return toAuthResponse(ensureState().user);
 }
 
 export function demoRegister(data: RegisterRequest): AuthResponse {
@@ -299,6 +308,121 @@ export function demoUpdateEnglishSettings(
 
 export function getDemoPrefillCredentials() {
   return { email: DEMO_EMAIL, password: DEMO_PASSWORD };
+}
+
+function addDaysLocal(date: string, delta: number): string {
+  const parsed = new Date(`${date}T12:00:00`);
+  parsed.setDate(parsed.getDate() + delta);
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function computeDemoDayColor(
+  statuses: Array<"success" | "fail" | "pending" | "skipped">,
+): DayColorValue {
+  if (statuses.length === 0) return "pending";
+  if (statuses.some((status) => status === "fail")) return "fail";
+  if (statuses.some((status) => status === "pending")) return "pending";
+  if (statuses.every((status) => status === "success")) return "success";
+  return "skipped";
+}
+
+function makeCheckin(
+  habit: HabitResponse,
+  date: string,
+  status: CheckinResponse["status"],
+  value: number | null,
+): CheckinResponse {
+  return {
+    id: crypto.randomUUID(),
+    habit_id: habit.id,
+    date,
+    status,
+    value,
+    updated_at: nowIso(),
+    current_goal: habit.current_goal,
+    preview_next_goal: habit.current_goal,
+  };
+}
+
+function buildShowcaseState(): DemoState {
+  const user = buildUser({
+    email: DEMO_EMAIL,
+    name: "Алексей",
+    age: 28,
+    gender: "male",
+    onboarding_completed: true,
+  });
+
+  user.weight_kg = 78;
+  user.height_cm = 180;
+  user.free_time_min = 60;
+  user.daily_budget_min = computeDailyBudgetMin(60);
+  user.wake_time = "07:00";
+  user.sleep_time = "23:00";
+  user.harshness_level = 2;
+  user.effective_harshness_level = 2;
+
+  const createdAt = addDaysLocal(todayDate(), -21) + "T10:00:00.000Z";
+
+  const running = createHabitResponse(
+    user,
+    { template_id: "running", baseline_value: 20 },
+    createdAt,
+  );
+  running.current_goal = 30;
+
+  const pushups = createHabitResponse(
+    user,
+    { template_id: "pushups", baseline_value: 10 },
+    createdAt,
+  );
+  pushups.current_goal = 15;
+
+  const smoking = createHabitResponse(
+    user,
+    { template_id: "smoking", baseline_value: 15 },
+    createdAt,
+  );
+  smoking.current_goal = 12;
+
+  const social = createHabitResponse(
+    user,
+    { template_id: "social_media", baseline_value: 45 },
+    createdAt,
+  );
+  social.current_goal = 30;
+
+  const habits = [running, pushups, smoking, social];
+  const today = todayDate();
+  const weekStart = weekStartMonday(today);
+  const checkins: CheckinResponse[] = [
+    makeCheckin(running, today, "pending", 18),
+    makeCheckin(pushups, today, "success", 15),
+    makeCheckin(smoking, today, "pending", 8),
+    makeCheckin(social, today, "pending", 22),
+  ];
+
+  for (let offset = 0; offset < 7; offset += 1) {
+    const date = addDaysLocal(weekStart, offset);
+    if (date >= today) continue;
+
+    checkins.push(
+      makeCheckin(running, date, offset % 2 === 0 ? "success" : "skipped", offset % 2 === 0 ? 30 : null),
+      makeCheckin(pushups, date, "success", 15),
+      makeCheckin(smoking, date, offset === 1 ? "fail" : "success", offset === 1 ? 14 : 10),
+      makeCheckin(social, date, "success", 25),
+    );
+  }
+
+  return {
+    user,
+    habits,
+    english: defaultEnglish(),
+    checkins,
+  };
 }
 
 function todayDate(): string {
@@ -495,19 +619,37 @@ export function demoCreateCheckin(data: CreateCheckinRequest): CheckinResponse {
 }
 
 export function demoGetStatsWeek(side: StatsSide): StatsWeekResponse {
-  const date = todayDate();
-  const weekStart = weekStartMonday(date);
+  const state = ensureState();
+  const today = todayDate();
+  const weekStart = weekStartMonday(today);
+  const habitsForSide = state.habits.filter((habit) => habit.side === side && habit.is_active);
+  const habitIds = new Set(habitsForSide.map((habit) => habit.id));
+
   const days = Array.from({ length: 7 }, (_, index) => {
-    const d = new Date(`${weekStart}T12:00:00`);
-    d.setDate(d.getDate() + index);
-    const dayDate = d.toISOString().slice(0, 10);
-    const isToday = dayDate === date;
+    const dayDate = addDaysLocal(weekStart, index);
+    const dayCheckins = state.checkins.filter(
+      (checkin) => checkin.date === dayDate && habitIds.has(checkin.habit_id),
+    );
+
+    if (dayCheckins.length === 0) {
+      return {
+        date: dayDate,
+        color: dayDate > today ? ("pending" as const) : dayDate === today ? ("pending" as const) : ("skipped" as const),
+        completed: 0,
+        total: habitsForSide.length,
+      };
+    }
+
+    const statuses = habitsForSide.map((habit) => {
+      const checkin = dayCheckins.find((row) => row.habit_id === habit.id);
+      return checkin?.status ?? (dayDate === today ? "pending" : "skipped");
+    });
 
     return {
       date: dayDate,
-      color: isToday ? ("pending" as const) : ("skipped" as const),
-      completed: isToday ? 0 : 0,
-      total: ensureState().habits.filter((h) => h.side === side).length,
+      color: computeDemoDayColor(statuses),
+      completed: dayCheckins.filter((checkin) => checkin.status === "success").length,
+      total: habitsForSide.length,
     };
   });
 

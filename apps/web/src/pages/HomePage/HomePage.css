@@ -704,3 +704,13 @@
   background: #ff7d53;
   border-color: #ff7d53;
 }
+
+.home__demo-banner {
+  margin: 0 0 calc(14 * var(--s));
+  padding: calc(10 * var(--s)) calc(12 * var(--s));
+  border-radius: calc(12 * var(--s));
+  background: rgba(95, 51, 225, 0.1);
+  font-size: calc(12 * var(--s));
+  line-height: 1.35;
+  color: var(--color-primary);
+}

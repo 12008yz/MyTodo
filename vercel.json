@@ -3,5 +3,10 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm turbo build --filter=@mytodo/web",
   "outputDirectory": "apps/web/dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "build": {
+    "env": {
+      "VITE_DEMO_MODE": "true"
+    }
+  }
 }

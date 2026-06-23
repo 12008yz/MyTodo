@@ -5,6 +5,7 @@ import { HabitTaskCard } from "../../features/today/HabitTaskCard";
 import { useTodayDashboard, type TodayDashboard, type TodaySide } from "../../features/today/useTodayData";
 import { WeekStrip } from "../../features/today/WeekStrip";
 import { ClientApiError } from "../../lib/api";
+import { isDemoMode } from "../../lib/demo-mode";
 import { requestPushSubscription } from "../../lib/push";
 import "./HomePage.css";
 
@@ -70,6 +71,12 @@ export function HomePage() {
             Выход
           </button>
         </header>
+
+        {isDemoMode() ? (
+          <p className="home__demo-banner" role="status">
+            Демо-режим — всё работает локально в браузере, без сервера.
+          </p>
+        ) : null}
 
         <div className="home__side-toggle" role="tablist" aria-label="Сторона привычек">
           <button

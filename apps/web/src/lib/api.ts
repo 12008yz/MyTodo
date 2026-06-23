@@ -52,6 +52,7 @@ import {
   demoSubscribePush,
   demoUpdateEnglishSettings,
   demoUpdateMe,
+  demoEnterShowcase,
 } from "./demo-api";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
@@ -341,4 +342,12 @@ export async function sendPushTest(): Promise<PushTestResponse> {
     method: "POST",
   });
   return pushTestResponseSchema.parse(response);
+}
+
+export async function enterDemoShowcase(): Promise<AuthResponse> {
+  if (!isDemoMode()) {
+    throw new ClientApiError("Демо доступно только без подключённого API", 400);
+  }
+
+  return demoEnterShowcase();
 }

@@ -9,7 +9,7 @@ import {
 } from "react";
 import type { UserProfile } from "@mytodo/shared";
 import { clearTokens, getAccessToken } from "../../lib/auth-storage";
-import { ClientApiError, getMe, login as apiLogin, logout as apiLogout, register as apiRegister, updateMe as apiUpdateMe } from "../../lib/api";
+import { ClientApiError, getMe, login as apiLogin, logout as apiLogout, register as apiRegister, updateMe as apiUpdateMe, enterDemoShowcase as apiEnterDemoShowcase } from "../../lib/api";
 import type { LoginRequest, PatchMeRequest, RegisterRequest } from "@mytodo/shared";
 
 type AuthState = {
@@ -21,6 +21,7 @@ type AuthState = {
   logout: () => Promise<void>;
   refreshUser: () => Promise<UserProfile | null>;
   updateProfile: (data: PatchMeRequest) => Promise<UserProfile>;
+  enterDemoShowcase: () => Promise<UserProfile>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -78,6 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return profile;
   }, []);
 
+  const enterDemoShowcase = useCallback(async () => {
+    const response = await apiEnterDemoShowcase();
+    setUser(response.user);
+    return response.user;
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -88,8 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       refreshUser,
       updateProfile,
+      enterDemoShowcase,
     }),
-    [user, isLoading, login, register, logout, refreshUser, updateProfile],
+    [user, isLoading, login, register, logout, refreshUser, updateProfile, enterDemoShowcase],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

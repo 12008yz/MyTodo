@@ -6,6 +6,7 @@ import { WelcomeLayout } from "../../components/WelcomeLayout";
 import type { IconAnimationPhase, IconTransition } from "../../constants/transitions";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { ClientApiError } from "../../lib/api";
+import { isDemoMode } from "../../lib/demo-mode";
 
 type GuestPage = "welcome" | "login";
 type TransitionPhase = "idle" | "exiting" | "entering-icons";
@@ -21,7 +22,7 @@ function pathnameToPanel(pathname: string): AuthPanel {
 }
 
 export function GuestWelcomeFlow() {
-  const { login, register } = useAuth();
+  const { login, register, enterDemoShowcase } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -114,6 +115,20 @@ export function GuestWelcomeFlow() {
     [afterAuth, register],
   );
 
+  const handleDemoShowcase = useCallback(async () => {
+    if (isTransitioning || pending) return;
+    setError(null);
+    setPending(true);
+    try {
+      const user = await enterDemoShowcase();
+      afterAuth(user.onboarding_completed);
+    } catch (err) {
+      setError(err instanceof ClientApiError ? err.message : "Не удалось открыть демо");
+    } finally {
+      setPending(false);
+    }
+  }, [afterAuth, enterDemoShowcase, isTransitioning, pending]);
+
   const iconTransition: IconTransition =
     transitionPhase === "exiting"
       ? "exit-up"
@@ -149,9 +164,27 @@ export function GuestWelcomeFlow() {
               </p>
             </div>
 
-            <PrimaryButton onClick={handleStart} disabled={isTransitioning}>
+            <PrimaryButton onClick={handleStart} disabled={isTransitioning || pending}>
               Начать
             </PrimaryButton>
+
+            {isDemoMode() ? (
+              <div className="welcome__demo-actions">
+                <button
+                  type="button"
+                  className="welcome__demo-button"
+                  onClick={() => void handleDemoShowcase()}
+                  disabled={isTransitioning || pending}
+                >
+                  Открыть демо с привычками
+                </button>
+                <p className="welcome__demo-hint">
+                  Готовый профиль: светлая и тёмная стороны, статистика и чекины. Данные
+                  сохраняются в браузере телефона.
+                </p>
+                {error ? <p className="welcome__demo-error">{error}</p> : null}
+              </div>
+            ) : null}
           </>
         ) : null}
         <AuthPanels
