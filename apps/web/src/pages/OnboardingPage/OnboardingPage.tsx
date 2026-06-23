@@ -23,12 +23,8 @@ import type {
 import { toCreateHabitRequest } from "../../features/onboarding/types";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { useContentSwitchTransition } from "../../hooks/useContentSwitchTransition";
-import {
-  ClientApiError,
-  createHabit,
-  updateEnglishSettings,
-  updateMe as apiUpdateMe,
-} from "../../lib/api";
+import { ClientApiError, createHabit, updateEnglishSettings, updateMe as apiUpdateMe } from "../../lib/api";
+import { requestPushSubscription } from "../../lib/push";
 import { LightPathStep, type LightPathStepHandle } from "./LightPathStep";
 import { DarkPathStep } from "./DarkPathStep";
 import { TimeInput24 } from "./TimeInput24";
@@ -301,8 +297,7 @@ export function OnboardingPage() {
     let profileSaved = false;
 
     try {
-      const profile = await apiUpdateMe(
-        {
+      const profile = await apiUpdateMe({
           age,
           gender: body.gender!,
           weight_kg: weight,
@@ -311,8 +306,7 @@ export function OnboardingPage() {
           sleep_time: body.sleepTime,
           free_time_min: body.freeTimeMin,
           harshness_level: harshnessLevel,
-        } as Parameters<typeof apiUpdateMe>[0],
-      );
+        });
 
       profileSaved = profile.onboarding_completed;
 
@@ -327,6 +321,7 @@ export function OnboardingPage() {
       }
 
       await refreshUser();
+      void requestPushSubscription();
       navigate("/", { replace: true });
     } catch (err) {
       if (profileSaved) {

@@ -297,12 +297,12 @@ export class StatsService {
     statStatus?: string,
     checkinStatus?: string,
   ): HabitDayStatus {
-    if (date > today) {
-      return "pending";
-    }
-
     if (statStatus === "success" || statStatus === "fail" || statStatus === "skipped") {
       return statStatus;
+    }
+
+    if (date > today) {
+      return "pending";
     }
 
     if (checkinStatus === "success" || checkinStatus === "fail" || checkinStatus === "skipped") {

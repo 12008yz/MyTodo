@@ -1,16 +1,33 @@
 import {
   apiErrorResponseSchema,
   authResponseSchema,
+  checkinResponseSchema,
   createHabitRequestSchema,
+  createCheckinRequestSchema,
   englishSettingsResponseSchema,
   habitResponseSchema,
+  pushSubscribeRequestSchema,
+  pushSubscribeResponseSchema,
+  pushTestResponseSchema,
+  statsWeekResponseSchema,
+  todayDarkResponseSchema,
+  todayLightResponseSchema,
   type AuthResponse,
+  type CreateCheckinRequest,
   type CreateHabitRequest,
+  type CheckinResponse,
   type HabitResponse,
   type LoginRequest,
   type PatchEnglishSettingsRequest,
   type PatchMeRequest,
+  type PushSubscribeRequest,
+  type PushSubscribeResponse,
+  type PushTestResponse,
   type RegisterRequest,
+  type StatsSide,
+  type StatsWeekResponse,
+  type TodayDarkResponse,
+  type TodayLightResponse,
   type UserProfile,
   userProfileSchema,
   type EnglishSettingsResponse,
@@ -23,11 +40,16 @@ import {
 } from "./auth-storage";
 import { isDemoMode } from "./demo-mode";
 import {
+  demoCreateCheckin,
   demoCreateHabit,
   demoGetMe,
+  demoGetStatsWeek,
+  demoGetTodayDark,
+  demoGetTodayLight,
   demoLogin,
   demoLogout,
   demoRegister,
+  demoSubscribePush,
   demoUpdateEnglishSettings,
   demoUpdateMe,
 } from "./demo-api";
@@ -242,4 +264,81 @@ export async function updateEnglishSettings(
     body: JSON.stringify(data),
   });
   return englishSettingsResponseSchema.parse(response);
+}
+
+export async function getTodayLight(): Promise<TodayLightResponse> {
+  if (isDemoMode()) {
+    return demoGetTodayLight();
+  }
+
+  const response = await apiFetch<unknown>("/api/v1/today/light");
+  return todayLightResponseSchema.parse(response);
+}
+
+export async function getTodayDark(): Promise<TodayDarkResponse> {
+  if (isDemoMode()) {
+    return demoGetTodayDark();
+  }
+
+  const response = await apiFetch<unknown>("/api/v1/today/dark");
+  return todayDarkResponseSchema.parse(response);
+}
+
+export async function createCheckin(data: CreateCheckinRequest): Promise<CheckinResponse> {
+  createCheckinRequestSchema.parse(data);
+
+  if (isDemoMode()) {
+    return demoCreateCheckin(data);
+  }
+
+  const response = await apiFetch<unknown>("/api/v1/checkins", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return checkinResponseSchema.parse(response);
+}
+
+export async function getStatsWeek(side: StatsSide): Promise<StatsWeekResponse> {
+  if (isDemoMode()) {
+    return demoGetStatsWeek(side);
+  }
+
+  const response = await apiFetch<unknown>(`/api/v1/stats/week?side=${side}`);
+  return statsWeekResponseSchema.parse(response);
+}
+
+export async function subscribePush(data: PushSubscribeRequest): Promise<PushSubscribeResponse> {
+  pushSubscribeRequestSchema.parse(data);
+
+  if (isDemoMode()) {
+    return demoSubscribePush(data);
+  }
+
+  const response = await apiFetch<unknown>("/api/v1/push/subscribe", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return pushSubscribeResponseSchema.parse(response);
+}
+
+export async function unsubscribePush(endpoint?: string): Promise<void> {
+  if (isDemoMode()) {
+    return;
+  }
+
+  await apiFetch("/api/v1/push/subscribe", {
+    method: "DELETE",
+    body: JSON.stringify(endpoint ? { endpoint } : {}),
+  });
+}
+
+export async function sendPushTest(): Promise<PushTestResponse> {
+  if (isDemoMode()) {
+    return { sent: false };
+  }
+
+  const response = await apiFetch<unknown>("/api/v1/push/test", {
+    method: "POST",
+  });
+  return pushTestResponseSchema.parse(response);
 }

@@ -167,13 +167,22 @@ describe("Stats", () => {
     const auth = await createOnboardedUser("stats-week@example.com");
     const habit = await createRunningHabit(auth.access_token);
     const today = todayLocal();
-    const weekStart = getWeekStartMonday(today);
+    const currentWeekStart = getWeekStartMonday(today);
+    const wednesday = addDays(currentWeekStart, 2);
+    // Mon–Wed fixtures must be fully closed: use current week only when today is Thu+.
+    const weekStart = wednesday < today ? currentWeekStart : addDays(currentWeekStart, -7);
     await backdateHabit(habit.id, weekStart);
 
+    const seededDates = [
+      weekStart,
+      addDays(weekStart, 1),
+      addDays(weekStart, 2),
+    ] as const;
+
     await seedDailyStats(habit.id, [
-      { date: weekStart, status: "success", value: 30 },
-      { date: addDays(weekStart, 1), status: "skipped" },
-      { date: addDays(weekStart, 2), status: "fail", value: 10 },
+      { date: seededDates[0], status: "success", value: 30 },
+      { date: seededDates[1], status: "skipped" },
+      { date: seededDates[2], status: "fail", value: 10 },
     ]);
 
     const response = await app.inject({
@@ -189,7 +198,8 @@ describe("Stats", () => {
     expect(body.days[2]?.color).toBe("fail");
 
     const todayIndex = body.days.findIndex((day) => day.date === today);
-    if (todayIndex >= 0) {
+    const seededSet = new Set(seededDates);
+    if (todayIndex >= 0 && !seededSet.has(today)) {
       expect(body.days[todayIndex]?.color).toBe("pending");
     }
   });

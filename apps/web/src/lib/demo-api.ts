@@ -1,14 +1,26 @@
 import {
   computeDailyBudgetMin,
   HABIT_TEMPLATES,
+  todayDarkResponseSchema,
+  todayLightResponseSchema,
   type AuthResponse,
+  type CheckinResponse,
+  type CreateCheckinRequest,
   type CreateHabitRequest,
   type EnglishSettingsResponse,
   type HabitResponse,
   type LoginRequest,
   type PatchEnglishSettingsRequest,
   type PatchMeRequest,
+  type PushSubscribeRequest,
+  type PushSubscribeResponse,
   type RegisterRequest,
+  type StatsSide,
+  type StatsWeekResponse,
+  type TodayDarkHabit,
+  type TodayDarkResponse,
+  type TodayLightHabit,
+  type TodayLightResponse,
   type UserProfile,
 } from "@mytodo/shared";
 import { setTokens } from "./auth-storage";
@@ -22,6 +34,7 @@ type DemoState = {
   user: UserProfile;
   habits: HabitResponse[];
   english: EnglishSettingsResponse;
+  checkins: CheckinResponse[];
 };
 
 function nowIso(): string {
@@ -87,7 +100,11 @@ function loadState(): DemoState | null {
   try {
     const raw = localStorage.getItem(DEMO_STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as DemoState;
+    const parsed = JSON.parse(raw) as DemoState;
+    return {
+      ...parsed,
+      checkins: parsed.checkins ?? [],
+    };
   } catch {
     return null;
   }
@@ -105,6 +122,7 @@ function ensureState(): DemoState {
     user: buildUser({ email: DEMO_EMAIL, name: "Демо-воин" }),
     habits: [],
     english: defaultEnglish(),
+    checkins: [],
   };
   saveState(state);
   return state;
@@ -184,19 +202,6 @@ function createHabitResponse(
 
 function applyPatchMe(user: UserProfile, patch: PatchMeRequest): UserProfile {
   const next: UserProfile = { ...user, ...patch };
-  const onboardingFieldsProvided =
-    patch.age !== undefined ||
-    patch.gender !== undefined ||
-    patch.weight_kg !== undefined ||
-    patch.height_cm !== undefined ||
-    patch.free_time_min !== undefined ||
-    patch.wake_time !== undefined ||
-    patch.sleep_time !== undefined ||
-    patch.harshness_level !== undefined;
-
-  if (onboardingFieldsProvided) {
-    next.onboarding_completed = true;
-  }
 
   if (patch.free_time_min !== undefined) {
     next.daily_budget_min = computeDailyBudgetMin(patch.free_time_min);
@@ -205,6 +210,21 @@ function applyPatchMe(user: UserProfile, patch: PatchMeRequest): UserProfile {
   if (patch.harshness_level !== undefined) {
     next.effective_harshness_level = patch.harshness_level;
   }
+
+  const merged = {
+    weight_kg: patch.weight_kg ?? next.weight_kg,
+    height_cm: patch.height_cm ?? next.height_cm,
+    free_time_min: patch.free_time_min ?? next.free_time_min,
+    wake_time: patch.wake_time ?? next.wake_time,
+    sleep_time: patch.sleep_time ?? next.sleep_time,
+  };
+
+  next.onboarding_completed =
+    merged.weight_kg !== null &&
+    merged.height_cm !== null &&
+    merged.free_time_min !== null &&
+    merged.wake_time !== null &&
+    merged.sleep_time !== null;
 
   return next;
 }
@@ -227,6 +247,7 @@ export function demoRegister(data: RegisterRequest): AuthResponse {
     user,
     habits: [],
     english: defaultEnglish(),
+    checkins: [],
   });
 
   return toAuthResponse(user);
@@ -249,6 +270,10 @@ export function demoUpdateMe(patch: PatchMeRequest): UserProfile {
 
 export function demoCreateHabit(data: CreateHabitRequest): HabitResponse {
   const state = ensureState();
+
+  if (!state.user.onboarding_completed) {
+    throw new Error("Complete onboarding before creating habits");
+  }
 
   const habit = createHabitResponse(state.user, data);
   state.habits.push(habit);
@@ -274,4 +299,228 @@ export function demoUpdateEnglishSettings(
 
 export function getDemoPrefillCredentials() {
   return { email: DEMO_EMAIL, password: DEMO_PASSWORD };
+}
+
+function todayDate(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function resolveDemoCheckinStatus(
+  habit: HabitResponse,
+  data: CreateCheckinRequest,
+): { status: CheckinResponse["status"]; value: number | null } {
+  if (data.status === "skipped") {
+    return { status: "skipped", value: null };
+  }
+
+  if (data.status === "fail") {
+    return { status: "fail", value: null };
+  }
+
+  if (data.value === undefined) {
+    return { status: "pending", value: null };
+  }
+
+  if (habit.type === "target") {
+    return {
+      status: data.value >= habit.current_goal ? "success" : "fail",
+      value: data.value,
+    };
+  }
+
+  if (habit.type === "limit") {
+    return {
+      status: data.value <= habit.current_goal ? "success" : "fail",
+      value: data.value,
+    };
+  }
+
+  return { status: "pending", value: data.value };
+}
+
+function weekStartMonday(date: string): string {
+  const d = new Date(`${date}T12:00:00`);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+function buildTodayStats(checkinsToday: CheckinResponse[], habitIds: Set<string>) {
+  const scoped = checkinsToday.filter((checkin) => habitIds.has(checkin.habit_id));
+  const completedToday = scoped.filter((c) => c.status === "success").length;
+  const relapsesThisWeek = scoped.filter((c) => c.status === "fail").length;
+  const minutesToday = scoped.reduce((sum, c) => sum + (c.value ?? 0), 0);
+
+  return {
+    completed_today: completedToday,
+    relapses_this_week: relapsesThisWeek,
+    minutes_today: minutesToday,
+    pomodoros_today: 0,
+    streak_days: completedToday > 0 ? 1 : 0,
+  };
+}
+
+function mapHabitToTodayLight(
+  habit: HabitResponse,
+  checkin: CheckinResponse | null,
+): TodayLightHabit {
+  return {
+    ...habit,
+    checkin: checkin
+      ? {
+          id: checkin.id,
+          date: checkin.date,
+          status: checkin.status,
+          value: checkin.value,
+          updated_at: checkin.updated_at,
+          current_goal: checkin.current_goal,
+          preview_next_goal: checkin.preview_next_goal,
+        }
+      : null,
+    preview_next_goal: checkin?.preview_next_goal ?? habit.current_goal,
+    streak_days: checkin?.status === "success" ? 1 : 0,
+  };
+}
+
+function mapHabitToTodayDark(
+  habit: HabitResponse,
+  checkin: CheckinResponse | null,
+): TodayDarkHabit {
+  return {
+    ...mapHabitToTodayLight(habit, checkin),
+    timer:
+      habit.type === "abstinence" && habit.last_relapse_at
+        ? {
+            started_at: habit.last_relapse_at,
+            elapsed: {
+              days: 0,
+              hours: 1,
+              minutes: 0,
+              seconds: 0,
+              total_seconds: 3600,
+            },
+          }
+        : null,
+    doom_scroll_active: null,
+  };
+}
+
+function buildLightTodayResponse(): TodayLightResponse {
+  const state = ensureState();
+  const date = todayDate();
+  const sideHabits = state.habits.filter((h) => h.side === "light" && h.is_active);
+  const habitIds = new Set(sideHabits.map((habit) => habit.id));
+  const todayCheckins = state.checkins.filter((c) => c.date === date);
+  const stats = buildTodayStats(todayCheckins, habitIds);
+
+  return todayLightResponseSchema.parse({
+    date,
+    greeting_name: state.user.name,
+    daily_budget_min: state.user.daily_budget_min,
+    minutes_logged_today: stats.minutes_today,
+    stats,
+    habits: sideHabits.map((habit) => {
+      const checkin = todayCheckins.find((c) => c.habit_id === habit.id) ?? null;
+      return mapHabitToTodayLight(habit, checkin);
+    }),
+  });
+}
+
+function buildDarkTodayResponse(): TodayDarkResponse {
+  const state = ensureState();
+  const date = todayDate();
+  const sideHabits = state.habits.filter((h) => h.side === "dark" && h.is_active);
+  const habitIds = new Set(sideHabits.map((habit) => habit.id));
+  const todayCheckins = state.checkins.filter((c) => c.date === date);
+  const stats = buildTodayStats(todayCheckins, habitIds);
+
+  return todayDarkResponseSchema.parse({
+    date,
+    greeting_name: state.user.name,
+    stats,
+    habits: sideHabits.map((habit) => {
+      const checkin = todayCheckins.find((c) => c.habit_id === habit.id) ?? null;
+      return mapHabitToTodayDark(habit, checkin);
+    }),
+  });
+}
+
+export function demoGetTodayLight(): TodayLightResponse {
+  return buildLightTodayResponse();
+}
+
+export function demoGetTodayDark(): TodayDarkResponse {
+  return buildDarkTodayResponse();
+}
+
+export function demoCreateCheckin(data: CreateCheckinRequest): CheckinResponse {
+  const state = ensureState();
+  const date = data.date ?? todayDate();
+  const habit = state.habits.find((h) => h.id === data.habit_id);
+
+  if (!habit) {
+    throw new Error("Привычка не найдена");
+  }
+
+  const existingIndex = state.checkins.findIndex(
+    (c) => c.habit_id === data.habit_id && c.date === date,
+  );
+
+  const { status: resolvedStatus, value: resolvedValue } = resolveDemoCheckinStatus(habit, data);
+
+  const checkin: CheckinResponse = {
+    id: existingIndex >= 0 ? state.checkins[existingIndex]!.id : crypto.randomUUID(),
+    habit_id: data.habit_id,
+    date,
+    status: resolvedStatus,
+    value: resolvedValue,
+    updated_at: nowIso(),
+    current_goal: habit.current_goal,
+    preview_next_goal: habit.current_goal,
+  };
+
+  if (existingIndex >= 0) {
+    state.checkins[existingIndex] = checkin;
+  } else {
+    state.checkins.push(checkin);
+  }
+
+  saveState(state);
+  return checkin;
+}
+
+export function demoGetStatsWeek(side: StatsSide): StatsWeekResponse {
+  const date = todayDate();
+  const weekStart = weekStartMonday(date);
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const d = new Date(`${weekStart}T12:00:00`);
+    d.setDate(d.getDate() + index);
+    const dayDate = d.toISOString().slice(0, 10);
+    const isToday = dayDate === date;
+
+    return {
+      date: dayDate,
+      color: isToday ? ("pending" as const) : ("skipped" as const),
+      completed: isToday ? 0 : 0,
+      total: ensureState().habits.filter((h) => h.side === side).length,
+    };
+  });
+
+  return {
+    week_start: weekStart,
+    side,
+    days,
+  };
+}
+
+export function demoSubscribePush(data: PushSubscribeRequest): PushSubscribeResponse {
+  return {
+    id: crypto.randomUUID(),
+    endpoint: data.endpoint,
+  };
 }

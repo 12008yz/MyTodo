@@ -1,5 +1,16 @@
+import { useEffect, useState } from "react";
+import type { TodayLightResponse } from "@mytodo/shared";
 import { useAuth } from "../../features/auth/AuthProvider";
+import { HabitTaskCard } from "../../features/today/HabitTaskCard";
+import { useTodayDashboard, type TodayDashboard, type TodaySide } from "../../features/today/useTodayData";
+import { WeekStrip } from "../../features/today/WeekStrip";
+import { ClientApiError } from "../../lib/api";
+import { requestPushSubscription } from "../../lib/push";
 import "./HomePage.css";
+
+function isLightDashboard(dashboard: TodayDashboard | undefined): dashboard is TodayLightResponse {
+  return dashboard !== undefined && "daily_budget_min" in dashboard;
+}
 
 function getUserInitial(name: string): string {
   const trimmed = name.trim();
@@ -17,10 +28,20 @@ function AddIcon() {
 
 export function HomePage() {
   const { user, logout } = useAuth();
-  const name = user?.name ?? "Пользователь";
+  const [side, setSide] = useState<TodaySide>("light");
+  const { dashboard, week, isLoading, isError, error } = useTodayDashboard(side);
+
+  const name = dashboard?.greeting_name ?? user?.name ?? "Пользователь";
+  const habits = dashboard?.habits ?? [];
+  const stats = dashboard?.stats;
+  const pendingCount = habits.filter((h) => !h.checkin || h.checkin.status === "pending").length;
+
+  useEffect(() => {
+    void requestPushSubscription();
+  }, []);
 
   return (
-    <div className="home">
+    <div className={["home", side === "dark" ? "home--dark" : ""].filter(Boolean).join(" ")}>
       <div className="home__blobs" aria-hidden="true">
         <span className="home__blob home__blob--green" />
         <span className="home__blob home__blob--purple-left" />
@@ -50,26 +71,55 @@ export function HomePage() {
           </button>
         </header>
 
+        <div className="home__side-toggle" role="tablist" aria-label="Сторона привычек">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={side === "light"}
+            className={["home__side-btn", side === "light" ? "is-active" : ""].filter(Boolean).join(" ")}
+            onClick={() => setSide("light")}
+          >
+            ☀️ Светлая
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={side === "dark"}
+            className={["home__side-btn", side === "dark" ? "is-active" : ""].filter(Boolean).join(" ")}
+            onClick={() => setSide("dark")}
+          >
+            🌑 Тёмная
+          </button>
+        </div>
+
+        {week && dashboard ? (
+          <WeekStrip days={week.days} today={dashboard.date} />
+        ) : null}
+
         <section className="home__section home__section--stats" aria-labelledby="stats-heading">
           <h2 id="stats-heading" className="home__section-title">
             Статистика
           </h2>
           <div className="home__stats-grid">
-            <div className="home__stat-card home__stat-card--light">
-              <span className="home__stat-label">Привычки</span>
-              <span className="home__stat-value">—</span>
-            </div>
             <div className="home__stat-card home__stat-card--primary">
-              <span className="home__stat-label">Выполнено</span>
-              <span className="home__stat-value">—</span>
-            </div>
-            <div className="home__stat-card home__stat-card--primary">
-              <span className="home__stat-label">Сегодня</span>
-              <span className="home__stat-value">—</span>
+              <span className="home__stat-label">Выполнено сегодня</span>
+              <span className="home__stat-value">{isLoading ? "…" : (stats?.completed_today ?? 0)}</span>
             </div>
             <div className="home__stat-card home__stat-card--light">
-              <span className="home__stat-label">Неделя</span>
-              <span className="home__stat-value">—</span>
+              <span className="home__stat-label">Срывы за неделю</span>
+              <span className="home__stat-value">{isLoading ? "…" : (stats?.relapses_this_week ?? 0)}</span>
+            </div>
+            <div className="home__stat-card home__stat-card--primary">
+              <span className="home__stat-label">Минут / 🍅</span>
+              <span className="home__stat-value">
+                {isLoading
+                  ? "…"
+                  : `${stats?.minutes_today ?? 0} / ${stats?.pomodoros_today ?? 0}`}
+              </span>
+            </div>
+            <div className="home__stat-card home__stat-card--light">
+              <span className="home__stat-label">Серия дней</span>
+              <span className="home__stat-value">{isLoading ? "…" : (stats?.streak_days ?? 0)}</span>
             </div>
           </div>
         </section>
@@ -79,14 +129,40 @@ export function HomePage() {
             <h2 id="tasks-heading" className="home__section-title">
               Сегодня
             </h2>
-            <span className="home__tasks-count">0</span>
+            <span className="home__tasks-count">{pendingCount}</span>
           </div>
-          <p className="home__placeholder">
-            Дашборд привычек подключим в следующем блоке frontend.
-            {user?.trial_ends_at
-              ? ` Trial до ${new Date(user.trial_ends_at).toLocaleDateString("ru-RU")}.`
-              : ""}
-          </p>
+
+          {isError ? (
+            <p className="home__placeholder home__placeholder--error">
+              {error instanceof ClientApiError
+                ? error.message
+                : "Не удалось загрузить привычки"}
+            </p>
+          ) : isLoading ? (
+            <p className="home__placeholder">Загрузка привычек…</p>
+          ) : habits.length === 0 ? (
+            <p className="home__placeholder">
+              Нет активных привычек на {side === "light" ? "светлой" : "тёмной"} стороне.
+            </p>
+          ) : (
+            <div className="home__tasks-list">
+              {habits.map((habit) => (
+                <HabitTaskCard key={habit.id} habit={habit} side={side} />
+              ))}
+            </div>
+          )}
+
+          {isLightDashboard(dashboard) ? (
+            <p className="home__budget">
+              Сегодня: {dashboard.minutes_logged_today} из {dashboard.daily_budget_min} мин
+            </p>
+          ) : null}
+
+          {user?.trial_ends_at ? (
+            <p className="home__trial">
+              Trial до {new Date(user.trial_ends_at).toLocaleDateString("ru-RU")}
+            </p>
+          ) : null}
         </section>
       </div>
 
