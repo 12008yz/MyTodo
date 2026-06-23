@@ -16,6 +16,8 @@
   --s: calc(100cqw / var(--design-w));
 
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: min(100%, 26.875rem);
   height: 100%;
   max-height: 100%;
@@ -99,13 +101,17 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
   padding-top: calc(28 * var(--s));
   padding-left: calc(22 * var(--s));
   padding-right: calc(22 * var(--s));
-  padding-bottom: calc(94 * var(--s) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(110 * var(--s) + env(safe-area-inset-bottom, 0px));
 }
 
 /* --- Header (top 28) --- */
@@ -115,6 +121,7 @@
   align-items: flex-start;
   justify-content: space-between;
   margin-bottom: calc(27 * var(--s));
+  flex-shrink: 0;
 }
 
 .home__profile {
@@ -279,13 +286,11 @@
 /* --- Today's Tasks (top 361) --- */
 
 .home__section--tasks {
-  flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   margin-left: calc(-3 * var(--s));
   margin-right: calc(-3 * var(--s));
-  overflow: hidden;
 }
 
 .home__tasks-heading {
@@ -317,11 +322,6 @@
   display: flex;
   flex-direction: column;
   gap: calc(16 * var(--s));
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding-bottom: calc(8 * var(--s));
-  -webkit-overflow-scrolling: touch;
 }
 
 .home__task-card {
@@ -515,9 +515,6 @@
 
 .home__placeholder {
   margin: 0;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
   padding: calc(16 * var(--s));
   border-radius: calc(15 * var(--s));
   background: rgba(255, 255, 255, 0.72);
@@ -535,6 +532,7 @@
   display: flex;
   gap: calc(8 * var(--s));
   margin-bottom: calc(16 * var(--s));
+  flex-shrink: 0;
 }
 
 .home__side-btn {
@@ -561,6 +559,7 @@
   grid-template-columns: repeat(7, 1fr);
   gap: calc(4 * var(--s));
   margin-bottom: calc(18 * var(--s));
+  flex-shrink: 0;
 }
 
 .home__week-day {
@@ -713,4 +712,5 @@
   font-size: calc(12 * var(--s));
   line-height: 1.35;
   color: var(--color-primary);
+  flex-shrink: 0;
 }
