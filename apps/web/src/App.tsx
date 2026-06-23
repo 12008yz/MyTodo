@@ -5,6 +5,7 @@ import { AppShell } from "./layouts/AppShell/AppShell";
 import { GuestWelcomeFlow } from "./pages/GuestWelcomeFlow";
 import { HomePage } from "./pages/HomePage";
 import { OnboardingPage } from "./pages/OnboardingPage";
+import { ChartsPage } from "./pages/ChartsPage/ChartsPage";
 import { ProfilePage } from "./pages/ProfilePage/ProfilePage";
 import { ProgressPage } from "./pages/ProgressPage/ProgressPage";
 import { AuthGuard, GuestGuard, OnboardingGuard } from "./routes/guards";
@@ -32,6 +33,7 @@ export default function App() {
               <Route element={<AppShell />}>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/progress" element={<ProgressPage />} />
+                <Route path="/charts" element={<ChartsPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
               </Route>
             </Route>

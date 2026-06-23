@@ -56,6 +56,16 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
         <span className="home__nav-fab-spacer" aria-hidden="true" />
 
         <NavLink
+          to="/charts"
+          className={({ isActive }) =>
+            ["home__nav-item", isActive ? "home__nav-item--active" : ""].filter(Boolean).join(" ")
+          }
+        >
+          <img src="/navbar/charts.svg" alt="" />
+          <span className="home__nav-label">Графики</span>
+        </NavLink>
+
+        <NavLink
           to="/profile"
           className={({ isActive }) =>
             ["home__nav-item", isActive ? "home__nav-item--active" : ""].filter(Boolean).join(" ")

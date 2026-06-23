@@ -44,8 +44,13 @@ export function useCheckinMutation(side: TodaySide) {
   return useMutation({
     mutationFn: (data: CreateCheckinRequest) => createCheckin(data),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["today", side] });
-      await queryClient.invalidateQueries({ queryKey: ["stats-week", side] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["today", side] }),
+        queryClient.invalidateQueries({ queryKey: ["stats-week", side] }),
+        queryClient.invalidateQueries({ queryKey: ["stats-calendar"] }),
+        queryClient.invalidateQueries({ queryKey: ["stats-month"] }),
+        queryClient.invalidateQueries({ queryKey: ["stats-progress"] }),
+      ]);
     },
   });
 }

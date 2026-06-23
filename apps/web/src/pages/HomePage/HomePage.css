@@ -645,7 +645,7 @@
   bottom: calc(10 * var(--s));
   z-index: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr calc(52 * var(--s)) 1fr 1fr;
   align-items: flex-end;
   padding: 0 calc(12 * var(--s));
   pointer-events: none;
@@ -1235,6 +1235,43 @@
 
 .progress__chart-swatch--goal[data-side="dark"] {
   background: #ff7d53;
+}
+
+.progress__period-toggle {
+  display: flex;
+  gap: calc(8 * var(--s));
+  margin-bottom: calc(12 * var(--s));
+}
+
+.progress__period-btn {
+  flex: 1;
+  padding: calc(8 * var(--s)) calc(10 * var(--s));
+  border: 1px solid rgba(95, 51, 225, 0.18);
+  border-radius: calc(10 * var(--s));
+  background: rgba(255, 255, 255, 0.72);
+  font: inherit;
+  font-size: calc(13 * var(--s));
+  font-weight: 500;
+  color: var(--color-secondary);
+  cursor: pointer;
+}
+
+.progress__period-btn--active {
+  border-color: var(--color-primary);
+  background: rgba(95, 51, 225, 0.12);
+  color: var(--color-primary);
+}
+
+.home[data-side="dark"] .progress__period-btn {
+  background: #24252c;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(245, 245, 247, 0.62);
+}
+
+.home[data-side="dark"] .progress__period-btn--active {
+  border-color: #ab94ff;
+  background: rgba(171, 148, 255, 0.12);
+  color: #ab94ff;
 }
 
 .home[data-side="dark"] .home__page-title {

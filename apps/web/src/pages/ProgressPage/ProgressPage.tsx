@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import type { ProgressPeriod } from "@mytodo/shared";
 import { SideToggle } from "../../components/SideToggle/SideToggle";
 import { useHabitSide } from "../../features/shell/SideContext";
 import { HabitProgressChart } from "../../features/progress/HabitProgressChart";
@@ -13,11 +14,18 @@ import { useTodayDashboard } from "../../features/today/useTodayData";
 import { ClientApiError, getHabitProgress, getStatsCalendar, getStatsMonth } from "../../lib/api";
 import { isDemoMode } from "../../lib/demo-mode";
 
+const PERIOD_OPTIONS: { value: ProgressPeriod; label: string }[] = [
+  { value: "week", label: "Неделя" },
+  { value: "month", label: "Месяц" },
+  { value: "quarter", label: "Квартал" },
+];
+
 export function ProgressPage() {
   const { side } = useHabitSide();
   const [month, setMonth] = useState(() => formatMonthParam(new Date()));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
+  const [period, setPeriod] = useState<ProgressPeriod>("month");
 
   const { dashboard } = useTodayDashboard(side);
   const habits = dashboard?.habits ?? [];
@@ -47,8 +55,8 @@ export function ProgressPage() {
   });
 
   const progressQuery = useQuery({
-    queryKey: ["stats-progress", selectedHabitId, "month"],
-    queryFn: () => getHabitProgress(selectedHabitId!, "month"),
+    queryKey: ["stats-progress", selectedHabitId, period],
+    queryFn: () => getHabitProgress(selectedHabitId!, period),
     enabled: Boolean(selectedHabitId),
   });
 
@@ -164,7 +172,9 @@ export function ProgressPage() {
         </h2>
 
         {habits.length === 0 ? (
-          <p className="home__placeholder">Нет привычек на {side === "light" ? "светлой" : "тёмной"} стороне</p>
+          <p className="home__placeholder">
+            Нет привычек на {side === "light" ? "светлой" : "тёмной"} стороне
+          </p>
         ) : (
           <>
             <label className="progress__habit-select">
@@ -181,6 +191,27 @@ export function ProgressPage() {
                 ))}
               </select>
             </label>
+
+            <div className="progress__period-toggle" role="tablist" aria-label="Период графика">
+              {PERIOD_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={period === option.value}
+                  className={[
+                    "progress__period-btn",
+                    period === option.value ? "progress__period-btn--active" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  onClick={() => setPeriod(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
             <HabitProgressChart
               data={progressQuery.data}
               isLoading={progressQuery.isLoading}
