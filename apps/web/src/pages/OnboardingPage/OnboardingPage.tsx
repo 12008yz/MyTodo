@@ -160,7 +160,7 @@ export function OnboardingPage() {
   const [darkHabits, setDarkHabits] = useState<SelectedHabit[]>([]);
   const [body, setBody] = useState<BodyFormData>(DEFAULT_BODY);
   const [harshnessLevel, setHarshnessLevel] = useState<1 | 2 | 3>(1);
-  const [englishEnabled, setEnglishEnabled] = useState(false);
+  const [finaleCompareOpen, setFinaleCompareOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [lightPathIndex, setLightPathIndex] = useState(0);
@@ -301,16 +301,18 @@ export function OnboardingPage() {
     let profileSaved = false;
 
     try {
-      const profile = await apiUpdateMe({
-        age,
-        gender: body.gender!,
-        weight_kg: weight,
-        height_cm: height,
-        wake_time: body.wakeTime,
-        sleep_time: body.sleepTime,
-        free_time_min: body.freeTimeMin,
-        harshness_level: harshnessLevel,
-      });
+      const profile = await apiUpdateMe(
+        {
+          age,
+          gender: body.gender!,
+          weight_kg: weight,
+          height_cm: height,
+          wake_time: body.wakeTime,
+          sleep_time: body.sleepTime,
+          free_time_min: body.freeTimeMin,
+          harshness_level: harshnessLevel,
+        } as Parameters<typeof apiUpdateMe>[0],
+      );
 
       profileSaved = profile.onboarding_completed;
 
@@ -318,7 +320,7 @@ export function OnboardingPage() {
         throw new Error("Не удалось завершить настройку профиля");
       }
 
-      await updateEnglishSettings({ is_enabled: englishEnabled });
+      await updateEnglishSettings({ is_enabled: false });
 
       for (const habit of [...lightHabits, ...darkHabits]) {
         await createHabit(toCreateHabitRequest(habit));
@@ -694,6 +696,30 @@ export function OnboardingPage() {
             <p className="onboarding__subtitle">
               Выбери голос, который тебя заведёт. Ты всегда сможешь его сменить.
             </p>
+            <div className="onboarding__motivation-block">
+              <img
+                className="onboarding__motivation-icon"
+                src="/iconsApp/desktop-app-monitor.png"
+                alt=""
+                aria-hidden="true"
+              />
+              <h2 className="onboarding__motivation-title">Маленькие шаги - большие победы</h2>
+              <p className="onboarding__motivation-text onboarding__motivation-text--compact">
+                Ты не обязан меняться за один день. Но ты обязан <strong>начать</strong>.
+              </p>
+              <p className="onboarding__motivation-text">
+                Всего <strong>15 минут в день</strong> - это 91 час в год. За это время можно
+                прочитать 30 книг, научиться программировать или пробежать марафон.
+              </p>
+              <p className="onboarding__motivation-text">
+                99% людей скажут: "Начну с понедельника".
+                <br />
+                А ты - нет.
+              </p>
+              <p className="onboarding__motivation-question">
+                Какой голос поможет тебе не свернуть?
+              </p>
+            </div>
             <div className="onboarding__choices">
               {HARSHNESS_OPTIONS.map((option) => (
                 <button
@@ -715,6 +741,16 @@ export function OnboardingPage() {
                 </button>
               ))}
             </div>
+            <div className="onboarding__honest-block">
+              <p className="onboarding__honest-title">Честно:</p>
+              <p className="onboarding__honest-text">
+                «Мы не продаём магическую пилюлю. Мы даём тебе <strong>оружие</strong>:
+                ежедневный план, контроль, таймеры, поддержку и финансовую мотивацию. А биться с
+                привычками будешь ты сам. Мы с тобой в одной лодке, но{" "}
+                <strong>грести придётся тебе</strong>. Если ты к этому готов - мы твоя лучшая
+                команда».
+              </p>
+            </div>
           </>
         );
 
@@ -726,13 +762,65 @@ export function OnboardingPage() {
             <p className="onboarding__subtitle">
               Ты только что создал свою «Новую главу». Теперь у тебя есть план, цель и контроль.
             </p>
-            <div className="onboarding__toggle-row">
-              <span>Учить английский? Это +5 минут в день</span>
-              <input
-                type="checkbox"
-                checked={englishEnabled}
-                onChange={(e) => setEnglishEnabled(e.target.checked)}
-              />
+            <div className="onboarding__pledge-block">
+              <div className="onboarding__pledge-header">
+                <h3 className="onboarding__pledge-title">Твой финансовый контракт с собой</h3>
+              </div>
+
+              <div className="onboarding__pledge-section onboarding__pledge-section--main">
+                <p className="onboarding__pledge-text">
+                  <strong>2000 ₽</strong> - это не плата за приложение. Это твой{" "}
+                  <strong>залог перед самим собой</strong>.
+                </p>
+                <p className="onboarding__pledge-text">
+                  Ты платишь, чтобы <strong>не сдаться через 2 дня</strong>. Если ты заплатишь -
+                  ты будешь идти до конца. Если нет - ты уже знаешь, как легко все отложить.
+                </p>
+                <p className="onboarding__pledge-highlight">
+                  Это не расходы, это{" "}
+                  <span className="onboarding__highlight-inline">
+                    <strong>инвестиция в силу воли</strong>
+                    <button
+                      type="button"
+                      className="onboarding__info-trigger onboarding__info-trigger--highlight"
+                      aria-expanded={finaleCompareOpen}
+                      aria-label="Показать сравнение цены"
+                      onClick={() => setFinaleCompareOpen((value) => !value)}
+                    >
+                      ?
+                    </button>
+                  </span>
+                </p>
+              </div>
+
+              {finaleCompareOpen ? (
+                <div className="onboarding__pledge-section onboarding__pledge-section--compare">
+                  <div className="onboarding__info-popover">
+                    <p className="onboarding__pledge-text">
+                      Одна консультация психолога - <strong>от 3000 ₽</strong>.
+                    </p>
+                    <p className="onboarding__pledge-text">
+                      А здесь ты получаешь <strong>30 дней</strong> ежедневной поддержки, трекер
+                      привычек, методику снижения и набор инструментов <strong>за 2000 ₽</strong>.
+                    </p>
+                    <p className="onboarding__pledge-caption">
+                      Меньше, чем пара случайных срывов.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="onboarding__pledge-section onboarding__pledge-section--bonus">
+                <p className="onboarding__pledge-text">
+                  Если у тебя будет <strong>отличный результат</strong> и жизнь реально станет
+                  лучше, приложение вскоре может стать для тебя <strong>бесплатным</strong>.
+                </p>
+                <p className="onboarding__pledge-text">
+                  Наша цель не просто провести тебя через 30 дней, а довести до состояния, где
+                  ты почувствуешь настоящую перемену.
+                </p>
+              </div>
+
             </div>
             <div className="onboarding__plans">
               <p className="onboarding__subtitle" style={{ marginBottom: 0 }}>

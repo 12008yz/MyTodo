@@ -124,6 +124,7 @@
 }
 
 .onboarding__speech--finale {
+  margin-top: 0.875rem;
   background: rgba(95, 51, 225, 0.08);
   color: #24252c;
   border: 1px solid rgba(95, 51, 225, 0.15);
@@ -1427,6 +1428,78 @@ button.onboarding__card--habit {
   gap: 0.625rem;
 }
 
+.onboarding__motivation-block {
+  margin: 0 0 0.75rem;
+  padding: 0.875rem 0.875rem 1rem;
+  border: 1px solid rgba(95, 51, 225, 0.1);
+  border-radius: 1rem;
+  background: linear-gradient(145deg, rgba(95, 51, 225, 0.05) 0%, rgba(255, 255, 255, 0.95) 100%);
+  box-shadow: 0 4px 20px rgba(95, 51, 225, 0.06);
+  text-align: center;
+}
+
+.onboarding__motivation-icon {
+  display: block;
+  width: 3.25rem;
+  height: 3.25rem;
+  margin: 0 auto 0.5rem;
+  object-fit: contain;
+}
+
+.onboarding__motivation-title {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.05rem, 4.2vw, 1.28rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #24252c;
+}
+
+.onboarding__motivation-text {
+  margin: 0.35rem 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #6e6a7c;
+}
+
+.onboarding__motivation-text--compact {
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.onboarding__motivation-text strong {
+  color: #5f33e1;
+}
+
+.onboarding__motivation-question {
+  margin: 0.5rem 0 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #24252c;
+}
+
+.onboarding__honest-block {
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px dashed rgba(245, 158, 11, 0.25);
+  border-radius: 0.75rem;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.onboarding__honest-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #24252c;
+}
+
+.onboarding__honest-text {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #6e6a7c;
+}
+
 .onboarding__choice {
   display: flex;
   gap: 0.75rem;
@@ -1459,14 +1532,128 @@ button.onboarding__card--habit {
   color: #6e6a7c;
 }
 
-.onboarding__toggle-row {
+.onboarding__pledge-block {
+  margin: 0 0 1rem;
+  padding: 1.125rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(95, 51, 225, 0.12);
+  background: linear-gradient(145deg, rgba(95, 51, 225, 0.06) 0%, rgba(255, 255, 255, 0.96) 100%);
+  box-shadow: 0 4px 16px rgba(95, 51, 225, 0.06);
+}
+
+.onboarding__pledge-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.875rem 1rem;
-  border-radius: 0.875rem;
-  background: rgba(255, 255, 255, 0.72);
+  gap: 0.625rem;
+  margin-bottom: 0.875rem;
+}
+
+.onboarding__pledge-icon {
+  flex-shrink: 0;
+  font-size: 1.375rem;
+}
+
+.onboarding__pledge-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #24252c;
+}
+
+.onboarding__pledge-section + .onboarding__pledge-section {
+  margin-top: 0.875rem;
+}
+
+.onboarding__pledge-section--main {
+  padding-bottom: 0.875rem;
+  border-bottom: 1px solid rgba(95, 51, 225, 0.08);
+}
+
+.onboarding__pledge-section--compare {
+  padding: 0.75rem 0.875rem;
+  border-left: 3px solid #22c55e;
+  border-radius: 0.75rem;
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.onboarding__pledge-section--bonus {
+  padding: 0.75rem 0.875rem;
+  border-left: 3px solid #ef4444;
+  border-radius: 0.75rem;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.onboarding__pledge-text {
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #24252c;
+}
+
+.onboarding__pledge-text strong {
+  color: #5f33e1;
+}
+
+.onboarding__pledge-highlight {
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.625rem;
+  background: rgba(95, 51, 225, 0.08);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  color: #5f33e1;
+}
+
+.onboarding__highlight-inline {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.onboarding__pledge-caption {
+  margin: 0.375rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  color: #6e6a7c;
+}
+
+.onboarding__info-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-left: 0.35rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: #22c55e;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffffff;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.onboarding__info-trigger--highlight {
+  margin-left: 0.25rem;
+  background: #5f33e1;
+}
+
+.onboarding__info-popover {
+  margin-top: 0.625rem;
+  padding-top: 0.625rem;
+  border-top: 1px solid rgba(34, 197, 94, 0.18);
+}
+
+.onboarding__info-popover--highlight {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(95, 51, 225, 0.12);
 }
 
 .onboarding__plans {
@@ -1497,6 +1684,64 @@ button.onboarding__card--habit {
 
 .onboarding-shell--dark .onboarding__error {
   color: #ff8a8a;
+}
+
+.onboarding-shell--dark .onboarding__motivation-block,
+.onboarding-shell--dark .onboarding__pledge-block {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.onboarding-shell--dark .onboarding__motivation-title,
+.onboarding-shell--dark .onboarding__motivation-question,
+.onboarding-shell--dark .onboarding__honest-title,
+.onboarding-shell--dark .onboarding__pledge-title,
+.onboarding-shell--dark .onboarding__pledge-text {
+  color: #ffffff;
+}
+
+.onboarding-shell--dark .onboarding__motivation-text,
+.onboarding-shell--dark .onboarding__honest-text,
+.onboarding-shell--dark .onboarding__pledge-caption {
+  color: rgba(245, 243, 255, 0.78);
+}
+
+.onboarding-shell--dark .onboarding__motivation-text strong,
+.onboarding-shell--dark .onboarding__pledge-text strong,
+.onboarding-shell--dark .onboarding__pledge-highlight {
+  color: #ff8a8a;
+}
+
+.onboarding-shell--dark .onboarding__pledge-section--compare {
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.onboarding-shell--dark .onboarding__pledge-section--bonus {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.onboarding-shell--dark .onboarding__honest-block {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.onboarding-shell--dark .onboarding__pledge-highlight {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.onboarding-shell--dark .onboarding__info-trigger {
+  background: #ff6b6b;
+}
+
+.onboarding-shell--dark .onboarding__info-trigger--highlight {
+  background: #ff8a8a;
+}
+
+.onboarding-shell--dark .onboarding__info-popover {
+  border-top-color: rgba(255, 107, 107, 0.2);
+}
+
+.onboarding-shell--dark .onboarding__info-popover--highlight {
+  border-top-color: rgba(255, 255, 255, 0.12);
 }
 
 .onboarding__actions {
