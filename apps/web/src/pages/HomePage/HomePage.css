@@ -1091,6 +1091,10 @@
   cursor: pointer;
   background: rgba(255, 255, 255, 0.72);
   color: var(--color-black);
+  transition:
+    background-color var(--side-duration) var(--side-ease),
+    color var(--side-duration) var(--side-ease),
+    box-shadow 0.25s ease;
 }
 
 .progress__cal-day--empty {
@@ -1193,6 +1197,39 @@
   border-radius: calc(14 * var(--s));
   background: rgba(255, 255, 255, 0.72);
   box-shadow: 0 calc(4 * var(--s)) calc(24 * var(--s)) rgba(0, 0, 0, 0.04);
+  transition:
+    opacity 0.35s ease,
+    background var(--side-duration) var(--side-ease);
+}
+
+.progress__chart--refreshing {
+  opacity: 0.62;
+}
+
+.progress__chart--skeleton {
+  min-height: calc(152 * var(--s));
+  background: linear-gradient(
+    90deg,
+    rgba(95, 51, 225, 0.06) 0%,
+    rgba(95, 51, 225, 0.12) 50%,
+    rgba(95, 51, 225, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: home__shimmer 1.2s ease-in-out infinite;
+}
+
+.progress__chart-error {
+  margin: 0 0 calc(8 * var(--s));
+  font-size: calc(12 * var(--s));
+  color: #b91c1c;
+}
+
+.progress__chart-svg rect,
+.progress__chart-svg line {
+  transition:
+    fill var(--side-duration) var(--side-ease),
+    stroke var(--side-duration) var(--side-ease),
+    opacity 0.35s ease;
 }
 
 .progress__chart-svg {
@@ -1219,6 +1256,7 @@
   width: calc(10 * var(--s));
   height: calc(10 * var(--s));
   border-radius: calc(2 * var(--s));
+  transition: background var(--side-duration) var(--side-ease);
 }
 
 .progress__chart-swatch--value[data-side="light"] {
@@ -1289,4 +1327,49 @@
   background: #24252c;
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: #f5f5f7;
+}
+
+.home__side-panel {
+  transition: opacity 0.35s ease;
+}
+
+.home__side-panel--refreshing {
+  opacity: 0.72;
+}
+
+.progress__calendar-skeleton {
+  min-height: calc(220 * var(--s));
+  margin-bottom: calc(12 * var(--s));
+  border-radius: calc(14 * var(--s));
+  background: linear-gradient(
+    90deg,
+    rgba(95, 51, 225, 0.06) 0%,
+    rgba(95, 51, 225, 0.12) 50%,
+    rgba(95, 51, 225, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: home__shimmer 1.2s ease-in-out infinite;
+}
+
+.home__tasks-skeleton {
+  min-height: calc(120 * var(--s));
+  border-radius: calc(15 * var(--s));
+  background: linear-gradient(
+    90deg,
+    rgba(95, 51, 225, 0.06) 0%,
+    rgba(95, 51, 225, 0.12) 50%,
+    rgba(95, 51, 225, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: home__shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes home__shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }

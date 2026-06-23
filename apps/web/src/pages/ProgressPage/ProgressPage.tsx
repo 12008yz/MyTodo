@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { ProgressPeriod } from "@mytodo/shared";
 import { SideToggle } from "../../components/SideToggle/SideToggle";
 import { useHabitSide } from "../../features/shell/SideContext";
@@ -47,17 +47,20 @@ export function ProgressPage() {
   const calendarQuery = useQuery({
     queryKey: ["stats-calendar", month, side],
     queryFn: () => getStatsCalendar(month, side),
+    placeholderData: keepPreviousData,
   });
 
   const monthQuery = useQuery({
     queryKey: ["stats-month", month, side],
     queryFn: () => getStatsMonth(month, side),
+    placeholderData: keepPreviousData,
   });
 
   const progressQuery = useQuery({
     queryKey: ["stats-progress", selectedHabitId, period],
     queryFn: () => getHabitProgress(selectedHabitId!, period),
     enabled: Boolean(selectedHabitId),
+    placeholderData: keepPreviousData,
   });
 
   const selectedDay = useMemo(() => {
@@ -65,7 +68,12 @@ export function ProgressPage() {
     return calendarQuery.data.days.find((day) => day.date === selectedDate) ?? null;
   }, [calendarQuery.data, selectedDate]);
 
-  const isLoading = calendarQuery.isLoading || monthQuery.isLoading;
+  const isCalendarInitialLoading =
+    (calendarQuery.isLoading && !calendarQuery.data) ||
+    (monthQuery.isLoading && !monthQuery.data);
+  const isCalendarRefreshing =
+    (calendarQuery.isFetching && Boolean(calendarQuery.data)) ||
+    (monthQuery.isFetching && Boolean(monthQuery.data));
 
   return (
     <>
@@ -110,18 +118,27 @@ export function ProgressPage() {
               ? calendarQuery.error.message
               : "Не удалось загрузить календарь"}
           </p>
-        ) : isLoading ? (
-          <p className="home__placeholder">Загрузка календаря…</p>
+        ) : isCalendarInitialLoading ? (
+          <div className="progress__calendar-skeleton" aria-busy="true" aria-label="Загрузка календаря" />
         ) : (
-          <MonthCalendar
-            month={month}
-            days={calendarQuery.data?.days ?? []}
-            selectedDate={selectedDate}
-            onSelectDate={setSelectedDate}
-          />
+          <div
+            className={[
+              "home__side-panel",
+              isCalendarRefreshing ? "home__side-panel--refreshing" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <MonthCalendar
+              month={month}
+              days={calendarQuery.data?.days ?? []}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+            />
+          </div>
         )}
 
-        {monthQuery.data && !monthQuery.isLoading ? (
+        {monthQuery.data ? (
           <div className="progress__month-summary">
             <div className="home__stat-card home__stat-card--primary">
               <span className="home__stat-label">Успешных дней</span>
@@ -214,7 +231,8 @@ export function ProgressPage() {
 
             <HabitProgressChart
               data={progressQuery.data}
-              isLoading={progressQuery.isLoading}
+              isLoading={progressQuery.isLoading && !progressQuery.data}
+              isFetching={progressQuery.isFetching && Boolean(progressQuery.data)}
               error={
                 progressQuery.isError
                   ? progressQuery.error instanceof ClientApiError

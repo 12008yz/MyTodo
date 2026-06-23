@@ -4,17 +4,29 @@ import { useHabitSide } from "../shell/SideContext";
 type HabitProgressChartProps = {
   data: StatsProgressResponse | undefined;
   isLoading: boolean;
+  isFetching?: boolean;
   error?: string | null;
 };
 
-export function HabitProgressChart({ data, isLoading, error }: HabitProgressChartProps) {
+export function HabitProgressChart({
+  data,
+  isLoading,
+  isFetching = false,
+  error,
+}: HabitProgressChartProps) {
   const { side } = useHabitSide();
 
   if (isLoading) {
-    return <p className="home__placeholder">Загрузка графика…</p>;
+    return (
+      <div
+        className="progress__chart progress__chart--skeleton"
+        aria-busy="true"
+        aria-label="Загрузка графика"
+      />
+    );
   }
 
-  if (error) {
+  if (error && !data) {
     return <p className="home__placeholder home__placeholder--error">{error}</p>;
   }
 
@@ -27,11 +39,24 @@ export function HabitProgressChart({ data, isLoading, error }: HabitProgressChar
   const maxValue = Math.max(...values, ...goals, 1);
   const accent = side === "light" ? "#22c55e" : "#ef4444";
   const goalColor = side === "light" ? "#5f33e1" : "#ff7d53";
-
   const barWidth = 100 / data.points.length;
 
   return (
-    <div className="progress__chart" aria-label="График выполнения">
+    <div
+      className={[
+        "progress__chart",
+        isFetching ? "progress__chart--refreshing" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      aria-label="График выполнения"
+      aria-busy={isFetching}
+    >
+      {error ? (
+        <p className="progress__chart-error" role="status">
+          {error}
+        </p>
+      ) : null}
       <svg className="progress__chart-svg" viewBox="0 0 100 48" preserveAspectRatio="none">
         {data.points.map((point, index) => {
           const valueHeight = ((point.value ?? 0) / maxValue) * 40;

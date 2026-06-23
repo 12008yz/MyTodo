@@ -26,10 +26,15 @@ export function useTodayDashboard(side: TodaySide) {
     placeholderData: keepPreviousData,
   });
 
+  const isInitialLoading =
+    (query.isLoading && !query.data) || (weekQuery.isLoading && !weekQuery.data);
+  const isFetching = query.isFetching || weekQuery.isFetching;
+
   return {
     dashboard: query.data,
     week: weekQuery.data,
-    isLoading: query.isLoading || weekQuery.isLoading,
+    isLoading: isInitialLoading,
+    isFetching,
     isError: query.isError || weekQuery.isError,
     error: query.error ?? weekQuery.error,
     refetch: async () => {

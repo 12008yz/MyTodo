@@ -23,7 +23,7 @@ export function HomePage() {
   const { user } = useAuth();
   const { side } = useHabitSide();
   const placeholderWeek = useMemo(() => getPlaceholderWeekDays(), []);
-  const { dashboard, week, isLoading, isError, error } = useTodayDashboard(side);
+  const { dashboard, week, isLoading, isFetching, isError, error } = useTodayDashboard(side);
 
   const name = dashboard?.greeting_name ?? user?.name ?? "Пользователь";
   const habits = dashboard?.habits ?? [];
@@ -70,23 +70,29 @@ export function HomePage() {
         <div className="home__stats-grid">
           <div className="home__stat-card home__stat-card--primary">
             <span className="home__stat-label">Выполнено сегодня</span>
-            <span className="home__stat-value">{isLoading ? "…" : (stats?.completed_today ?? 0)}</span>
+            <span className="home__stat-value">
+              {isLoading && !stats ? "…" : (stats?.completed_today ?? 0)}
+            </span>
           </div>
           <div className="home__stat-card home__stat-card--light">
             <span className="home__stat-label">Срывы за неделю</span>
-            <span className="home__stat-value">{isLoading ? "…" : (stats?.relapses_this_week ?? 0)}</span>
+            <span className="home__stat-value">
+              {isLoading && !stats ? "…" : (stats?.relapses_this_week ?? 0)}
+            </span>
           </div>
           <div className="home__stat-card home__stat-card--primary">
             <span className="home__stat-label">Минут / 🍅</span>
             <span className="home__stat-value">
-              {isLoading
+              {isLoading && !stats
                 ? "…"
                 : `${stats?.minutes_today ?? 0} / ${stats?.pomodoros_today ?? 0}`}
             </span>
           </div>
           <div className="home__stat-card home__stat-card--light">
             <span className="home__stat-label">Серия дней</span>
-            <span className="home__stat-value">{isLoading ? "…" : (stats?.streak_days ?? 0)}</span>
+            <span className="home__stat-value">
+              {isLoading && !stats ? "…" : (stats?.streak_days ?? 0)}
+            </span>
           </div>
         </div>
       </section>
@@ -105,14 +111,22 @@ export function HomePage() {
               ? error.message
               : "Не удалось загрузить привычки"}
           </p>
-        ) : isLoading ? (
-          <p className="home__placeholder">Загрузка привычек…</p>
+        ) : isLoading && habits.length === 0 ? (
+          <div className="home__tasks-skeleton" aria-busy="true" aria-label="Загрузка привычек" />
         ) : habits.length === 0 ? (
           <p className="home__placeholder">
             Нет активных привычек на {side === "light" ? "светлой" : "тёмной"} стороне.
           </p>
         ) : (
-          <div className="home__tasks-list">
+          <div
+            className={[
+              "home__tasks-list",
+              "home__side-panel",
+              isFetching && habits.length > 0 ? "home__side-panel--refreshing" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
             {habits.map((habit) => (
               <HabitTaskCard key={habit.id} habit={habit} side={side} />
             ))}
