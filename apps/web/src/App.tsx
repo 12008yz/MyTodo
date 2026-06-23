@@ -1,9 +1,12 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import "./App.css";
 import { AuthProvider } from "./features/auth/AuthProvider";
+import { AppShell } from "./layouts/AppShell/AppShell";
 import { GuestWelcomeFlow } from "./pages/GuestWelcomeFlow";
 import { HomePage } from "./pages/HomePage";
 import { OnboardingPage } from "./pages/OnboardingPage";
+import { ProfilePage } from "./pages/ProfilePage/ProfilePage";
+import { ProgressPage } from "./pages/ProgressPage/ProgressPage";
 import { AuthGuard, GuestGuard, OnboardingGuard } from "./routes/guards";
 import { NotFoundRedirect } from "./routes/NotFoundRedirect";
 
@@ -26,7 +29,11 @@ export default function App() {
             </Route>
 
             <Route element={<AuthGuard />}>
-              <Route path="/" element={<HomePage />} />
+              <Route element={<AppShell />}>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/progress" element={<ProgressPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+              </Route>
             </Route>
 
             <Route path="*" element={<NotFoundRedirect />} />

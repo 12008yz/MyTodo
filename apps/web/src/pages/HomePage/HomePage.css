@@ -311,7 +311,7 @@
   transition: color 0.45s ease;
 }
 
-.home__logout {
+.home__profile-link {
   flex-shrink: 0;
   margin-top: calc(11 * var(--s));
   padding: calc(4 * var(--s)) calc(10 * var(--s));
@@ -323,14 +323,14 @@
   font-weight: 600;
   line-height: 1.2;
   color: var(--color-primary);
-  cursor: pointer;
+  text-decoration: none;
   transition:
     background 0.45s ease,
     border-color 0.45s ease,
     color 0.45s ease;
 }
 
-.home__logout:active {
+.home__profile-link:active {
   opacity: 0.85;
 }
 
@@ -606,41 +606,53 @@
 }
 
 .home__nav-item {
-  position: absolute;
-  bottom: calc(16 * var(--s));
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: calc(24 * var(--s));
-  height: calc(24 * var(--s));
+  justify-self: center;
+  gap: calc(2 * var(--s));
+  width: calc(56 * var(--s));
+  min-height: calc(40 * var(--s));
   padding: 0;
   border: none;
   background: none;
   cursor: pointer;
-  opacity: 0.4;
+  opacity: 0.45;
   pointer-events: auto;
+  text-decoration: none;
+  color: inherit;
 }
 
 .home__nav-item img {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: calc(24 * var(--s));
+  height: calc(24 * var(--s));
 }
 
-.home__nav-item--home {
-  left: calc(32 * var(--s));
+.home__nav-label {
+  font-size: calc(9 * var(--s));
+  font-weight: 500;
+  line-height: 1;
+  color: var(--color-secondary);
+  transition: color 0.35s ease;
 }
 
-.home__nav-item--calendar {
-  left: calc(99 * var(--s));
+.home__navbar-items {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(10 * var(--s));
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  align-items: flex-end;
+  padding: 0 calc(12 * var(--s));
+  pointer-events: none;
 }
 
-.home__nav-item--document {
-  left: calc(253 * var(--s));
-}
-
-.home__nav-item--profile {
-  left: calc(319 * var(--s));
+.home__nav-fab-spacer {
+  pointer-events: none;
 }
 
 .home__nav-item--active {
@@ -648,11 +660,17 @@
   filter: drop-shadow(0 calc(6 * var(--s)) calc(6 * var(--s)) rgba(95, 51, 225, 0.35));
 }
 
+.home__nav-item--active .home__nav-label {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
 .home__nav-add {
   position: absolute;
-  left: calc(166 * var(--s));
+  left: 50%;
   bottom: calc(34 * var(--s));
-  z-index: 1;
+  z-index: 2;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -893,7 +911,7 @@
   border-color: rgba(255, 255, 255, 0.08);
 }
 
-.home[data-side="dark"] .home__logout {
+.home[data-side="dark"] .home__profile-link {
   background: rgba(36, 37, 44, 0.85);
   border-color: rgba(255, 255, 255, 0.12);
   color: #ab94ff;
@@ -947,7 +965,7 @@
   .home__hello,
   .home__name,
   .home__section-title,
-  .home__logout,
+  .home__profile-link,
   .home__budget,
   .home__trial,
   .home {
@@ -964,4 +982,360 @@
   line-height: 1.35;
   color: var(--color-primary);
   flex-shrink: 0;
+}
+
+/* --- Page headers (Progress, Profile) --- */
+
+.home__page-header {
+  margin-bottom: calc(16 * var(--s));
+  flex-shrink: 0;
+}
+
+.home__page-title {
+  margin: 0;
+  font-size: calc(22 * var(--s));
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-black);
+}
+
+.home__section-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(8 * var(--s));
+  margin-bottom: calc(12 * var(--s));
+}
+
+.home__section-heading-row .home__section-title {
+  margin-bottom: 0;
+}
+
+.home__section-link {
+  flex-shrink: 0;
+  font-size: calc(12 * var(--s));
+  font-weight: 500;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+/* --- Progress page --- */
+
+.progress__month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(8 * var(--s));
+  margin-bottom: calc(12 * var(--s));
+}
+
+.progress__month-title {
+  margin: 0;
+  text-align: center;
+  flex: 1;
+}
+
+.progress__month-btn {
+  width: calc(36 * var(--s));
+  height: calc(36 * var(--s));
+  border: none;
+  border-radius: calc(10 * var(--s));
+  background: rgba(95, 51, 225, 0.1);
+  color: var(--color-primary);
+  font-size: calc(20 * var(--s));
+  line-height: 1;
+  cursor: pointer;
+}
+
+.progress__calendar {
+  margin-bottom: calc(12 * var(--s));
+}
+
+.progress__cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: calc(4 * var(--s));
+  margin-bottom: calc(6 * var(--s));
+}
+
+.progress__cal-weekday {
+  text-align: center;
+  font-size: calc(10 * var(--s));
+  font-weight: 500;
+  color: var(--color-secondary);
+}
+
+.progress__cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: calc(4 * var(--s));
+}
+
+.progress__cal-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: calc(10 * var(--s));
+  font-size: calc(12 * var(--s));
+  font-weight: 500;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--color-black);
+}
+
+.progress__cal-day--empty {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.progress__cal-day--success {
+  background: rgba(34, 197, 94, 0.18);
+  color: #15803d;
+}
+
+.progress__cal-day--fail {
+  background: rgba(239, 68, 68, 0.16);
+  color: #b91c1c;
+}
+
+.progress__cal-day--skipped {
+  background: rgba(148, 163, 184, 0.2);
+  color: #64748b;
+}
+
+.progress__cal-day--pending {
+  background: rgba(95, 51, 225, 0.08);
+  color: var(--color-secondary);
+}
+
+.progress__cal-day--selected {
+  box-shadow: 0 0 0 calc(2 * var(--s)) var(--color-primary);
+}
+
+.progress__month-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(10 * var(--s));
+  margin-bottom: calc(12 * var(--s));
+}
+
+.progress__day-detail {
+  padding: calc(12 * var(--s));
+  border-radius: calc(14 * var(--s));
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 calc(4 * var(--s)) calc(24 * var(--s)) rgba(0, 0, 0, 0.04);
+}
+
+.progress__day-detail-title {
+  margin: 0 0 calc(8 * var(--s));
+  font-size: calc(14 * var(--s));
+  font-weight: 600;
+}
+
+.progress__day-habits {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: calc(6 * var(--s));
+}
+
+.progress__day-habit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: calc(13 * var(--s));
+}
+
+.progress__day-status--success {
+  color: #22c55e;
+}
+
+.progress__day-status--fail {
+  color: #ef4444;
+}
+
+.progress__habit-select {
+  display: flex;
+  flex-direction: column;
+  gap: calc(6 * var(--s));
+  margin-bottom: calc(12 * var(--s));
+}
+
+.progress__habit-select-label {
+  font-size: calc(12 * var(--s));
+  color: var(--color-secondary);
+}
+
+.progress__habit-select-input {
+  padding: calc(10 * var(--s)) calc(12 * var(--s));
+  border: 1px solid rgba(95, 51, 225, 0.16);
+  border-radius: calc(12 * var(--s));
+  font: inherit;
+  font-size: calc(14 * var(--s));
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--color-black);
+}
+
+.progress__chart {
+  padding: calc(12 * var(--s));
+  border-radius: calc(14 * var(--s));
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 calc(4 * var(--s)) calc(24 * var(--s)) rgba(0, 0, 0, 0.04);
+}
+
+.progress__chart-svg {
+  display: block;
+  width: 100%;
+  height: calc(120 * var(--s));
+}
+
+.progress__chart-legend {
+  display: flex;
+  gap: calc(16 * var(--s));
+  margin-top: calc(8 * var(--s));
+  font-size: calc(11 * var(--s));
+  color: var(--color-secondary);
+}
+
+.progress__chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(6 * var(--s));
+}
+
+.progress__chart-swatch {
+  width: calc(10 * var(--s));
+  height: calc(10 * var(--s));
+  border-radius: calc(2 * var(--s));
+}
+
+.progress__chart-swatch--value[data-side="light"] {
+  background: #22c55e;
+}
+
+.progress__chart-swatch--value[data-side="dark"] {
+  background: #ef4444;
+}
+
+.progress__chart-swatch--goal[data-side="light"] {
+  background: #5f33e1;
+}
+
+.progress__chart-swatch--goal[data-side="dark"] {
+  background: #ff7d53;
+}
+
+/* --- Profile page --- */
+
+.profile__section {
+  margin-bottom: calc(16 * var(--s));
+}
+
+.profile__list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(8 * var(--s));
+}
+
+.profile__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(12 * var(--s));
+  padding: calc(10 * var(--s)) calc(12 * var(--s));
+  border-radius: calc(12 * var(--s));
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 calc(4 * var(--s)) calc(20 * var(--s)) rgba(0, 0, 0, 0.03);
+}
+
+.profile__row dt {
+  margin: 0;
+  font-size: calc(13 * var(--s));
+  color: var(--color-secondary);
+}
+
+.profile__row dd {
+  margin: 0;
+  font-size: calc(14 * var(--s));
+  font-weight: 500;
+  color: var(--color-black);
+  text-align: right;
+}
+
+.profile__card {
+  margin: 0 0 calc(8 * var(--s));
+  padding: calc(12 * var(--s));
+  border-radius: calc(12 * var(--s));
+  background: rgba(255, 255, 255, 0.72);
+  font-size: calc(14 * var(--s));
+  line-height: 1.45;
+}
+
+.profile__card--muted p {
+  margin: calc(6 * var(--s)) 0 0;
+  font-size: calc(12 * var(--s));
+  color: var(--color-secondary);
+}
+
+.profile__action-btn,
+.profile__logout-btn {
+  width: 100%;
+  padding: calc(12 * var(--s)) calc(16 * var(--s));
+  border: none;
+  border-radius: calc(12 * var(--s));
+  font: inherit;
+  font-size: calc(14 * var(--s));
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.profile__action-btn {
+  background: rgba(95, 51, 225, 0.1);
+  color: var(--color-primary);
+}
+
+.profile__logout-btn {
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+}
+
+.home[data-side="dark"] .home__page-title {
+  color: #f5f5f7;
+}
+
+.home[data-side="dark"] .home__section-link {
+  color: #ab94ff;
+}
+
+.home[data-side="dark"] .progress__cal-day,
+.home[data-side="dark"] .progress__day-detail,
+.home[data-side="dark"] .progress__chart,
+.home[data-side="dark"] .progress__habit-select-input,
+.home[data-side="dark"] .profile__row,
+.home[data-side="dark"] .profile__card {
+  background: #24252c;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f5f5f7;
+}
+
+.home[data-side="dark"] .profile__row dt,
+.home[data-side="dark"] .profile__card--muted p {
+  color: rgba(245, 245, 247, 0.55);
+}
+
+.home[data-side="dark"] .profile__row dd {
+  color: #f5f5f7;
+}
+
+.home[data-side="dark"] .home__nav-label {
+  color: rgba(245, 245, 247, 0.5);
+}
+
+.home[data-side="dark"] .home__nav-item--active .home__nav-label {
+  color: #ab94ff;
 }

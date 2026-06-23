@@ -16,6 +16,10 @@ import {
   type PushSubscribeRequest,
   type PushSubscribeResponse,
   type RegisterRequest,
+  type ProgressPeriod,
+  type StatsCalendarResponse,
+  type StatsMonthResponse,
+  type StatsProgressResponse,
   type StatsSide,
   type StatsWeekResponse,
   type TodayDarkHabit,
@@ -619,6 +623,131 @@ export function demoCreateCheckin(data: CreateCheckinRequest): CheckinResponse {
 
   saveState(state);
   return checkin;
+}
+
+function listMonthDates(month: string): string[] {
+  const [year, monthNum] = month.split("-").map(Number);
+  const lastDay = new Date(year!, monthNum!, 0).getDate();
+  return Array.from({ length: lastDay }, (_, index) => {
+    const day = String(index + 1).padStart(2, "0");
+    return `${year}-${String(monthNum).padStart(2, "0")}-${day}`;
+  });
+}
+
+function resolveDemoDayForSide(
+  state: DemoState,
+  side: StatsSide,
+  dayDate: string,
+): { color: DayColorValue; habits: StatsCalendarResponse["days"][number]["habits"] } {
+  const today = todayDate();
+  const habitsForSide = state.habits.filter((habit) => habit.side === side && habit.is_active);
+  const habitIds = new Set(habitsForSide.map((habit) => habit.id));
+  const dayCheckins = state.checkins.filter(
+    (checkin) => checkin.date === dayDate && habitIds.has(checkin.habit_id),
+  );
+
+  if (habitsForSide.length === 0) {
+    return { color: "pending", habits: [] };
+  }
+
+  const habits = habitsForSide.map((habit) => {
+    const checkin = dayCheckins.find((row) => row.habit_id === habit.id);
+    const status =
+      checkin?.status ??
+      (dayDate > today ? "pending" : dayDate === today ? "pending" : "skipped");
+    return {
+      habit_id: habit.id,
+      name: habit.name,
+      side: habit.side,
+      status,
+      value: checkin?.value ?? null,
+    };
+  });
+
+  return {
+    color: computeDemoDayColor(habits.map((habit) => habit.status)),
+    habits,
+  };
+}
+
+export function demoGetStatsCalendar(month: string, side: StatsSide): StatsCalendarResponse {
+  const state = ensureState();
+  const dates = listMonthDates(month);
+
+  return {
+    month,
+    days: dates.map((date) => {
+      const resolved = resolveDemoDayForSide(state, side, date);
+      return {
+        date,
+        color: resolved.color,
+        habits: resolved.habits,
+      };
+    }),
+  };
+}
+
+export function demoGetStatsMonth(month: string, side: StatsSide): StatsMonthResponse {
+  const calendar = demoGetStatsCalendar(month, side);
+  const today = todayDate();
+  let successDays = 0;
+  let relapses = 0;
+  let skippedDays = 0;
+  let closedDays = 0;
+
+  for (const day of calendar.days) {
+    if (day.date > today) continue;
+    if (day.habits.length === 0) continue;
+
+    closedDays += 1;
+    if (day.color === "success") successDays += 1;
+    if (day.color === "fail") relapses += 1;
+    if (day.color === "skipped") skippedDays += 1;
+  }
+
+  return {
+    month,
+    side,
+    success_rate: closedDays > 0 ? Math.round((successDays / closedDays) * 100) : 0,
+    relapses,
+    skipped_days: skippedDays,
+    closed_days: closedDays,
+  };
+}
+
+export function demoGetHabitProgress(
+  habitId: string,
+  period: ProgressPeriod,
+): StatsProgressResponse {
+  const state = ensureState();
+  const habit = state.habits.find((row) => row.id === habitId);
+  if (!habit) {
+    throw new Error("Habit not found");
+  }
+
+  const today = todayDate();
+  const daysBack = period === "week" ? 6 : period === "month" ? 29 : 89;
+  const startDate = addDaysLocal(today, -daysBack);
+  const dates = Array.from({ length: daysBack + 1 }, (_, index) => addDaysLocal(startDate, index));
+
+  const points = dates.map((date) => {
+    const checkin = state.checkins.find((row) => row.habit_id === habitId && row.date === date);
+    return {
+      date,
+      goal: habit.current_goal,
+      value: checkin?.value ?? null,
+      status: checkin?.status ?? (date === today ? "pending" : null),
+      minutes_total: checkin?.value ?? 0,
+    };
+  });
+
+  return {
+    habit_id: habitId,
+    period,
+    start_date: startDate,
+    end_date: today,
+    points,
+  };
 }
 
 export function demoGetStatsWeek(side: StatsSide): StatsWeekResponse {

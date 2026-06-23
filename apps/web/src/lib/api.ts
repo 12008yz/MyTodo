@@ -9,6 +9,9 @@ import {
   pushSubscribeRequestSchema,
   pushSubscribeResponseSchema,
   pushTestResponseSchema,
+  statsCalendarResponseSchema,
+  statsMonthResponseSchema,
+  statsProgressResponseSchema,
   statsWeekResponseSchema,
   todayDarkResponseSchema,
   todayLightResponseSchema,
@@ -24,6 +27,10 @@ import {
   type PushSubscribeResponse,
   type PushTestResponse,
   type RegisterRequest,
+  type ProgressPeriod,
+  type StatsCalendarResponse,
+  type StatsMonthResponse,
+  type StatsProgressResponse,
   type StatsSide,
   type StatsWeekResponse,
   type TodayDarkResponse,
@@ -43,6 +50,9 @@ import {
   demoCreateCheckin,
   demoCreateHabit,
   demoGetMe,
+  demoGetHabitProgress,
+  demoGetStatsCalendar,
+  demoGetStatsMonth,
   demoGetStatsWeek,
   demoGetTodayDark,
   demoGetTodayLight,
@@ -306,6 +316,42 @@ export async function getStatsWeek(side: StatsSide): Promise<StatsWeekResponse> 
 
   const response = await apiFetch<unknown>(`/api/v1/stats/week?side=${side}`);
   return statsWeekResponseSchema.parse(response);
+}
+
+export async function getStatsCalendar(month: string, side: StatsSide): Promise<StatsCalendarResponse> {
+  if (isDemoMode()) {
+    return demoGetStatsCalendar(month, side);
+  }
+
+  const response = await apiFetch<unknown>(
+    `/api/v1/stats/calendar?month=${encodeURIComponent(month)}&side=${side}`,
+  );
+  return statsCalendarResponseSchema.parse(response);
+}
+
+export async function getStatsMonth(month: string, side: StatsSide): Promise<StatsMonthResponse> {
+  if (isDemoMode()) {
+    return demoGetStatsMonth(month, side);
+  }
+
+  const response = await apiFetch<unknown>(
+    `/api/v1/stats/month?month=${encodeURIComponent(month)}&side=${side}`,
+  );
+  return statsMonthResponseSchema.parse(response);
+}
+
+export async function getHabitProgress(
+  habitId: string,
+  period: ProgressPeriod = "month",
+): Promise<StatsProgressResponse> {
+  if (isDemoMode()) {
+    return demoGetHabitProgress(habitId, period);
+  }
+
+  const response = await apiFetch<unknown>(
+    `/api/v1/stats/habits/${habitId}/progress?period=${period}`,
+  );
+  return statsProgressResponseSchema.parse(response);
 }
 
 export async function subscribePush(data: PushSubscribeRequest): Promise<PushSubscribeResponse> {
