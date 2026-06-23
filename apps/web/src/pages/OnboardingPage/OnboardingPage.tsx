@@ -705,7 +705,8 @@ export function OnboardingPage() {
               />
               <h2 className="onboarding__motivation-title">Маленькие шаги - большие победы</h2>
               <p className="onboarding__motivation-text onboarding__motivation-text--compact">
-                Ты не обязан меняться за один день. Но ты обязан <strong>начать</strong>.
+                Тебе не нужно меняться за один день. Тебе стоит <strong>начать</strong> и меняться
+                постепенно.
               </p>
               <p className="onboarding__motivation-text">
                 Всего <strong>15 минут в день</strong> - это 91 час в год. За это время можно
@@ -792,9 +793,17 @@ export function OnboardingPage() {
                 </p>
               </div>
 
-              {finaleCompareOpen ? (
-                <div className="onboarding__pledge-section onboarding__pledge-section--compare">
-                  <div className="onboarding__info-popover">
+              <div
+                className={[
+                  "onboarding__pledge-compare-reveal",
+                  finaleCompareOpen ? "is-open" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                aria-hidden={!finaleCompareOpen}
+              >
+                <div className="onboarding__pledge-compare-reveal-inner">
+                  <div className="onboarding__pledge-section onboarding__pledge-section--compare">
                     <p className="onboarding__pledge-text">
                       Одна консультация психолога - <strong>от 3000 ₽</strong>.
                     </p>
@@ -807,16 +816,19 @@ export function OnboardingPage() {
                     </p>
                   </div>
                 </div>
-              ) : null}
+              </div>
 
               <div className="onboarding__pledge-section onboarding__pledge-section--bonus">
                 <p className="onboarding__pledge-text">
-                  Если у тебя будет <strong>отличный результат</strong> и жизнь реально станет
-                  лучше, приложение вскоре может стать для тебя <strong>бесплатным</strong>.
+                  Наша цель — не просто дать тебе инструменты. Наша цель — довести тебя до
+                  состояния, где ты почувствуешь <strong>реальную перемену</strong>.
                 </p>
                 <p className="onboarding__pledge-text">
-                  Наша цель не просто провести тебя через 30 дней, а довести до состояния, где
-                  ты почувствуешь настоящую перемену.
+                  Если мы увидим, что ты действительно меняешься, выполняешь план и идёшь вперёд —
+                  приложение станет для тебя <strong>бесплатным навсегда</strong>.
+                </p>
+                <p className="onboarding__pledge-text">
+                  Это не подарок. Это твоя <strong>заслуженная награда</strong>.
                 </p>
               </div>
 

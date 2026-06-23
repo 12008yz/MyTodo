@@ -20,7 +20,6 @@ export type CollapsibleRevealProps = {
 
 const DURATION_OPEN_MS = 420;
 const DURATION_CLOSE_MS = 360;
-const EASE_CLOSE = "cubic-bezier(0.4, 0, 0.72, 1)";
 const CONTENT_OFFSET_PX = 6;
 
 function prefersReducedMotion(): boolean {
@@ -153,21 +152,44 @@ function animateClose(
 ): Promise<void> {
   const currentHeight = Math.max(outer.offsetHeight, storedHeight, inner.offsetHeight);
   outer.style.height = `${currentHeight}px`;
+  inner.style.opacity = "1";
+  inner.style.transform = "translateY(0)";
 
-  const heightAnim = outer.animate(
-    [{ height: `${currentHeight}px` }, { height: "0px" }],
-    { duration: DURATION_CLOSE_MS, easing: EASE_CLOSE, fill: "forwards" },
-  );
+  const startTime = performance.now();
 
-  signal.addEventListener("abort", () => {
-    heightAnim.cancel();
-  });
+  return new Promise((resolve) => {
+    let frame = 0;
 
-  return heightAnim.finished.then(() => {
-    heightAnim.cancel();
-    outer.style.height = "0px";
-    inner.style.opacity = "";
-    inner.style.transform = "";
+    const finish = () => {
+      cancelAnimationFrame(frame);
+      outer.style.height = "0px";
+      inner.style.opacity = "";
+      inner.style.transform = "";
+      resolve();
+    };
+
+    const step = (now: number) => {
+      if (signal.aborted) {
+        finish();
+        return;
+      }
+
+      const t = Math.min(1, (now - startTime) / DURATION_CLOSE_MS);
+      const e = 1 - Math.pow(1 - t, 2.2);
+
+      outer.style.height = `${currentHeight * (1 - e)}px`;
+      inner.style.opacity = String(1 - e);
+      inner.style.transform = `translateY(-${CONTENT_OFFSET_PX * e}px)`;
+
+      if (t < 1) {
+        frame = requestAnimationFrame(step);
+      } else {
+        finish();
+      }
+    };
+
+    frame = requestAnimationFrame(step);
+    signal.addEventListener("abort", finish, { once: true });
   });
 }
 
