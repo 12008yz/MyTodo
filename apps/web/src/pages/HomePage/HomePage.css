@@ -29,6 +29,11 @@
   container-name: home;
   --side-ease: cubic-bezier(0.65, 0, 0.35, 1);
   --side-duration: 0.72s;
+  transition: background var(--side-duration) var(--side-ease);
+}
+
+.home[data-side="dark"] {
+  background: #12131a;
 }
 
 /* --- Side background curtain --- */
@@ -43,8 +48,13 @@
 
 .home__side-layer {
   position: absolute;
-  inset: 0;
-  transition: transform var(--side-duration) var(--side-ease);
+  top: 0;
+  bottom: 0;
+  left: calc(-4 * var(--s));
+  width: calc(100% + 8 * var(--s));
+  transition:
+    transform var(--side-duration) var(--side-ease),
+    opacity calc(var(--side-duration) * 0.35) ease;
   will-change: transform;
 }
 
@@ -65,37 +75,40 @@
 .home__side-layer--dark::after {
   content: "";
   position: absolute;
-  top: 0;
+  top: 18%;
   right: 0;
-  bottom: 0;
-  width: calc(3 * var(--s));
+  bottom: 18%;
+  width: calc(1.5 * var(--s));
+  border-radius: calc(1 * var(--s));
   background: linear-gradient(
     180deg,
     transparent 0%,
-    rgba(255, 125, 83, 0.55) 35%,
-    rgba(171, 148, 255, 0.85) 65%,
+    rgba(255, 125, 83, 0.35) 40%,
+    rgba(171, 148, 255, 0.45) 60%,
     transparent 100%
   );
-  box-shadow:
-    0 0 calc(28 * var(--s)) calc(6 * var(--s)) rgba(95, 51, 225, 0.35),
-    0 0 calc(12 * var(--s)) calc(2 * var(--s)) rgba(255, 125, 83, 0.25);
-  opacity: 0.9;
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 .home[data-side="light"] .home__side-layer--light {
   transform: translateX(0);
+  opacity: 1;
 }
 
 .home[data-side="light"] .home__side-layer--dark {
-  transform: translateX(-100%);
+  transform: translateX(calc(-100% - 4 * var(--s)));
+  opacity: 0;
 }
 
 .home[data-side="dark"] .home__side-layer--light {
-  transform: translateX(100%);
+  transform: translateX(calc(100% + 4 * var(--s)));
+  opacity: 0;
 }
 
 .home[data-side="dark"] .home__side-layer--dark {
   transform: translateX(0);
+  opacity: 1;
 }
 
 /* --- Blobs (Group 1) --- */
@@ -578,9 +591,18 @@
   right: 0;
   bottom: 0;
   height: calc(56 * var(--s));
-  background: var(--color-navbar-bg);
   pointer-events: none;
-  transition: background 0.5s ease;
+}
+
+.home__navbar-bg-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.home__navbar-bg-path {
+  fill: #eee9ff;
+  transition: fill 0.5s ease;
 }
 
 .home__nav-item {
@@ -894,8 +916,8 @@
   color: #ff7d53;
 }
 
-.home[data-side="dark"] .home__navbar-bg {
-  background: #1e1f28;
+.home[data-side="dark"] .home__navbar-bg-path {
+  fill: #1e1f28;
 }
 
 .home[data-side="dark"] .home__demo-banner {
@@ -927,7 +949,8 @@
   .home__section-title,
   .home__logout,
   .home__budget,
-  .home__trial {
+  .home__trial,
+  .home {
     transition: none;
   }
 }
