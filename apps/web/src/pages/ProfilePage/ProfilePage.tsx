@@ -1,27 +1,76 @@
+import { useState } from "react";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { HARSHNESS_OPTIONS } from "../../features/onboarding/constants";
+import { useProfileTodayStats } from "../../features/profile/useProfileTodayStats";
+import { EditNameModal } from "../../components/profile/EditNameModal";
+import {
+  BellIcon,
+  BookIcon,
+  CardIcon,
+  ClockIcon,
+  HelpIcon,
+  InfoIcon,
+  KeyIcon,
+  LogoutIcon,
+  SettingsIcon,
+  ShieldIcon,
+  SunIcon,
+  UserIcon,
+} from "../../components/profile/ProfileIcons";
+import { ProfileMenuRow } from "../../components/profile/ProfileMenuRow";
+import { ProfileMenuSection } from "../../components/profile/ProfileMenuSection";
 import { isDemoMode } from "../../lib/demo-mode";
 import { requestPushSubscription } from "../../lib/push";
+import "./ProfilePage.css";
+
+function getUserInitial(name: string): string {
+  const trimmed = name.trim();
+  return trimmed ? trimmed[0]!.toUpperCase() : "?";
+}
 
 function formatTime(value: string | null): string {
   if (!value) return "—";
   return value.slice(0, 5);
 }
 
+function comingSoon() {
+  // Placeholder until sub-screens are implemented.
+}
+
 export function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
+  const { pending, completed, isLoading } = useProfileTodayStats();
+  const [editNameOpen, setEditNameOpen] = useState(false);
 
   if (!user) {
     return <p className="home__placeholder">Загрузка профиля…</p>;
   }
 
   const harshness = HARSHNESS_OPTIONS.find((option) => option.level === user.harshness_level);
+  const scheduleHint =
+    user.wake_time && user.sleep_time
+      ? `${formatTime(user.wake_time)} – ${formatTime(user.sleep_time)}`
+      : "Не задано";
 
   return (
-    <>
-      <header className="home__page-header">
-        <h1 className="home__page-title">Профиль</h1>
-      </header>
+    <div className="profile-page">
+      <h1 className="profile-page__title">Профиль</h1>
+
+      <div className="profile-page__hero">
+        <div className="profile-page__avatar" aria-hidden="true">
+          {getUserInitial(user.name)}
+        </div>
+        <p className="profile-page__name">{user.name}</p>
+      </div>
+
+      <div className="profile-page__stats">
+        <div className="profile-page__stat">
+          {isLoading ? "…" : `${pending} осталось`}
+        </div>
+        <div className="profile-page__stat">
+          {isLoading ? "…" : `${completed} выполнено`}
+        </div>
+      </div>
 
       {isDemoMode() ? (
         <p className="home__demo-banner" role="status">
@@ -29,117 +78,77 @@ export function ProfilePage() {
         </p>
       ) : null}
 
-      <section className="home__section profile__section" aria-labelledby="account-heading">
-        <h2 id="account-heading" className="home__section-title">
-          Аккаунт
-        </h2>
-        <dl className="profile__list">
-          <div className="profile__row">
-            <dt>Имя</dt>
-            <dd>{user.name}</dd>
-          </div>
-          <div className="profile__row">
-            <dt>Email</dt>
-            <dd>{user.email}</dd>
-          </div>
-          {user.trial_ends_at ? (
-            <div className="profile__row">
-              <dt>Trial</dt>
-              <dd>до {new Date(user.trial_ends_at).toLocaleDateString("ru-RU")}</dd>
-            </div>
-          ) : null}
-        </dl>
-      </section>
-
-      <section className="home__section profile__section" aria-labelledby="schedule-heading">
-        <h2 id="schedule-heading" className="home__section-title">
-          Режим дня
-        </h2>
-        <dl className="profile__list">
-          <div className="profile__row">
-            <dt>Подъём</dt>
-            <dd>{formatTime(user.wake_time)}</dd>
-          </div>
-          <div className="profile__row">
-            <dt>Сон</dt>
-            <dd>{formatTime(user.sleep_time)}</dd>
-          </div>
-          <div className="profile__row">
-            <dt>Часовой пояс</dt>
-            <dd>{user.timezone}</dd>
-          </div>
-          <div className="profile__row">
-            <dt>Бюджет в день</dt>
-            <dd>{user.daily_budget_min} мин</dd>
-          </div>
-        </dl>
-      </section>
-
-      <section className="home__section profile__section" aria-labelledby="coach-heading">
-        <h2 id="coach-heading" className="home__section-title">
-          Наставник
-        </h2>
-        <p className="profile__card">
-          {harshness ? `${harshness.emoji} ${harshness.title}` : `Уровень ${user.harshness_level}`}
-        </p>
-      </section>
-
-      <section className="home__section profile__section" aria-labelledby="pomodoro-heading">
-        <h2 id="pomodoro-heading" className="home__section-title">
-          Помодоро
-        </h2>
-        <dl className="profile__list">
-          <div className="profile__row">
-            <dt>Работа</dt>
-            <dd>{user.pomodoro_work_min} мин</dd>
-          </div>
-          <div className="profile__row">
-            <dt>Перерыв</dt>
-            <dd>{user.pomodoro_break_min} мин</dd>
-          </div>
-          <div className="profile__row">
-            <dt>Длинный перерыв</dt>
-            <dd>{user.pomodoro_long_break_min} мин</dd>
-          </div>
-        </dl>
-      </section>
-
-      <section className="home__section profile__section" aria-labelledby="modules-heading">
-        <h2 id="modules-heading" className="home__section-title">
-          Модули
-        </h2>
-        <div className="profile__card profile__card--muted">
-          <strong>Английский</strong>
-          <p>Скоро: уроки дня и настройки модуля</p>
-        </div>
-        <div className="profile__card profile__card--muted">
-          <strong>Залог</strong>
-          <p>Финансовый контракт с собой — 5000 ₽ за привычку</p>
-        </div>
-        <div className="profile__card profile__card--muted">
-          <strong>Подписка</strong>
-          <p>Тарифы и оплата через ЮKassa</p>
-        </div>
-      </section>
-
-      <section className="home__section profile__section" aria-labelledby="notifications-heading">
-        <h2 id="notifications-heading" className="home__section-title">
-          Уведомления
-        </h2>
-        <button
-          type="button"
-          className="profile__action-btn"
+      <ProfileMenuSection title="Настройки">
+        <ProfileMenuRow
+          icon={<SettingsIcon />}
+          label="Настройки приложения"
+          hint="Помодоро, уведомления"
+          onClick={comingSoon}
+        />
+        <ProfileMenuRow
+          icon={<BellIcon />}
+          label="Уведомления"
           onClick={() => void requestPushSubscription()}
-        >
-          Включить push-уведомления
-        </button>
-      </section>
+        />
+        <ProfileMenuRow
+          icon={<ClockIcon />}
+          label="Помодоро"
+          hint={`${user.pomodoro_work_min} / ${user.pomodoro_break_min} мин`}
+          onClick={comingSoon}
+        />
+        <ProfileMenuRow
+          icon={<SettingsIcon />}
+          label="Жёсткость наставника"
+          hint={harshness ? `${harshness.emoji} ${harshness.title}` : undefined}
+          onClick={comingSoon}
+        />
+      </ProfileMenuSection>
 
-      <section className="home__section profile__section">
-        <button type="button" className="profile__logout-btn" onClick={() => void logout()}>
-          Выйти из аккаунта
-        </button>
-      </section>
-    </>
+      <ProfileMenuSection title="Аккаунт">
+        <ProfileMenuRow
+          icon={<UserIcon />}
+          label="Изменить имя"
+          onClick={() => setEditNameOpen(true)}
+        />
+        <ProfileMenuRow icon={<KeyIcon />} label="Сменить пароль" hint="Скоро" disabled />
+        <ProfileMenuRow
+          icon={<SunIcon />}
+          label="Режим дня"
+          hint={scheduleHint}
+          onClick={comingSoon}
+        />
+      </ProfileMenuSection>
+
+      <ProfileMenuSection title="Новая глава">
+        <ProfileMenuRow icon={<BookIcon />} label="Английский" hint="Скоро" disabled />
+        <ProfileMenuRow icon={<ShieldIcon />} label="Залог" hint="5000 ₽ · скоро" disabled />
+        <ProfileMenuRow icon={<CardIcon />} label="Подписка" hint="Скоро" disabled />
+      </ProfileMenuSection>
+
+      <ProfileMenuSection title="О приложении">
+        <ProfileMenuRow icon={<InfoIcon />} label="О нас" onClick={comingSoon} />
+        <ProfileMenuRow icon={<InfoIcon />} label="FAQ" onClick={comingSoon} />
+        <ProfileMenuRow icon={<HelpIcon />} label="Помощь и обратная связь" onClick={comingSoon} />
+      </ProfileMenuSection>
+
+      <div className="profile-page__logout-wrap">
+        <ProfileMenuRow
+          icon={<LogoutIcon />}
+          label="Выйти"
+          danger
+          showChevron={false}
+          onClick={() => void logout()}
+        />
+      </div>
+
+      <EditNameModal
+        open={editNameOpen}
+        initialName={user.name}
+        onClose={() => setEditNameOpen(false)}
+        onSave={async (name) => {
+          await updateProfile({ name });
+        }}
+      />
+    </div>
   );
 }

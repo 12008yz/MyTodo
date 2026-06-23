@@ -938,6 +938,14 @@
   fill: #1e1f28;
 }
 
+.home[data-side="dark"] .home__nav-label {
+  color: rgba(245, 245, 247, 0.5);
+}
+
+.home[data-side="dark"] .home__nav-item--active .home__nav-label {
+  color: #ab94ff;
+}
+
 .home[data-side="dark"] .home__demo-banner {
   background: rgba(255, 125, 83, 0.12);
   color: #ffb89e;
@@ -1229,81 +1237,6 @@
   background: #ff7d53;
 }
 
-/* --- Profile page --- */
-
-.profile__section {
-  margin-bottom: calc(16 * var(--s));
-}
-
-.profile__list {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: calc(8 * var(--s));
-}
-
-.profile__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: calc(12 * var(--s));
-  padding: calc(10 * var(--s)) calc(12 * var(--s));
-  border-radius: calc(12 * var(--s));
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 calc(4 * var(--s)) calc(20 * var(--s)) rgba(0, 0, 0, 0.03);
-}
-
-.profile__row dt {
-  margin: 0;
-  font-size: calc(13 * var(--s));
-  color: var(--color-secondary);
-}
-
-.profile__row dd {
-  margin: 0;
-  font-size: calc(14 * var(--s));
-  font-weight: 500;
-  color: var(--color-black);
-  text-align: right;
-}
-
-.profile__card {
-  margin: 0 0 calc(8 * var(--s));
-  padding: calc(12 * var(--s));
-  border-radius: calc(12 * var(--s));
-  background: rgba(255, 255, 255, 0.72);
-  font-size: calc(14 * var(--s));
-  line-height: 1.45;
-}
-
-.profile__card--muted p {
-  margin: calc(6 * var(--s)) 0 0;
-  font-size: calc(12 * var(--s));
-  color: var(--color-secondary);
-}
-
-.profile__action-btn,
-.profile__logout-btn {
-  width: 100%;
-  padding: calc(12 * var(--s)) calc(16 * var(--s));
-  border: none;
-  border-radius: calc(12 * var(--s));
-  font: inherit;
-  font-size: calc(14 * var(--s));
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.profile__action-btn {
-  background: rgba(95, 51, 225, 0.1);
-  color: var(--color-primary);
-}
-
-.profile__logout-btn {
-  background: rgba(239, 68, 68, 0.1);
-  color: #b91c1c;
-}
-
 .home[data-side="dark"] .home__page-title {
   color: #f5f5f7;
 }
@@ -1315,27 +1248,8 @@
 .home[data-side="dark"] .progress__cal-day,
 .home[data-side="dark"] .progress__day-detail,
 .home[data-side="dark"] .progress__chart,
-.home[data-side="dark"] .progress__habit-select-input,
-.home[data-side="dark"] .profile__row,
-.home[data-side="dark"] .profile__card {
+.home[data-side="dark"] .progress__habit-select-input {
   background: #24252c;
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: #f5f5f7;
-}
-
-.home[data-side="dark"] .profile__row dt,
-.home[data-side="dark"] .profile__card--muted p {
-  color: rgba(245, 245, 247, 0.55);
-}
-
-.home[data-side="dark"] .profile__row dd {
-  color: #f5f5f7;
-}
-
-.home[data-side="dark"] .home__nav-label {
-  color: rgba(245, 245, 247, 0.5);
-}
-
-.home[data-side="dark"] .home__nav-item--active .home__nav-label {
-  color: #ab94ff;
 }
