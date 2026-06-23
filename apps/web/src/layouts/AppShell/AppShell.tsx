@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Outlet } from "react-router-dom";
 import { BottomNav } from "../../components/BottomNav/BottomNav";
 import { AddHabitModal } from "../../components/AddHabitModal/AddHabitModal";
 import { SideProvider, useHabitSide } from "../../features/shell/SideContext";
 import { requestPushSubscription } from "../../lib/push";
+import { AnimatedOutlet } from "./AnimatedOutlet";
 import "../../pages/HomePage/HomePage.css";
 
 function AppShellInner() {
@@ -38,7 +38,7 @@ function AppShellInner() {
       </div>
 
       <div className="home__scroll">
-        <Outlet />
+        <AnimatedOutlet />
       </div>
 
       <BottomNav onAddClick={() => setAddOpen(true)} />

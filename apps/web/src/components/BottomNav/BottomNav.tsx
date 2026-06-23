@@ -1,4 +1,12 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
+import { getNavTabIndex, useNavShadow } from "./useNavShadow";
+
+const NAV_ITEMS = [
+  { to: "/", end: true, icon: "/navbar/home.svg", label: "Сегодня" },
+  { to: "/progress", end: false, icon: "/navbar/calendar.svg", label: "Прогресс" },
+  { to: "/charts", end: false, icon: "/navbar/charts.svg", label: "Графики" },
+  { to: "/profile", end: false, icon: "/navbar/profile-2user.svg", label: "Профиль" },
+] as const;
 
 function AddIcon() {
   return (
@@ -14,6 +22,10 @@ type BottomNavProps = {
 };
 
 export function BottomNav({ onAddClick }: BottomNavProps) {
+  const location = useLocation();
+  const activeIndex = getNavTabIndex(location.pathname);
+  const { containerRef, itemRefs, shadowRef } = useNavShadow(activeIndex);
+
   return (
     <nav className="home__navbar" aria-label="Основная навигация">
       <div className="home__navbar-bg" aria-hidden="true">
@@ -31,48 +43,65 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
         </svg>
       </div>
 
-      <div className="home__navbar-items">
+      <div ref={containerRef} className="home__navbar-items">
+        <span ref={shadowRef} className="home__nav-shadow" aria-hidden="true" />
+
         <NavLink
-          to="/"
-          end
+          ref={(element) => {
+            itemRefs.current[0] = element;
+          }}
+          to={NAV_ITEMS[0]!.to}
+          end={NAV_ITEMS[0]!.end}
           className={({ isActive }) =>
             ["home__nav-item", isActive ? "home__nav-item--active" : ""].filter(Boolean).join(" ")
           }
         >
-          <img src="/navbar/home.svg" alt="" />
-          <span className="home__nav-label">Сегодня</span>
+          <img src={NAV_ITEMS[0]!.icon} alt="" />
+          <span className="home__nav-label">{NAV_ITEMS[0]!.label}</span>
         </NavLink>
 
         <NavLink
-          to="/progress"
+          ref={(element) => {
+            itemRefs.current[1] = element;
+          }}
+          to={NAV_ITEMS[1]!.to}
+          end={NAV_ITEMS[1]!.end}
           className={({ isActive }) =>
             ["home__nav-item", isActive ? "home__nav-item--active" : ""].filter(Boolean).join(" ")
           }
         >
-          <img src="/navbar/calendar.svg" alt="" />
-          <span className="home__nav-label">Прогресс</span>
+          <img src={NAV_ITEMS[1]!.icon} alt="" />
+          <span className="home__nav-label">{NAV_ITEMS[1]!.label}</span>
         </NavLink>
 
         <span className="home__nav-fab-spacer" aria-hidden="true" />
 
         <NavLink
-          to="/charts"
+          ref={(element) => {
+            itemRefs.current[2] = element;
+          }}
+          to={NAV_ITEMS[2]!.to}
+          end={NAV_ITEMS[2]!.end}
           className={({ isActive }) =>
             ["home__nav-item", isActive ? "home__nav-item--active" : ""].filter(Boolean).join(" ")
           }
         >
-          <img src="/navbar/charts.svg" alt="" />
-          <span className="home__nav-label">Графики</span>
+          <img src={NAV_ITEMS[2]!.icon} alt="" />
+          <span className="home__nav-label">{NAV_ITEMS[2]!.label}</span>
         </NavLink>
 
         <NavLink
-          to="/profile"
+          ref={(element) => {
+            itemRefs.current[3] = element;
+          }}
+          to={NAV_ITEMS[3]!.to}
+          end={NAV_ITEMS[3]!.end}
           className={({ isActive }) =>
             ["home__nav-item", isActive ? "home__nav-item--active" : ""].filter(Boolean).join(" ")
           }
         >
-          <img src="/navbar/profile-2user.svg" alt="" />
-          <span className="home__nav-label">Профиль</span>
+          <img src={NAV_ITEMS[3]!.icon} alt="" />
+          <span className="home__nav-label">{NAV_ITEMS[3]!.label}</span>
         </NavLink>
       </div>
 
