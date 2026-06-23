@@ -224,11 +224,23 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding-top: calc(28 * var(--s));
   padding-left: calc(22 * var(--s));
   padding-right: calc(22 * var(--s));
   padding-bottom: calc(110 * var(--s) + env(safe-area-inset-bottom, 0px));
+}
+
+.home__scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* --- Header (top 28) --- */
