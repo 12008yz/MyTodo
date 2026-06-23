@@ -485,6 +485,7 @@
 .home__tasks-heading {
   display: flex;
   align-items: center;
+  gap: calc(8 * var(--s));
   margin-bottom: calc(21 * var(--s));
 }
 
@@ -496,10 +497,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   width: calc(16 * var(--s));
   height: calc(16 * var(--s));
-  margin-left: calc(-3 * var(--s));
   border-radius: 50%;
+  transform: translateY(calc(-2 * var(--s)));
   background: var(--color-navbar-bg);
   font-weight: 400;
   font-size: calc(11 * var(--s));
@@ -528,12 +530,31 @@
 }
 
 .home__task-title {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(6 * var(--s));
   margin: 0;
   padding-right: calc(36 * var(--s));
   font-weight: 400;
   font-size: calc(14 * var(--s));
   line-height: calc(18 * var(--s));
   color: var(--color-black);
+}
+
+.home__task-icon {
+  flex-shrink: 0;
+  width: calc(18 * var(--s));
+  height: calc(18 * var(--s));
+  margin-top: calc(1 * var(--s));
+  object-fit: contain;
+}
+
+.home__task-icon--emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(16 * var(--s));
+  line-height: 1;
 }
 
 .home__task-footer {

@@ -7,6 +7,7 @@ import {
   priorityFromStatus,
   statusLabel,
 } from "./format";
+import { HabitIcon } from "./HabitIcon";
 import type { TodaySide } from "./useTodayData";
 import { useCheckinMutation } from "./useTodayData";
 import { ClientApiError } from "../../lib/api";
@@ -60,7 +61,6 @@ export function HabitTaskCard({ habit, side }: HabitTaskCardProps) {
     void runCheckin({ habit_id: habit.id, status: "skipped" });
   };
 
-  const icon = habit.icon ?? (side === "light" ? "☀️" : "🌑");
   const timer = hasTimerField(habit) ? habit.timer : null;
 
   return (
@@ -73,7 +73,10 @@ export function HabitTaskCard({ habit, side }: HabitTaskCardProps) {
         aria-hidden="true"
       />
       <h3 className="home__task-title">
-        {icon} {habit.name} — {formatGoalLabel(habit)}
+        <HabitIcon icon={habit.icon} side={side} />
+        <span>
+          {habit.name} — {formatGoalLabel(habit)}
+        </span>
       </h3>
 
       {timer ? (
