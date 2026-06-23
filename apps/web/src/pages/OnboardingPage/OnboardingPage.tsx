@@ -733,7 +733,6 @@ export function OnboardingPage() {
                     .join(" ")}
                   onClick={() => setHarshnessLevel(option.level)}
                 >
-                  <span className="onboarding__choice-emoji">{option.emoji}</span>
                   <span>
                     <p className="onboarding__choice-title">{option.title}</p>
                     <p className="onboarding__choice-quote">{option.quote}</p>
