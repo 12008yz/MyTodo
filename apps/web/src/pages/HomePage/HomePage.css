@@ -224,11 +224,7 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  touch-action: pan-y;
+  overflow: hidden;
   padding-top: calc(28 * var(--s));
   padding-left: calc(22 * var(--s));
   padding-right: calc(22 * var(--s));
@@ -725,6 +721,7 @@
   gap: calc(4 * var(--s));
   margin-bottom: calc(18 * var(--s));
   flex-shrink: 0;
+  min-height: calc(38 * var(--s));
 }
 
 .home__week-day {
@@ -844,42 +841,6 @@
   transition: color 0.45s ease;
 }
 
-/* --- Side panel content entrance --- */
-
-@keyframes home-panel-from-left {
-  from {
-    opacity: 0;
-    transform: translateX(calc(-22 * var(--s)));
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes home-panel-from-right {
-  from {
-    opacity: 0;
-    transform: translateX(calc(22 * var(--s)));
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.home__side-panel--from-left {
-  animation: home-panel-from-left 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: 0.12s;
-}
-
-.home__side-panel--from-right {
-  animation: home-panel-from-right 0.52s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: 0.12s;
-}
-
 /* --- Dark side theme --- */
 
 .home[data-side="dark"] .home__hello,
@@ -956,11 +917,6 @@
   .home__budget,
   .home__trial {
     transition: none;
-  }
-
-  .home__side-panel--from-left,
-  .home__side-panel--from-right {
-    animation: none;
   }
 }
 

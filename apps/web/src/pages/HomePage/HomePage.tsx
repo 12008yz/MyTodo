@@ -1,15 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { TodayLightResponse } from "@mytodo/shared";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { HabitTaskCard } from "../../features/today/HabitTaskCard";
 import { useTodayDashboard, type TodayDashboard, type TodaySide } from "../../features/today/useTodayData";
-import { WeekStrip } from "../../features/today/WeekStrip";
+import { getPlaceholderWeekDays, WeekStrip } from "../../features/today/WeekStrip";
 import { ClientApiError } from "../../lib/api";
 import { isDemoMode } from "../../lib/demo-mode";
 import { requestPushSubscription } from "../../lib/push";
 import "./HomePage.css";
-
-type SideEnterFrom = "left" | "right";
 
 function isLightDashboard(dashboard: TodayDashboard | undefined): dashboard is TodayLightResponse {
   return dashboard !== undefined && "daily_budget_min" in dashboard;
@@ -32,8 +30,7 @@ function AddIcon() {
 export function HomePage() {
   const { user, logout } = useAuth();
   const [side, setSide] = useState<TodaySide>("light");
-  const [enterFrom, setEnterFrom] = useState<SideEnterFrom>("left");
-  const skipPanelAnimation = useRef(true);
+  const placeholderWeek = useMemo(() => getPlaceholderWeekDays(), []);
   const { dashboard, week, isLoading, isError, error } = useTodayDashboard(side);
 
   const name = dashboard?.greeting_name ?? user?.name ?? "Пользователь";
@@ -45,15 +42,7 @@ export function HomePage() {
     void requestPushSubscription();
   }, []);
 
-  useEffect(() => {
-    skipPanelAnimation.current = false;
-  }, []);
-
-  const handleSideChange = (next: TodaySide) => {
-    if (next === side) return;
-    setEnterFrom(next === "dark" ? "left" : "right");
-    setSide(next);
-  };
+  const weekDays = week?.days ?? placeholderWeek;
 
   return (
     <div className="home" data-side={side}>
@@ -111,7 +100,7 @@ export function HomePage() {
             role="tab"
             aria-selected={side === "light"}
             className={["home__side-btn", side === "light" ? "is-active" : ""].filter(Boolean).join(" ")}
-            onClick={() => handleSideChange("light")}
+            onClick={() => setSide("light")}
           >
             ☀️ Светлая
           </button>
@@ -120,28 +109,13 @@ export function HomePage() {
             role="tab"
             aria-selected={side === "dark"}
             className={["home__side-btn", side === "dark" ? "is-active" : ""].filter(Boolean).join(" ")}
-            onClick={() => handleSideChange("dark")}
+            onClick={() => setSide("dark")}
           >
             🌑 Тёмная
           </button>
         </div>
 
-        <div
-          key={side}
-          className={[
-            "home__side-panel",
-            skipPanelAnimation.current
-              ? ""
-              : enterFrom === "left"
-                ? "home__side-panel--from-left"
-                : "home__side-panel--from-right",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-        >
-        {week && dashboard ? (
-          <WeekStrip days={week.days} today={dashboard.date} />
-        ) : null}
+        <WeekStrip days={weekDays} today={dashboard?.date} />
 
         <section className="home__section home__section--stats" aria-labelledby="stats-heading">
           <h2 id="stats-heading" className="home__section-title">
@@ -211,7 +185,6 @@ export function HomePage() {
             </p>
           ) : null}
         </section>
-        </div>
       </div>
 
       <nav className="home__navbar" aria-label="Основная навигация">

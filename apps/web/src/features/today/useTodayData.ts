@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CreateCheckinRequest,
   StatsSide,
@@ -17,11 +17,13 @@ export function useTodayDashboard(side: TodaySide) {
     queryKey: ["today", side],
     queryFn: (): Promise<TodayDashboard> =>
       side === "light" ? getTodayLight() : getTodayDark(),
+    placeholderData: keepPreviousData,
   });
 
   const weekQuery = useQuery({
     queryKey: ["stats-week", side],
     queryFn: () => getStatsWeek(side),
+    placeholderData: keepPreviousData,
   });
 
   return {
