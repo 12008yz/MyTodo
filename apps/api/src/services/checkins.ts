@@ -82,11 +82,15 @@ export class CheckinService {
   }
 
   async applySessionMinutes(user: User, habitId: string, minutes: number) {
-    if (minutes <= 0) {
+    return this.applySessionValue(user, habitId, minutes);
+  }
+
+  async applySessionValue(user: User, habitId: string, valueToAdd: number) {
+    if (valueToAdd <= 0) {
       throw new ApiError(
         HTTP_STATUS.BAD_REQUEST,
         ERROR_CODES.VALIDATION_ERROR,
-        "minutes must be greater than zero",
+        "value must be greater than zero",
       );
     }
 
@@ -98,12 +102,12 @@ export class CheckinService {
       throw new ApiError(
         HTTP_STATUS.BAD_REQUEST,
         ERROR_CODES.VALIDATION_ERROR,
-        "Cannot add minutes on a skipped day",
+        "Cannot add session value on a skipped day",
       );
     }
 
     const currentValue = existing?.value == null ? 0 : Number(existing.value);
-    const newValue = currentValue + minutes;
+    const newValue = currentValue + valueToAdd;
     const status = resolveCheckinStatus(this.toCheckinHabit(habit), { value: newValue });
     const checkin = await this.saveCheckin(habit.id, date, status, newValue);
 
