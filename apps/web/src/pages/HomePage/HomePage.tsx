@@ -4,6 +4,7 @@ import type { TodayLightResponse } from "@mytodo/shared";
 import { SideToggle } from "../../components/SideToggle/SideToggle";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { useHabitSide } from "../../features/shell/SideContext";
+import { DailyPlanList } from "../../features/today/DailyPlanList";
 import { HabitTaskCard } from "../../features/today/HabitTaskCard";
 import { useTodayDashboard, type TodayDashboard } from "../../features/today/useTodayData";
 import { getPlaceholderWeekDays, WeekStrip } from "../../features/today/WeekStrip";
@@ -12,6 +13,12 @@ import { isDemoMode } from "../../lib/demo-mode";
 
 function isLightDashboard(dashboard: TodayDashboard | undefined): dashboard is TodayLightResponse {
   return dashboard !== undefined && "daily_budget_min" in dashboard;
+}
+
+function hasDailyPlan(
+  dashboard: TodayDashboard | undefined,
+): dashboard is TodayDashboard & { daily_plan: NonNullable<TodayDashboard["daily_plan"]> } {
+  return Boolean(dashboard?.daily_plan);
 }
 
 function getUserInitial(name: string): string {
@@ -145,6 +152,8 @@ export function HomePage() {
           </p>
         ) : null}
       </section>
+
+      {hasDailyPlan(dashboard) ? <DailyPlanList dailyPlan={dashboard.daily_plan} side={side} /> : null}
     </>
   );
 }

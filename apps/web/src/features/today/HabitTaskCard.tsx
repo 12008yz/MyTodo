@@ -26,10 +26,11 @@ export function HabitTaskCard({ habit, side }: HabitTaskCardProps) {
   const [actionError, setActionError] = useState<string | null>(null);
   const status = habit.checkin?.status;
   const priority = priorityFromStatus(status);
-  const [value, setValue] = useState(habit.checkin?.value ?? 0);
+  const [manualValue, setManualValue] = useState(String(habit.checkin?.value ?? 0));
+  const [isManualOpen, setIsManualOpen] = useState(false);
 
   useEffect(() => {
-    setValue(habit.checkin?.value ?? 0);
+    setManualValue(String(habit.checkin?.value ?? 0));
   }, [habit.checkin?.value]);
 
   const isPending = checkinMutation.isPending;
@@ -49,8 +50,15 @@ export function HabitTaskCard({ habit, side }: HabitTaskCardProps) {
     }
   };
 
-  const saveValue = () => {
-    void runCheckin({ habit_id: habit.id, value });
+  const saveManualValue = async () => {
+    const value = Number(manualValue);
+    if (!Number.isFinite(value) || value < 0) {
+      setActionError("Введите корректное число");
+      return;
+    }
+
+    await runCheckin({ habit_id: habit.id, value });
+    setIsManualOpen(false);
   };
 
   const markFail = () => {
@@ -84,19 +92,9 @@ export function HabitTaskCard({ habit, side }: HabitTaskCardProps) {
       ) : null}
 
       {!timer && habit.type !== "abstinence" ? (
-        <div className="home__task-slider">
-          <input
-            type="range"
-            min={0}
-            max={Math.max(habit.current_goal * 2, habit.current_goal + 1)}
-            value={value}
-            onChange={(event) => setValue(Number(event.target.value))}
-            disabled={isPending || status === "success"}
-          />
-          <span className="home__task-slider-value">
-            {value} {formatUnit(habit.unit)}
-          </span>
-        </div>
+        <p className="home__task-progress">
+          Прогресс: {habit.checkin?.value ?? 0} / {habit.current_goal} {formatUnit(habit.unit)}
+        </p>
       ) : null}
 
       <div className="home__task-footer">
@@ -127,9 +125,9 @@ export function HabitTaskCard({ habit, side }: HabitTaskCardProps) {
             type="button"
             className="home__task-btn"
             disabled={isPending}
-            onClick={saveValue}
+            onClick={() => setIsManualOpen((value) => !value)}
           >
-            Сохранить
+            Ввести вручную
           </button>
         ) : null}
 
@@ -144,6 +142,36 @@ export function HabitTaskCard({ habit, side }: HabitTaskCardProps) {
           </button>
         ) : null}
       </div>
+
+      {isManualOpen && habit.type !== "abstinence" ? (
+        <div className="home__task-manual">
+          <input
+            type="number"
+            min={0}
+            step={habit.unit === "minutes" ? 1 : "any"}
+            value={manualValue}
+            onChange={(event) => setManualValue(event.target.value)}
+            className="home__task-manual-input"
+            disabled={isPending}
+          />
+          <button
+            type="button"
+            className="home__task-btn"
+            disabled={isPending}
+            onClick={() => void saveManualValue()}
+          >
+            Сохранить
+          </button>
+          <button
+            type="button"
+            className="home__task-btn home__task-btn--ghost"
+            disabled={isPending}
+            onClick={() => setIsManualOpen(false)}
+          >
+            Отмена
+          </button>
+        </div>
+      ) : null}
 
       {actionError ? <p className="home__task-error">{actionError}</p> : null}
     </article>
