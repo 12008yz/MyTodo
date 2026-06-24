@@ -2,10 +2,15 @@ import {
   apiErrorResponseSchema,
   authResponseSchema,
   checkinResponseSchema,
+  completeHabitSessionRequestSchema,
   createHabitRequestSchema,
   createCheckinRequestSchema,
   englishSettingsResponseSchema,
+  habitSessionActiveResponseSchema,
+  habitSessionCompleteResponseSchema,
+  habitSessionSchema,
   habitResponseSchema,
+  startHabitSessionRequestSchema,
   pushSubscribeRequestSchema,
   pushSubscribeResponseSchema,
   pushTestResponseSchema,
@@ -19,7 +24,11 @@ import {
   type CreateCheckinRequest,
   type CreateHabitRequest,
   type CheckinResponse,
+  type CompleteHabitSessionRequest,
   type HabitResponse,
+  type HabitSessionActiveResponse,
+  type HabitSessionCompleteResponse,
+  type HabitSessionResponse,
   type LoginRequest,
   type PatchEnglishSettingsRequest,
   type PatchMeRequest,
@@ -27,6 +36,7 @@ import {
   type PushSubscribeResponse,
   type PushTestResponse,
   type RegisterRequest,
+  type StartHabitSessionRequest,
   type ProgressPeriod,
   type StatsCalendarResponse,
   type StatsMonthResponse,
@@ -307,6 +317,60 @@ export async function createCheckin(data: CreateCheckinRequest): Promise<Checkin
     body: JSON.stringify(data),
   });
   return checkinResponseSchema.parse(response);
+}
+
+export async function startHabitSession(
+  habitId: string,
+  data: StartHabitSessionRequest = {},
+): Promise<HabitSessionResponse> {
+  startHabitSessionRequestSchema.parse(data);
+
+  if (isDemoMode()) {
+    throw new ClientApiError("Сессии пока недоступны в демо-режиме", 501);
+  }
+
+  const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/sessions/start`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return habitSessionSchema.parse(response);
+}
+
+export async function completeHabitSession(
+  habitId: string,
+  data: CompleteHabitSessionRequest = {},
+): Promise<HabitSessionCompleteResponse> {
+  completeHabitSessionRequestSchema.parse(data);
+
+  if (isDemoMode()) {
+    throw new ClientApiError("Сессии пока недоступны в демо-режиме", 501);
+  }
+
+  const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/sessions/complete`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return habitSessionCompleteResponseSchema.parse(response);
+}
+
+export async function stopHabitSession(habitId: string): Promise<HabitSessionResponse> {
+  if (isDemoMode()) {
+    throw new ClientApiError("Сессии пока недоступны в демо-режиме", 501);
+  }
+
+  const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/sessions/stop`, {
+    method: "POST",
+  });
+  return habitSessionSchema.parse(response);
+}
+
+export async function getActiveHabitSession(habitId: string): Promise<HabitSessionActiveResponse> {
+  if (isDemoMode()) {
+    throw new ClientApiError("Сессии пока недоступны в демо-режиме", 501);
+  }
+
+  const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/sessions/active`);
+  return habitSessionActiveResponseSchema.parse(response);
 }
 
 export async function getStatsWeek(side: StatsSide): Promise<StatsWeekResponse> {
