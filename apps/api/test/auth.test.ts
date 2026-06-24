@@ -148,7 +148,7 @@ describe("Auth and profile", () => {
     expect(profile.free_time_min).toBe(45);
   });
 
-  it("caps daily_budget_min at 60 when free_time_min is higher", async () => {
+  it("uses full free time as daily_budget_min", async () => {
     const registered = await registerUser();
 
     const patchResponse = await app.inject({
@@ -168,7 +168,7 @@ describe("Auth and profile", () => {
 
     expect(patchResponse.statusCode).toBe(200);
     const profile = userProfileSchema.parse(JSON.parse(patchResponse.body));
-    expect(profile.daily_budget_min).toBe(60);
+    expect(profile.daily_budget_min).toBe(120);
     expect(profile.free_time_min).toBe(120);
   });
 

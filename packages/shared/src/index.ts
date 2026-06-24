@@ -118,7 +118,16 @@ export {
   type TodayLightResponse,
   type TodayStats,
 } from "./schemas/today.js";
-export { DOOM_SCROLL_DURATION_MIN } from "./constants/sessions.js";
+export {
+  AWARENESS_SESSION_MIN,
+  DOOM_SCROLL_DURATION_MIN,
+  LESSON_MINUTES_ESTIMATE,
+  MIN_MINUTES_PER_LIGHT_HABIT,
+  maxLightHabitsForBudget,
+  SESSION_MAX_MIN,
+  SESSION_MIN_MIN,
+  SESSION_TARGET_MIN,
+} from "./constants/sessions.js";
 export {
   pomodoroActiveResponseSchema,
   pomodoroCompleteResponseSchema,

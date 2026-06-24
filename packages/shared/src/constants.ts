@@ -68,5 +68,5 @@ export const GENDERS = ["male", "female", "other"] as const;
 export type Gender = (typeof GENDERS)[number];
 
 export function computeDailyBudgetMin(freeTimeMin: number): number {
-  return Math.min(freeTimeMin, 60);
+  return freeTimeMin;
 }
