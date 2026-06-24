@@ -16,5 +16,8 @@ dist/
 .idea/
 .vscode/
 
+# Git worktrees (local only)
+.worktrees/
+
 # Test coverage
 coverage/
