@@ -34,6 +34,8 @@
   height: 100%;
   max-height: 100%;
   margin-inline: auto;
+  padding-top: constant(safe-area-inset-top, 0px);
+  padding-top: env(safe-area-inset-top, 0px);
   background: #ffffff;
   overflow: hidden;
   container-type: inline-size;
