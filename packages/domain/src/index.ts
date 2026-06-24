@@ -1,5 +1,13 @@
 export { calibrateHabit, recalculateLightGoal, type CalibratedHabit, type CalibrateHabitInput, type CalibrationProfile } from "./habits/calibration.js";
 export {
+  buildDailyPlan,
+  goalToMinutes,
+  minutesToExpectedYield,
+  type DailyPlan,
+  type DailyPlanBlock,
+  type HabitPlanInput,
+} from "./habits/daily-plan.js";
+export {
   canSkipThisWeek,
   countSkipsInWeek,
   resolveCheckinStatus,
