@@ -198,6 +198,11 @@ export function DailyPlanList({ dailyPlan, side }: DailyPlanListProps) {
         habitName={valuePrompt?.block.habit_name ?? ""}
         unit={valuePrompt?.block.unit ?? "pieces"}
         expectedYield={valuePrompt?.block.expected_yield ?? 0}
+        inputLabel={
+          side === "dark"
+            ? "Сколько всего сегодня?"
+            : "Сколько сделал?"
+        }
         isSubmitting={completeSession.isPending}
         onCancel={() => setValuePrompt(null)}
         onSubmit={(value) => {

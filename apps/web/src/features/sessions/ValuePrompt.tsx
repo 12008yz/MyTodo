@@ -7,6 +7,7 @@ type ValuePromptProps = {
   habitName: string;
   unit: HabitUnit;
   expectedYield: number;
+  inputLabel?: string;
   isSubmitting?: boolean;
   onCancel: () => void;
   onSubmit: (value: number) => void;
@@ -17,6 +18,7 @@ export function ValuePrompt({
   habitName,
   unit,
   expectedYield,
+  inputLabel = "Сколько сделал?",
   isSubmitting = false,
   onCancel,
   onSubmit,
@@ -59,7 +61,7 @@ export function ValuePrompt({
           Ожидаемо: {expectedYield} {formatUnit(unit)}
         </p>
         <label className="home__value-prompt-label" htmlFor="value-prompt-input">
-          Сколько сделал?
+          {inputLabel}
         </label>
         <input
           id="value-prompt-input"

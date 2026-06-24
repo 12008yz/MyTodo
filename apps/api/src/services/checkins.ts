@@ -85,12 +85,25 @@ export class CheckinService {
     return this.applySessionValue(user, habitId, minutes);
   }
 
-  async applySessionValue(user: User, habitId: string, valueToAdd: number) {
-    if (valueToAdd <= 0) {
+  async applySessionValue(
+    user: User,
+    habitId: string,
+    value: number,
+    options?: { mode?: "add" | "set" },
+  ) {
+    const mode = options?.mode ?? "add";
+    if (mode === "add" && value <= 0) {
       throw new ApiError(
         HTTP_STATUS.BAD_REQUEST,
         ERROR_CODES.VALIDATION_ERROR,
         "value must be greater than zero",
+      );
+    }
+    if (mode === "set" && value < 0) {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
+        "value must be zero or greater",
       );
     }
 
@@ -107,7 +120,7 @@ export class CheckinService {
     }
 
     const currentValue = existing?.value == null ? 0 : Number(existing.value);
-    const newValue = currentValue + valueToAdd;
+    const newValue = mode === "set" ? value : currentValue + value;
     const status = resolveCheckinStatus(this.toCheckinHabit(habit), { value: newValue });
     const checkin = await this.saveCheckin(habit.id, date, status, newValue);
 

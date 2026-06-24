@@ -140,6 +140,11 @@ export class TodayService {
             todayCheckins,
           );
     const dailyPlan = await this.buildDailyPlanForSide(user, side, userHabits, todayCheckins, today);
+    const emptyPlan = buildDailyPlan({
+      date: today,
+      budgetMin: user.dailyBudgetMin,
+      habits: [],
+    });
 
     return {
       date: today,
@@ -148,7 +153,7 @@ export class TodayService {
       minutes_logged_today: minutesLoggedToday,
       stats,
       habits: habitsPayload,
-      daily_plan: dailyPlan ?? undefined,
+      daily_plan: side === "light" ? (dailyPlan ?? emptyPlan) : (dailyPlan ?? undefined),
     };
   }
 

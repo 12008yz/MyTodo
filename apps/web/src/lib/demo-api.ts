@@ -755,9 +755,11 @@ function toDemoSessionResponse(session: DemoHabitSession): HabitSessionResponse 
 function upsertSessionCheckin(
   state: DemoState,
   habit: HabitResponse,
-  valueToAdd: number,
+  value: number,
   now: string,
+  options?: { mode?: "add" | "set" },
 ): { date: string; status: CheckinResponse["status"]; value: number; current_goal: number; preview_next_goal: number } {
+  const mode = options?.mode ?? "add";
   const date = todayDate();
   const existingIndex = state.checkins.findIndex(
     (checkin) => checkin.habit_id === habit.id && checkin.date === date,
@@ -769,14 +771,14 @@ function upsertSessionCheckin(
   }
 
   const currentValue = existing?.value ?? 0;
-  const value = currentValue + valueToAdd;
+  const nextValue = mode === "set" ? value : currentValue + value;
   const status: CheckinResponse["status"] =
     habit.type === "target"
-      ? value >= habit.current_goal
+      ? nextValue >= habit.current_goal
         ? "success"
         : "fail"
       : habit.type === "limit"
-        ? value <= habit.current_goal
+        ? nextValue <= habit.current_goal
           ? "success"
           : "fail"
         : "pending";
@@ -786,7 +788,7 @@ function upsertSessionCheckin(
     habit_id: habit.id,
     date,
     status,
-    value,
+    value: nextValue,
     updated_at: now,
     current_goal: habit.current_goal,
     preview_next_goal: habit.current_goal,
@@ -801,7 +803,7 @@ function upsertSessionCheckin(
   return {
     date,
     status,
-    value,
+    value: nextValue,
     current_goal: habit.current_goal,
     preview_next_goal: habit.current_goal,
   };
@@ -892,19 +894,30 @@ export function demoCompleteHabitSession(
   }
 
   const actualMin = Math.max(1, elapsedMinutesSince(session.started_at));
-  const valueToAdd =
-    habit.unit === "minutes"
-      ? actualMin
-      : data.actual_value == null || data.actual_value <= 0
-        ? null
-        : data.actual_value;
+  const useDailyTotal = habit.side === "dark" && habit.type === "limit";
 
-  if (valueToAdd == null) {
+  let valueToAdd: number;
+  if (habit.unit === "minutes") {
+    valueToAdd = actualMin;
+  } else if (useDailyTotal) {
+    if (data.actual_value == null || data.actual_value < 0) {
+      throw new Error("actual_value must be zero or greater for limit habits");
+    }
+    valueToAdd = data.actual_value;
+  } else if (data.actual_value == null || data.actual_value <= 0) {
     throw new Error("actual_value must be greater than zero for non-minute habits");
+  } else {
+    valueToAdd = data.actual_value;
   }
 
   const now = nowIso();
-  const checkin = upsertSessionCheckin(state, habit, valueToAdd, now);
+  const checkin = upsertSessionCheckin(
+    state,
+    habit,
+    valueToAdd,
+    now,
+    useDailyTotal ? { mode: "set" } : undefined,
+  );
 
   const updatedSession: DemoHabitSession = {
     ...session,

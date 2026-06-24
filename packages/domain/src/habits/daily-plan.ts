@@ -76,8 +76,9 @@ function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
 }
 
-function blockId(date: string, habitId: string, index: number): string {
-  return `${date}:${habitId}:${index}`;
+/** Includes remaining goal so completed block ids do not mark regenerated blocks after partial progress. */
+function blockId(date: string, habitId: string, remainingGoal: number, index: number): string {
+  return `${date}:${habitId}:${remainingGoal}:${index}`;
 }
 
 type HabitBlockDraft = Omit<DailyPlanBlock, "order" | "status" | "actual_value" | "actual_minutes">;
@@ -134,6 +135,7 @@ export function buildDailyPlan(input: {
   const blocksByHabit: HabitBlockDraft[][] = [];
 
   for (const { habit, habitBudgetMin } of habitBudgets) {
+    const remainingGoal = Math.max(0, habit.current_goal - habit.checkin_value);
     const sessionCount = Math.max(1, Math.round(habitBudgetMin / SESSION_TARGET_MIN));
     const rawSessionMin = Math.round(habitBudgetMin / sessionCount);
     const sessionMin =
@@ -144,7 +146,7 @@ export function buildDailyPlan(input: {
     const habitBlocks: HabitBlockDraft[] = [];
     for (let index = 0; index < sessionCount; index++) {
       habitBlocks.push({
-        id: blockId(date, habit.id, index),
+        id: blockId(date, habit.id, remainingGoal, index),
         habit_id: habit.id,
         habit_name: habit.name,
         icon: habit.icon,

@@ -41,4 +41,24 @@ describe("buildDailyPlan", () => {
     const ids = plan.blocks.map((b) => b.habit_id);
     expect(ids[0]).not.toBe(ids[1]);
   });
+
+  it("uses new block ids after partial progress so completed blocks are not reused", () => {
+    const before = buildDailyPlan({
+      date: "2026-06-24",
+      budgetMin: 60,
+      habits: [{ id: "h1", name: "Книги", icon: null, unit: "pages", current_goal: 20, checkin_value: 0 }],
+    });
+    const firstBlockId = before.blocks[0]!.id;
+
+    const after = buildDailyPlan({
+      date: "2026-06-24",
+      budgetMin: 60,
+      habits: [{ id: "h1", name: "Книги", icon: null, unit: "pages", current_goal: 20, checkin_value: 5 }],
+      completedBlockIds: new Set([firstBlockId]),
+    });
+
+    const pendingBlocks = after.blocks.filter((block) => block.status === "pending");
+    expect(pendingBlocks.length).toBeGreaterThan(0);
+    expect(pendingBlocks.some((block) => block.id === firstBlockId)).toBe(false);
+  });
 });
