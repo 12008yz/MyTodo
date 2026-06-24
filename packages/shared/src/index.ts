@@ -83,11 +83,32 @@ export {
   createHabitFromTemplateSchema,
   createHabitRequestSchema,
   habitResponseSchema,
+  habitUnitSchema,
   patchHabitRequestSchema,
   type CreateHabitRequest,
   type HabitResponse,
   type PatchHabitRequest,
 } from "./schemas/habits.js";
+export {
+  dailyPlanBlockSchema,
+  dailyPlanBlockStatusSchema,
+  dailyPlanSchema,
+  type DailyPlan,
+  type DailyPlanBlock,
+  type DailyPlanBlockStatus,
+} from "./schemas/daily-plan.js";
+export {
+  completeHabitSessionRequestSchema,
+  habitSessionActiveResponseSchema,
+  habitSessionCompleteResponseSchema,
+  habitSessionSchema,
+  startHabitSessionRequestSchema,
+  type CompleteHabitSessionRequest,
+  type HabitSessionActiveResponse,
+  type HabitSessionCompleteResponse,
+  type HabitSessionResponse,
+  type StartHabitSessionRequest,
+} from "./schemas/habit-session.js";
 export {
   batchCheckinRequestSchema,
   batchCheckinResponseSchema,

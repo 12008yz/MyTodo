@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { dailyPlanSchema } from "./daily-plan.js";
 import { habitResponseSchema } from "./habits.js";
 import { checkinResponseSchema } from "./checkins.js";
 import { doomScrollSessionSchema } from "./doom-scroll.js";
@@ -40,6 +41,7 @@ export const todayLightResponseSchema = z.object({
   minutes_logged_today: z.number().int().min(0),
   stats: todayStatsSchema,
   habits: z.array(todayLightHabitSchema),
+  daily_plan: dailyPlanSchema,
 });
 
 export type TodayLightResponse = z.infer<typeof todayLightResponseSchema>;
@@ -72,6 +74,7 @@ export const todayDarkResponseSchema = z.object({
   greeting_name: z.string(),
   stats: todayStatsSchema,
   habits: z.array(todayDarkHabitSchema),
+  daily_plan: dailyPlanSchema.optional(),
 });
 
 export type TodayDarkResponse = z.infer<typeof todayDarkResponseSchema>;

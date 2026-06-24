@@ -5,6 +5,8 @@ import {
   HABIT_UNITS,
 } from "../constants/habits.js";
 
+export const habitUnitSchema = z.enum(HABIT_UNITS);
+
 const baselineSchema = z.number().min(0).max(10_000);
 
 export const createHabitFromTemplateSchema = z.object({
