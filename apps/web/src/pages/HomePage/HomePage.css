@@ -29,12 +29,50 @@
   container-name: home;
   --side-ease: cubic-bezier(0.65, 0, 0.35, 1);
   --side-duration: 0.72s;
+  --home-block-recolor-duration: 1.25s;
+  --home-habit-crossfade-duration: var(--side-duration);
   transition: background var(--side-duration) var(--side-ease);
 }
 
 .home[data-side="dark"] {
   --color-navbar-bg: #1e1f28;
   background: #12131a;
+}
+
+/* Home page blocks — slower recolor on side switch */
+
+.home__stat-card--light,
+.home__stat-card--light .home__stat-label,
+.home__stat-card--light .home__stat-value {
+  transition:
+    color var(--home-habit-crossfade-duration) var(--side-ease),
+    background-color var(--home-habit-crossfade-duration) var(--side-ease),
+    background var(--home-habit-crossfade-duration) var(--side-ease),
+    border-color var(--home-habit-crossfade-duration) var(--side-ease),
+    box-shadow var(--home-habit-crossfade-duration) var(--side-ease);
+}
+
+.home__task-card,
+.home__task-title,
+.home__task-timer,
+.home__task-time,
+.home__task-progress,
+.home__demo-banner,
+.home__tasks-count,
+.home__week-day-label,
+.home__task-manual-input,
+.home__budget,
+.home__trial {
+  transition:
+    color var(--home-block-recolor-duration) var(--side-ease),
+    background-color var(--home-block-recolor-duration) var(--side-ease),
+    background var(--home-block-recolor-duration) var(--side-ease),
+    border-color var(--home-block-recolor-duration) var(--side-ease),
+    box-shadow var(--home-block-recolor-duration) var(--side-ease);
+}
+
+.home__week-day--active .home__week-day-dot {
+  transition: box-shadow var(--home-block-recolor-duration) var(--side-ease);
 }
 
 /* --- Side background curtain --- */
@@ -1005,6 +1043,7 @@
 .home__plan-summary {
   font-size: calc(12 * var(--s));
   color: var(--color-secondary);
+  transition: color var(--home-habit-crossfade-duration) var(--side-ease);
 }
 
 .home__plan-progress {
@@ -1013,6 +1052,7 @@
   height: calc(8 * var(--s));
   border-radius: calc(999 * var(--s));
   background: rgba(95, 51, 225, 0.13);
+  transition: background var(--home-habit-crossfade-duration) var(--side-ease);
 }
 
 .home__plan-progress-fill {
@@ -1020,12 +1060,40 @@
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #5f33e1 0%, #ab94ff 100%);
+  transition:
+    background var(--home-habit-crossfade-duration) var(--side-ease),
+    width var(--home-habit-crossfade-duration) var(--side-ease);
 }
 
 .home__plan-list {
   display: flex;
   flex-direction: column;
   gap: calc(12 * var(--s));
+}
+
+.home__plan-lists-crossfade {
+  display: grid;
+}
+
+.home__plan-list-layer {
+  grid-area: 1 / 1;
+  min-width: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--home-habit-crossfade-duration) var(--side-ease),
+    visibility 0s linear var(--home-habit-crossfade-duration);
+}
+
+.home__plan-list-layer--active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  z-index: 1;
+  transition:
+    opacity var(--home-habit-crossfade-duration) var(--side-ease),
+    visibility 0s linear 0s;
 }
 
 .home__plan-item {
@@ -1036,6 +1104,7 @@
   padding: calc(12 * var(--s));
   border-radius: calc(14 * var(--s));
   background: rgba(255, 255, 255, 0.78);
+  border: 1px solid transparent;
   box-shadow: 0 calc(4 * var(--s)) calc(24 * var(--s)) rgba(0, 0, 0, 0.04);
 }
 
@@ -1129,10 +1198,6 @@
   background: rgba(95, 51, 225, 0.08);
   color: var(--color-primary);
   cursor: pointer;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.15s ease;
 }
 
 .home__plan-info-btn:hover {
@@ -1269,7 +1334,6 @@
   font-size: calc(12 * var(--s));
   line-height: 1.4;
   color: var(--color-secondary);
-  transition: color 0.45s ease;
 }
 
 /* --- Dark side theme --- */
@@ -1279,17 +1343,40 @@
 .home[data-side="dark"] .home__section-title,
 .home[data-side="dark"] .home__stat-card--light .home__stat-label,
 .home[data-side="dark"] .home__stat-card--light .home__stat-value,
-.home[data-side="dark"] .home__task-title,
-.home[data-side="dark"] .home__plan-item-title,
-.home[data-side="dark"] .home__plan-item-title > span:last-child {
+.home[data-side="dark"] .home__task-title {
   color: #f5f5f7;
 }
 
-.home[data-side="dark"] .home__task-card,
-.home[data-side="dark"] .home__stat-card--light,
-.home[data-side="dark"] .home__placeholder {
+.home[data-side="dark"] .home__task-card {
   background: #24252c;
   border-color: rgba(255, 255, 255, 0.08);
+}
+
+.home[data-side="dark"] .home__stat-card--light {
+  background: #24252c;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.home__plan-list-layer[data-side="light"] .home__placeholder {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: transparent;
+  color: var(--color-secondary);
+  transition:
+    color var(--home-habit-crossfade-duration) var(--side-ease),
+    background-color var(--home-habit-crossfade-duration) var(--side-ease),
+    background var(--home-habit-crossfade-duration) var(--side-ease),
+    border-color var(--home-habit-crossfade-duration) var(--side-ease);
+}
+
+.home__plan-list-layer[data-side="dark"] .home__placeholder {
+  background: #24252c;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: rgba(245, 245, 247, 0.62);
+  transition:
+    color var(--home-habit-crossfade-duration) var(--side-ease),
+    background-color var(--home-habit-crossfade-duration) var(--side-ease),
+    background var(--home-habit-crossfade-duration) var(--side-ease),
+    border-color var(--home-habit-crossfade-duration) var(--side-ease);
 }
 
 .home[data-side="dark"] .home__profile-link {
@@ -1342,56 +1429,109 @@
   color: #ffb89e;
 }
 
-.home[data-side="dark"] .home__budget,
-.home[data-side="dark"] .home__trial,
-.home[data-side="dark"] .home__task-timer,
-.home[data-side="dark"] .home__task-time,
-.home[data-side="dark"] .home__task-progress,
 .home[data-side="dark"] .home__plan-summary,
-.home[data-side="dark"] .home__plan-item-meta,
-.home[data-side="dark"] .home__plan-item-result,
 .home[data-side="dark"] .home__value-prompt-hint,
 .home[data-side="dark"] .home__value-prompt-label {
   color: rgba(245, 245, 247, 0.62);
 }
 
-.home[data-side="dark"] .home__plan-item--details-open {
+.home[data-side="dark"] .home__section--plan .home__section-title {
+  color: #f5f5f7;
+}
+
+.home[data-side="dark"] .home__plan-progress {
+  background: rgba(171, 148, 250, 0.16);
+}
+
+.home[data-side="dark"] .home__plan-progress-fill {
+  background: linear-gradient(90deg, #7c3aed 0%, #ff7d53 100%);
+}
+
+.home[data-side="dark"] .home__task-error {
+  color: #fca5a5;
+}
+
+.home[data-side="dark"] .home__budget,
+.home[data-side="dark"] .home__trial {
+  color: rgba(245, 245, 247, 0.62);
+}
+
+/* Habit cards — theme is scoped per crossfade layer */
+.home__plan-list-layer[data-side="dark"] .home__plan-item-title,
+.home__plan-list-layer[data-side="dark"] .home__plan-item-title > span:last-child {
+  color: #f5f5f7;
+}
+
+.home__plan-list-layer[data-side="dark"] .home__task-timer,
+.home__plan-list-layer[data-side="dark"] .home__task-time,
+.home__plan-list-layer[data-side="dark"] .home__task-progress,
+.home__plan-list-layer[data-side="dark"] .home__plan-item-meta,
+.home__plan-list-layer[data-side="dark"] .home__plan-item-result {
+  color: rgba(245, 245, 247, 0.62);
+}
+
+.home__plan-list-layer[data-side="dark"] .home__plan-item--details-open {
   box-shadow:
     0 calc(4 * var(--s)) calc(24 * var(--s)) rgba(0, 0, 0, 0.28),
     0 0 0 calc(1.5 * var(--s)) rgba(167, 139, 250, 0.35);
 }
 
-.home[data-side="dark"] .home__plan-info-btn {
+.home__plan-list-layer[data-side="dark"] .home__plan-info-btn {
   border-color: rgba(167, 139, 250, 0.35);
   background: rgba(167, 139, 250, 0.12);
   color: #c4b5fd;
 }
 
-.home[data-side="dark"] .home__plan-info-btn:hover {
+.home__plan-list-layer[data-side="dark"] .home__plan-info-btn:hover {
   background: rgba(167, 139, 250, 0.2);
   border-color: rgba(167, 139, 250, 0.5);
 }
 
-.home[data-side="dark"] .home__plan-item--details-open .home__plan-info-btn {
+.home__plan-list-layer[data-side="dark"] .home__plan-item--details-open .home__plan-info-btn {
   background: #7c3aed;
   border-color: #7c3aed;
   color: #fff;
 }
 
-.home[data-side="dark"] .home__plan-item-drawer-inner {
+.home__plan-list-layer[data-side="dark"] .home__plan-item-drawer-inner {
   border-top-color: rgba(167, 139, 250, 0.2);
 }
 
-.home[data-side="dark"] .home__plan-item-drawer-title {
+.home__plan-list-layer[data-side="dark"] .home__plan-item-drawer-title {
   color: #c4b5fd;
 }
 
-.home[data-side="dark"] .home__plan-item-drawer-text {
+.home__plan-list-layer[data-side="dark"] .home__plan-item-drawer-text {
   color: rgba(245, 245, 247, 0.62);
 }
 
+.home__plan-list-layer[data-side="dark"] .home__plan-item {
+  background: #24252c;
+  border-color: rgba(255, 255, 255, 0.11);
+  box-shadow: 0 calc(4 * var(--s)) calc(24 * var(--s)) rgba(0, 0, 0, 0.22);
+}
+
+.home__plan-list-layer[data-side="dark"] .home__plan-badge--pending {
+  color: #c4b5fd;
+  background: rgba(171, 148, 255, 0.16);
+}
+
+.home__plan-list-layer[data-side="dark"] .home__plan-badge--active {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.18);
+}
+
+.home__plan-list-layer[data-side="dark"] .home__plan-badge--completed {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.2);
+}
+
+.home__plan-list-layer[data-side="dark"] .home__plan-badge--fail {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.2);
+}
+
 .home[data-side="dark"] .home__task-manual-input,
-.home[data-side="dark"] .home__plan-item,
 .home[data-side="dark"] .home__value-prompt-panel,
 .home[data-side="dark"] .home__value-prompt-input {
   background: #24252c;
@@ -1399,8 +1539,6 @@
   color: #f5f5f7;
 }
 
-.home[data-side="dark"] .home__plan-item-title,
-.home[data-side="dark"] .home__plan-item-title > span:last-child,
 .home[data-side="dark"] .home__value-prompt-title {
   color: #f5f5f7;
 }
@@ -1426,6 +1564,13 @@
   .home__profile-link,
   .home__budget,
   .home__trial,
+  .home__task-card,
+  .home__stat-card--light,
+  .home__plan-list-layer,
+  .home__plan-list-layer--active,
+  .home__plan-summary,
+  .home__plan-progress,
+  .home__demo-banner,
   .home {
     transition: none;
   }
@@ -1779,12 +1924,9 @@
   color: #f5f5f7;
 }
 
-.home__side-panel {
-  transition: opacity 0.35s ease;
-}
-
 .home__side-panel--refreshing {
   opacity: 0.72;
+  transition: opacity 0.35s ease;
 }
 
 .progress__calendar-skeleton {

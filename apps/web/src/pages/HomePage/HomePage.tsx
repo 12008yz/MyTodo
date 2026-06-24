@@ -22,12 +22,19 @@ export function HomePage() {
   const { user } = useAuth();
   const { side } = useHabitSide();
   const placeholderWeek = useMemo(() => getPlaceholderWeekDays(), []);
-  const { dashboard, week, isLoading, isFetching, isError, error } = useTodayDashboard(side);
+  const lightDashboard = useTodayDashboard("light");
+  const darkDashboard = useTodayDashboard("dark");
+  const activeDashboard = side === "light" ? lightDashboard : darkDashboard;
+
+  const dashboard = activeDashboard.dashboard;
+  const week = activeDashboard.week;
+  const { isLoading } = activeDashboard;
 
   const name = dashboard?.greeting_name ?? user?.name ?? "Пользователь";
-  const habits = dashboard?.habits ?? [];
   const stats = dashboard?.stats;
   const weekDays = week?.days ?? placeholderWeek;
+  const lightData = lightDashboard.dashboard;
+  const darkData = darkDashboard.dashboard;
 
   return (
     <>
@@ -96,15 +103,25 @@ export function HomePage() {
       </section>
 
       <DailyPlanList
-        dailyPlan={dashboard?.daily_plan}
-        habits={habits}
-        side={side}
-        isLoading={isLoading}
-        isFetching={isFetching}
-        isError={isError}
-        error={error}
-        minutesLoggedToday={isLightDashboard(dashboard) ? dashboard.minutes_logged_today : undefined}
-        dailyBudgetMin={isLightDashboard(dashboard) ? dashboard.daily_budget_min : undefined}
+        activeSide={side}
+        light={{
+          dailyPlan: lightData?.daily_plan,
+          habits: lightData?.habits ?? [],
+          isLoading: lightDashboard.isLoading,
+          isFetching: lightDashboard.isFetching,
+          isError: lightDashboard.isError,
+          error: lightDashboard.error,
+        }}
+        dark={{
+          dailyPlan: darkData?.daily_plan,
+          habits: darkData?.habits ?? [],
+          isLoading: darkDashboard.isLoading,
+          isFetching: darkDashboard.isFetching,
+          isError: darkDashboard.isError,
+          error: darkDashboard.error,
+        }}
+        minutesLoggedToday={isLightDashboard(lightData) ? lightData.minutes_logged_today : undefined}
+        dailyBudgetMin={isLightDashboard(lightData) ? lightData.daily_budget_min : undefined}
         trialEndsAt={user?.trial_ends_at}
       />
     </>

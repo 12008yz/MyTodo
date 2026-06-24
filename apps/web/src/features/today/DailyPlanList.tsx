@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { DailyPlan, DailyPlanBlock, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
 import { ClientApiError } from "../../lib/api";
 import { FocusScreen } from "../sessions/FocusScreen";
@@ -15,14 +15,19 @@ const EMPTY_PLAN: DailyPlan = {
   minutes_remaining: 0,
 };
 
-type DailyPlanListProps = {
+export type SidePlanData = {
   dailyPlan?: DailyPlan | null;
   habits: (TodayLightHabit | TodayDarkHabit)[];
-  side: TodaySide;
   isLoading?: boolean;
   isFetching?: boolean;
   isError?: boolean;
   error?: unknown;
+};
+
+type DailyPlanListProps = {
+  activeSide: TodaySide;
+  light: SidePlanData;
+  dark: SidePlanData;
   minutesLoggedToday?: number;
   dailyBudgetMin?: number;
   trialEndsAt?: string | null;
@@ -60,21 +65,120 @@ function orderHabits(
   });
 }
 
-export function DailyPlanList({
-  dailyPlan,
-  habits,
+function getPlan(sideData: SidePlanData): DailyPlan {
+  return sideData.dailyPlan ?? EMPTY_PLAN;
+}
+
+type HabitListLayerProps = {
+  side: TodaySide;
+  sideData: SidePlanData;
+  isActive: boolean;
+  focusHabitId: string | null;
+  sessionBusy: boolean;
+  onStart: (block: DailyPlanBlock) => void;
+};
+
+function HabitListLayer({
   side,
-  isLoading = false,
-  isFetching = false,
-  isError = false,
-  error,
+  sideData,
+  isActive,
+  focusHabitId,
+  sessionBusy,
+  onStart,
+}: HabitListLayerProps) {
+  const plan = getPlan(sideData);
+  const blocks = useMemo(
+    () => [...plan.blocks].sort((left, right) => left.order - right.order),
+    [plan.blocks],
+  );
+  const blockByHabitId = useMemo(() => {
+    const map = new Map<string, DailyPlanBlock>();
+    for (const block of blocks) {
+      map.set(block.habit_id, block);
+    }
+    return map;
+  }, [blocks]);
+  const orderedHabits = useMemo(() => orderHabits(sideData.habits, blocks), [sideData.habits, blocks]);
+
+  let content: ReactNode;
+
+  if (sideData.isError) {
+    content = (
+      <p className="home__placeholder home__placeholder--error">
+        {sideData.error instanceof ClientApiError
+          ? sideData.error.message
+          : "Не удалось загрузить привычки"}
+      </p>
+    );
+  } else if (sideData.isLoading && sideData.habits.length === 0) {
+    content = (
+      <div className="home__tasks-skeleton" aria-busy="true" aria-label="Загрузка плана дня" />
+    );
+  } else if (sideData.habits.length === 0) {
+    content = (
+      <p className="home__placeholder">
+        Нет активных привычек на {side === "light" ? "светлой" : "тёмной"} стороне.
+      </p>
+    );
+  } else {
+    content = (
+      <div
+        className={[
+          "home__plan-list",
+          sideData.isFetching && sideData.habits.length > 0 ? "home__side-panel--refreshing" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {orderedHabits.map((habit) => {
+          const block = blockByHabitId.get(habit.id) ?? null;
+          const hasActiveFocus = focusHabitId === habit.id;
+
+          return (
+            <DailyPlanHabitRow
+              key={habit.id}
+              habit={habit}
+              block={block}
+              side={side}
+              hasActiveFocus={hasActiveFocus}
+              sessionBusy={sessionBusy}
+              focusLocked={Boolean(focusHabitId && !hasActiveFocus)}
+              onStart={block ? () => onStart(block) : undefined}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={[
+        "home__plan-list-layer",
+        isActive ? "home__plan-list-layer--active" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      data-side={side}
+      aria-hidden={!isActive}
+    >
+      {content}
+    </div>
+  );
+}
+
+export function DailyPlanList({
+  activeSide,
+  light,
+  dark,
   minutesLoggedToday,
   dailyBudgetMin,
   trialEndsAt,
 }: DailyPlanListProps) {
-  const plan = dailyPlan ?? EMPTY_PLAN;
-  const startSession = useStartHabitSession(side);
-  const completeSession = useCompleteHabitSession(side);
+  const activeData = activeSide === "light" ? light : dark;
+  const plan = getPlan(activeData);
+  const startSession = useStartHabitSession(activeSide);
+  const completeSession = useCompleteHabitSession(activeSide);
   const [focusState, setFocusState] = useState<FocusState>(null);
   const [valuePrompt, setValuePrompt] = useState<ValuePromptState>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -84,21 +188,6 @@ export function DailyPlanList({
     plannedMin: focusState?.plannedMin ?? 0,
     autoStart: Boolean(focusState),
   });
-
-  const blocks = useMemo(
-    () => [...plan.blocks].sort((left, right) => left.order - right.order),
-    [plan.blocks],
-  );
-
-  const blockByHabitId = useMemo(() => {
-    const map = new Map<string, DailyPlanBlock>();
-    for (const block of blocks) {
-      map.set(block.habit_id, block);
-    }
-    return map;
-  }, [blocks]);
-
-  const orderedHabits = useMemo(() => orderHabits(habits, blocks), [habits, blocks]);
 
   const progressPercent =
     plan.minutes_planned > 0
@@ -181,6 +270,12 @@ export function DailyPlanList({
   const isBusy = startSession.isPending || completeSession.isPending || isEnding;
   const focusHabitId = focusState?.block.habit_id ?? null;
 
+  useEffect(() => {
+    setFocusState(null);
+    setValuePrompt(null);
+    setActionError(null);
+  }, [activeSide]);
+
   return (
     <section className="home__section home__section--plan" aria-labelledby="plan-heading">
       <div className="home__section-heading-row">
@@ -202,47 +297,24 @@ export function DailyPlanList({
         <span className="home__plan-progress-fill" style={{ width: `${progressPercent}%` }} />
       </div>
 
-      {isError ? (
-        <p className="home__placeholder home__placeholder--error">
-          {error instanceof ClientApiError
-            ? error.message
-            : "Не удалось загрузить привычки"}
-        </p>
-      ) : isLoading && habits.length === 0 ? (
-        <div className="home__tasks-skeleton" aria-busy="true" aria-label="Загрузка плана дня" />
-      ) : habits.length === 0 ? (
-        <p className="home__placeholder">
-          Нет активных привычек на {side === "light" ? "светлой" : "тёмной"} стороне.
-        </p>
-      ) : (
-        <div
-          className={[
-            "home__plan-list",
-            "home__side-panel",
-            isFetching && habits.length > 0 ? "home__side-panel--refreshing" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-        >
-          {orderedHabits.map((habit) => {
-            const block = blockByHabitId.get(habit.id) ?? null;
-            const hasActiveFocus = focusHabitId === habit.id;
-
-            return (
-              <DailyPlanHabitRow
-                key={habit.id}
-                habit={habit}
-                block={block}
-                side={side}
-                hasActiveFocus={hasActiveFocus}
-                sessionBusy={isBusy}
-                focusLocked={Boolean(focusHabitId && !hasActiveFocus)}
-                onStart={block ? () => void handleStart(block) : undefined}
-              />
-            );
-          })}
-        </div>
-      )}
+      <div className="home__plan-lists-crossfade">
+        <HabitListLayer
+          side="light"
+          sideData={light}
+          isActive={activeSide === "light"}
+          focusHabitId={activeSide === "light" ? focusHabitId : null}
+          sessionBusy={isBusy}
+          onStart={(block) => void handleStart(block)}
+        />
+        <HabitListLayer
+          side="dark"
+          sideData={dark}
+          isActive={activeSide === "dark"}
+          focusHabitId={activeSide === "dark" ? focusHabitId : null}
+          sessionBusy={isBusy}
+          onStart={(block) => void handleStart(block)}
+        />
+      </div>
 
       {minutesLoggedToday != null && dailyBudgetMin != null ? (
         <p className="home__budget">
@@ -272,7 +344,7 @@ export function DailyPlanList({
         habitName={valuePrompt?.block.habit_name ?? ""}
         unit={valuePrompt?.block.unit ?? "pieces"}
         expectedYield={valuePrompt?.block.expected_yield ?? 0}
-        inputLabel={side === "dark" ? "Сколько всего сегодня?" : "Сколько сделал?"}
+        inputLabel={activeSide === "dark" ? "Сколько всего сегодня?" : "Сколько сделал?"}
         isSubmitting={completeSession.isPending}
         onCancel={() => setValuePrompt(null)}
         onSubmit={(value) => {
