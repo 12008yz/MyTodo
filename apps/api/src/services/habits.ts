@@ -6,6 +6,7 @@ import {
   HABIT_TEMPLATES,
   HTTP_STATUS,
   MAX_ACTIVE_HABITS,
+  maxLightHabitsForBudget,
   type CreateHabitRequest,
   type HabitTemplateId,
   type HabitUnit,
@@ -39,6 +40,14 @@ function isTemplateRequest(
   return "template_id" in body;
 }
 
+function willCreateLightHabit(body: CreateHabitRequest): boolean {
+  if (isTemplateRequest(body)) {
+    return HABIT_TEMPLATES[body.template_id].side === "light";
+  }
+
+  return true;
+}
+
 export class HabitService {
   constructor(private readonly db: Database) {}
 
@@ -70,6 +79,18 @@ export class HabitService {
     }
 
     const activeLightCount = await this.countActiveLightHabits(user.id);
+
+    if (willCreateLightHabit(body)) {
+      const maxLight = maxLightHabitsForBudget(user.freeTimeMin ?? 0);
+      if (activeLightCount >= maxLight) {
+        throw new ApiError(
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_CODES.VALIDATION_ERROR,
+          "Слишком много полезных привычек для выбранного времени",
+        );
+      }
+    }
+
     const calibrated = isTemplateRequest(body)
       ? this.calibrateFromTemplate(body, user, activeLightCount)
       : this.calibrateCustom(body, user, activeLightCount);

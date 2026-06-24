@@ -29,7 +29,7 @@ describe("Habits", () => {
     await app.close();
   });
 
-  async function createOnboardedUser(email = "habits@example.com") {
+  async function createOnboardedUser(email = "habits@example.com", freeTimeMin = 60) {
     const registerResponse = await app.inject({
       method: "POST",
       url: "/api/v1/auth/register",
@@ -51,7 +51,7 @@ describe("Habits", () => {
       payload: {
         weight_kg: 65,
         height_cm: 170,
-        free_time_min: 60,
+        free_time_min: freeTimeMin,
         wake_time: "07:00",
         sleep_time: "23:00",
       },
@@ -152,6 +152,35 @@ describe("Habits", () => {
     expect(habit.phase).toBe("abstinence");
     expect(habit.last_relapse_at).toBeTruthy();
     expect(habit.current_goal).toBe(0);
+  });
+
+  it("rejects light habit when free time budget is exhausted", async () => {
+    const auth = await createOnboardedUser("light-limit@example.com", 15);
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers,
+      payload: {
+        template_id: "books",
+        baseline_value: 5,
+      },
+    });
+
+    expect(first.statusCode).toBe(201);
+
+    const second = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers,
+      payload: {
+        template_id: "running",
+        baseline_value: 10,
+      },
+    });
+
+    expect(second.statusCode).toBe(400);
   });
 
   it("rejects the 7th active habit", async () => {
