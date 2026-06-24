@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { DailyPlanBlock, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
 import { ClientApiError } from "../../lib/api";
+import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import {
   formatGoalLabel,
   formatTimer,
@@ -10,6 +11,28 @@ import {
 import { HabitIcon } from "./HabitIcon";
 import type { TodaySide } from "./useTodayData";
 import { useCheckinMutation } from "./useTodayData";
+
+function PlanInfoIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="18"
+      height="18"
+      viewBox="0 0 18 18"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle cx="9" cy="9" r="7.25" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M9 8.25V13"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <circle cx="9" cy="5.75" r="0.9" fill="currentColor" />
+    </svg>
+  );
+}
 
 type DailyPlanHabitRowProps = {
   habit: TodayLightHabit | TodayDarkHabit;
@@ -61,13 +84,8 @@ export function DailyPlanHabitRow({
 }: DailyPlanHabitRowProps) {
   const checkinMutation = useCheckinMutation(side);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const status = habit.checkin?.status;
-  const [manualValue, setManualValue] = useState(String(habit.checkin?.value ?? 0));
-  const [isManualOpen, setIsManualOpen] = useState(false);
-
-  useEffect(() => {
-    setManualValue(String(habit.checkin?.value ?? 0));
-  }, [habit.checkin?.value]);
 
   const isPending = checkinMutation.isPending;
   const timer = hasTimerField(habit) ? habit.timer : null;
@@ -90,22 +108,16 @@ export function DailyPlanHabitRow({
     }
   };
 
-  const saveManualValue = async () => {
-    const value = Number(manualValue);
-    if (!Number.isFinite(value) || value < 0) {
-      setActionError("Введите корректное число");
-      return;
-    }
-
-    await runCheckin({ habit_id: habit.id, value });
-    setIsManualOpen(false);
-  };
-
   const badge = resolveBadge(habit, block);
 
   return (
-    <article className="home__plan-item">
-      <div className="home__plan-item-main">
+    <article
+      className={["home__plan-item", detailsOpen ? "home__plan-item--details-open" : ""]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <div className="home__plan-item-top">
+        <div className="home__plan-item-main">
         <h3 className="home__plan-item-title">
           <HabitIcon icon={habit.icon ?? block?.icon} side={side} />
           <span>
@@ -164,65 +176,38 @@ export function DailyPlanHabitRow({
             >
               Сорвался
             </button>
-          ) : status !== "success" ? (
-            <button
-              type="button"
-              className="home__task-btn"
-              disabled={isPending}
-              onClick={() => setIsManualOpen((value) => !value)}
-            >
-              Ввести вручную
-            </button>
-          ) : null}
-
-          {habit.allows_weekly_skip && status !== "skipped" && status !== "success" ? (
-            <button
-              type="button"
-              className="home__task-btn home__task-btn--ghost"
-              disabled={isPending}
-              onClick={() => void runCheckin({ habit_id: habit.id, status: "skipped" })}
-            >
-              Пропустить
-            </button>
           ) : null}
         </div>
 
-        {isManualOpen && habit.type !== "abstinence" ? (
-          <div className="home__task-manual">
-            <input
-              type="number"
-              min={0}
-              step={habit.unit === "minutes" ? 1 : "any"}
-              value={manualValue}
-              onChange={(event) => setManualValue(event.target.value)}
-              className="home__task-manual-input"
-              disabled={isPending}
-            />
-            <button
-              type="button"
-              className="home__task-btn"
-              disabled={isPending}
-              onClick={() => void saveManualValue()}
-            >
-              Сохранить
-            </button>
-            <button
-              type="button"
-              className="home__task-btn home__task-btn--ghost"
-              disabled={isPending}
-              onClick={() => setIsManualOpen(false)}
-            >
-              Отмена
-            </button>
-          </div>
-        ) : null}
-
         {actionError ? <p className="home__task-error">{actionError}</p> : null}
+        </div>
+
+        <div className="home__plan-item-aside">
+          <span className={["home__plan-badge", badge.className].join(" ")}>{badge.label}</span>
+          <button
+            type="button"
+            className="home__plan-info-btn"
+            aria-expanded={detailsOpen}
+            aria-label={detailsOpen ? "Скрыть подробности" : "Подробнее о привычке"}
+            onClick={() => setDetailsOpen((value) => !value)}
+          >
+            <PlanInfoIcon className="home__plan-info-btn-icon" />
+          </button>
+        </div>
       </div>
 
-      <div className="home__plan-item-aside">
-        <span className={["home__plan-badge", badge.className].join(" ")}>{badge.label}</span>
-      </div>
+      <CollapsibleReveal
+        open={detailsOpen}
+        className="home__plan-item-drawer"
+        contentClassName="home__plan-item-drawer-inner"
+      >
+        <div className="home__plan-item-drawer-body">
+          <p className="home__plan-item-drawer-title">Подробнее</p>
+          <p className="home__plan-item-drawer-text">
+            Здесь появятся подсказки, прогресс и дополнительные действия для этой привычки.
+          </p>
+        </div>
+      </CollapsibleReveal>
     </article>
   );
 }
