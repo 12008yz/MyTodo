@@ -145,6 +145,37 @@ export const pomodoroSessions = pgTable(
 export type PomodoroSession = typeof pomodoroSessions.$inferSelect;
 export type NewPomodoroSession = typeof pomodoroSessions.$inferInsert;
 
+export const habitSessions = pgTable(
+  "habit_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    habitId: uuid("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+    blockId: text("block_id"),
+    startedAt: timestamp("started_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true, mode: "date" }),
+    plannedMin: integer("planned_min").notNull(),
+    actualMin: integer("actual_min"),
+    valueAdded: numeric("value_added"),
+    completed: boolean("completed").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    habitIdx: index("habit_sessions_habit_idx").on(table.habitId),
+  }),
+);
+
+export type HabitSession = typeof habitSessions.$inferSelect;
+export type NewHabitSession = typeof habitSessions.$inferInsert;
+
 export const doomScrollSessions = pgTable(
   "doom_scroll_sessions",
   {
