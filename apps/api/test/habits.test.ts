@@ -103,7 +103,7 @@ describe("Habits", () => {
 
     expect(booksResponse.statusCode).toBe(201);
     const books = habitResponseSchema.parse(JSON.parse(booksResponse.body));
-    expect(books.current_goal).toBe(120);
+    expect(books.current_goal).toBe(5);
     expect(books.template_id).toBe("books");
     expect(books.allows_weekly_skip).toBe(true);
 
@@ -131,7 +131,7 @@ describe("Habits", () => {
     });
     const lightHabits = habitResponseSchema.array().parse(JSON.parse(listResponse.body));
     const booksAfter = lightHabits.find((habit) => habit.template_id === "books");
-    expect(booksAfter?.current_goal).toBe(60);
+    expect(booksAfter?.current_goal).toBe(5);
   });
 
   it("creates nail biting as abstinence with relapse timer", async () => {
@@ -154,7 +154,7 @@ describe("Habits", () => {
     expect(habit.current_goal).toBe(0);
   });
 
-  it("rejects light habit when free time budget is exhausted", async () => {
+  it("allows multiple light habits even with minimal free time", async () => {
     const auth = await createOnboardedUser("light-limit@example.com", 15);
     const headers = { authorization: `Bearer ${auth.access_token}` };
 
@@ -180,14 +180,14 @@ describe("Habits", () => {
       },
     });
 
-    expect(second.statusCode).toBe(400);
+    expect(second.statusCode).toBe(201);
   });
 
-  it("rejects the 7th active habit", async () => {
+  it("rejects habit when active habit limit is reached", async () => {
     const auth = await createOnboardedUser("limit@example.com");
     const headers = { authorization: `Bearer ${auth.access_token}` };
 
-    for (let i = 0; i < 6; i += 1) {
+    for (let i = 0; i < 20; i += 1) {
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/habits",
@@ -201,18 +201,18 @@ describe("Habits", () => {
       expect(response.statusCode).toBe(201);
     }
 
-    const seventh = await app.inject({
+    const overLightLimit = await app.inject({
       method: "POST",
       url: "/api/v1/habits",
       headers,
       payload: {
-        name: "One too many",
+        name: "One too many light",
         unit: "minutes",
         baseline_value: 10,
       },
     });
 
-    expect(seventh.statusCode).toBe(400);
+    expect(overLightLimit.statusCode).toBe(400);
   });
 
   it("snapshots harshness_level from profile at creation time", async () => {
@@ -290,7 +290,7 @@ describe("Habits", () => {
     });
     const lightBefore = habitResponseSchema.array().parse(JSON.parse(listBefore.body));
     const booksBefore = lightBefore.find((habit) => habit.id === books.id);
-    expect(booksBefore?.current_goal).toBe(60);
+    expect(booksBefore?.current_goal).toBe(5);
 
     const deleteResponse = await app.inject({
       method: "DELETE",
@@ -306,7 +306,7 @@ describe("Habits", () => {
     });
     const lightAfter = habitResponseSchema.array().parse(JSON.parse(listAfter.body));
     expect(lightAfter).toHaveLength(1);
-    expect(lightAfter[0]?.current_goal).toBe(120);
+    expect(lightAfter[0]?.current_goal).toBe(5);
   });
 
   it("rejects manual goal changes for abstinence habits", async () => {

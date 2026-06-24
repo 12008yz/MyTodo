@@ -8,6 +8,17 @@ export {
   type HabitPlanInput,
 } from "./habits/daily-plan.js";
 export {
+  computeBmi,
+  distributeGoalsAcrossBudget,
+  recommendDailyMinutes,
+  recommendLightGoal,
+  resolveLightActivityId,
+  resolveSessionPlanProfile,
+  type HabitIdentity,
+  type LightActivityId,
+  type SessionPlanProfile,
+} from "./habits/workload.js";
+export {
   canSkipThisWeek,
   countSkipsInWeek,
   resolveCheckinStatus,

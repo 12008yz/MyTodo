@@ -182,6 +182,7 @@ export class TodayService {
           unit: (habit.unit ?? "minutes") as HabitUnit,
           current_goal: Number(habit.currentGoal),
           checkin_value: checkin?.value == null ? 0 : Number(checkin.value),
+          template_id: habit.templateId,
         };
       });
 

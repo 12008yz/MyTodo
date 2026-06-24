@@ -1,5 +1,5 @@
 import { and, asc, count, eq } from "drizzle-orm";
-import { calibrateHabit, recalculateLightGoal } from "@mytodo/domain";
+import { calibrateHabit, distributeGoalsAcrossBudget } from "@mytodo/domain";
 import {
   ApiError,
   ERROR_CODES,
@@ -290,22 +290,23 @@ export class HabitService {
       .where(and(eq(habits.userId, user.id), eq(habits.isActive, true), eq(habits.side, "light")));
 
     const profile = toProfile(user);
-    const count = lightHabits.length;
+    const goals = distributeGoalsAcrossBudget(
+      lightHabits.map((habit) => ({
+        id: habit.id,
+        habit: {
+          name: habit.name,
+          unit: (habit.unit ?? "minutes") as HabitUnit,
+          templateId: habit.templateId as HabitTemplateId | null,
+        },
+        baselineValue: Number(habit.baselineValue),
+      })),
+      profile,
+    );
 
     await Promise.all(
       lightHabits.map(async (habit) => {
-        if (!habit.unit) {
-          return;
-        }
-
-        const newGoal = recalculateLightGoal(
-          Number(habit.baselineValue),
-          habit.unit as HabitUnit,
-          profile,
-          count,
-        );
-
-        if (Number(habit.currentGoal) === newGoal) {
+        const newGoal = goals.get(habit.id);
+        if (newGoal === undefined || Number(habit.currentGoal) === newGoal) {
           return;
         }
 

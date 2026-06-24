@@ -185,11 +185,11 @@ describe("Checkins", () => {
     expect(response.statusCode).toBe(201);
     const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
     expect(checkin.status).toBe("success");
-    expect(checkin.current_goal).toBe(120);
-    expect(checkin.preview_next_goal).toBe(121);
+    expect(checkin.current_goal).toBe(5);
+    expect(checkin.preview_next_goal).toBe(6);
 
     const [storedHabit] = await db.select().from(habits).where(eq(habits.id, habit.id));
-    expect(Number(storedHabit?.currentGoal)).toBe(120);
+    expect(Number(storedHabit?.currentGoal)).toBe(5);
   });
 
   it("records dark limit fail when value exceeds goal", async () => {
@@ -391,14 +391,14 @@ describe("Checkins", () => {
       payload: {
         habit_id: habit.id,
         date: "2026-06-18",
-        value: 10,
+        value: 2,
       },
     });
 
     expect(response.statusCode).toBe(201);
     const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
     expect(checkin.status).toBe("fail");
-    expect(checkin.preview_next_goal).toBe(120);
+    expect(checkin.preview_next_goal).toBe(5);
   });
 
   it("returns 409 when batch omits updated_at for an existing checkin", async () => {

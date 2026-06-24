@@ -349,7 +349,10 @@ export function updateLightBaseline(
 
 export function getDefaultLightBaseline(habit: SelectedHabit): string {
   if (habit.activityId === "mindfulness-meditation") {
-    return "5";
+    return "1";
+  }
+  if (habit.activityId === "mindfulness-books") {
+    return "0";
   }
   return "0";
 }
@@ -357,7 +360,7 @@ export function getDefaultLightBaseline(habit: SelectedHabit): string {
 export function getLightHabitSummary(habit: SelectedHabit): string {
   if (habit.practicesNow === false) {
     if (habit.activityId === "mindfulness-meditation") {
-      return "5 мин/день";
+      return "1 мин/день";
     }
     return "Рост понемногу";
   }

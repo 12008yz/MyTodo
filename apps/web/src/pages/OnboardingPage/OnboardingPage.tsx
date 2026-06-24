@@ -129,7 +129,7 @@ function validateHabits(habits: SelectedHabit[], side: "light" | "dark"): string
 function validateLightHabitBudget(habits: SelectedHabit[], freeTimeMin: number): string | null {
   const maxLight = maxLightHabitsForBudget(freeTimeMin);
   if (keepCompleteLightHabits(habits).length > maxLight) {
-    return `При ${freeTimeMin} мин в день — не больше ${maxLight} полезных привычек. Увеличь время или убери лишнее.`;
+    return `Не больше ${maxLight} полезных привычек. Убери лишнее, чтобы продолжить.`;
   }
 
   return null;

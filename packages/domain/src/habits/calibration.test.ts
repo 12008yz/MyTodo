@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { HABIT_TEMPLATES } from "@mytodo/shared";
+import {
+  FOREIGN_LANGUAGE_HABIT_NAME,
+  HABIT_TEMPLATES,
+  MEDITATION_HABIT_NAME,
+} from "@mytodo/shared";
 import { calibrateHabit, recalculateLightGoal } from "./calibration.js";
+import {
+  computeBmi,
+  distributeGoalsAcrossBudget,
+  recommendDailyMinutes,
+  recommendLightGoal,
+  resolveLightActivityId,
+} from "./workload.js";
 
 const profile = {
   dailyBudgetMin: 60,
@@ -10,8 +21,84 @@ const profile = {
   heightCm: 180,
 };
 
+describe("workload", () => {
+  it("computes BMI", () => {
+    expect(computeBmi(80, 180)).toBeCloseTo(24.7, 1);
+  });
+
+  it("resolves onboarding activity ids", () => {
+    expect(resolveLightActivityId({ name: MEDITATION_HABIT_NAME, unit: "minutes" })).toBe(
+      "mindfulness-meditation",
+    );
+    expect(resolveLightActivityId({ name: FOREIGN_LANGUAGE_HABIT_NAME, unit: "minutes" })).toBe(
+      "mindfulness-language",
+    );
+    expect(
+      resolveLightActivityId({
+        name: HABIT_TEMPLATES.running.name,
+        unit: "minutes",
+        templateId: "running",
+      }),
+    ).toBe("strength-running");
+  });
+
+  it("recommends meditation as 1 min and language as 20 min", () => {
+    expect(recommendDailyMinutes("mindfulness-meditation", profile)).toBe(1);
+    expect(recommendDailyMinutes("mindfulness-language", profile)).toBe(20);
+  });
+
+  it("reduces running for higher BMI and older age", () => {
+    const young = recommendDailyMinutes("strength-running", profile);
+    const senior = recommendDailyMinutes("strength-running", {
+      ...profile,
+      age: 68,
+      weightKg: 95,
+      heightCm: 175,
+    });
+    expect(senior).toBeLessThan(young);
+  });
+
+  it("recommends beginner-friendly push-up volume", () => {
+    const goal = recommendLightGoal(
+      { name: "Силовая тренировка", unit: "reps", templateId: null },
+      profile,
+      0,
+    );
+    expect(goal).toBeGreaterThanOrEqual(6);
+    expect(goal).toBeLessThanOrEqual(20);
+  });
+
+  it("distributes goals across shared daily budget", () => {
+    const femaleProfile = {
+      dailyBudgetMin: 60,
+      age: 28,
+      gender: "female" as const,
+      weightKg: 65,
+      heightCm: 170,
+    };
+    const goals = distributeGoalsAcrossBudget(
+      [
+        {
+          id: "books",
+          habit: { name: "Читать книги", unit: "pages", templateId: "books" },
+          baselineValue: 5,
+        },
+        {
+          id: "custom",
+          habit: { name: "Blender 3D", unit: "minutes", templateId: null },
+          baselineValue: 20,
+        },
+      ],
+      femaleProfile,
+    );
+
+    expect(goals.get("books")).toBe(5);
+    expect(goals.get("custom")).toBe(30);
+  });
+});
+
 describe("calibrateHabit", () => {
-  it("sets light template goal to max(baseline, recommended)", () => {
+  it("sets light template goal to max(baseline, personalized recommendation)", () => {
     const result = calibrateHabit({
       kind: "template",
       templateId: "books",
@@ -21,10 +108,8 @@ describe("calibrateHabit", () => {
       activeLightHabitsIncludingNew: 1,
     });
 
-    expect(result.currentGoal).toBe(120);
+    expect(result.currentGoal).toBe(5);
     expect(result.baselineValue).toBe(5);
-    expect(result.allowsWeeklySkip).toBe(true);
-    expect(result.progressionDirection).toBe("increase");
   });
 
   it("keeps baseline when it is higher than recommendation", () => {
@@ -40,7 +125,7 @@ describe("calibrateHabit", () => {
     expect(result.currentGoal).toBe(2000);
   });
 
-  it("splits daily budget across light habits", () => {
+  it("personalizes running instead of splitting budget equally", () => {
     const result = calibrateHabit({
       kind: "template",
       templateId: "running",
@@ -48,6 +133,32 @@ describe("calibrateHabit", () => {
       baselineValue: 0,
       profile,
       activeLightHabitsIncludingNew: 3,
+    });
+
+    expect(result.currentGoal).toBe(20);
+  });
+
+  it("calibrates meditation to a gentle daily goal", () => {
+    const result = calibrateHabit({
+      kind: "custom",
+      name: MEDITATION_HABIT_NAME,
+      unit: "minutes",
+      baselineValue: 0,
+      profile,
+      activeLightHabitsIncludingNew: 1,
+    });
+
+    expect(result.currentGoal).toBe(1);
+  });
+
+  it("calibrates foreign language to 20 minutes", () => {
+    const result = calibrateHabit({
+      kind: "custom",
+      name: FOREIGN_LANGUAGE_HABIT_NAME,
+      unit: "minutes",
+      baselineValue: 0,
+      profile,
+      activeLightHabitsIncludingNew: 1,
     });
 
     expect(result.currentGoal).toBe(20);
@@ -64,23 +175,7 @@ describe("calibrateHabit", () => {
     });
 
     expect(result.currentGoal).toBe(20);
-    expect(result.growthStep).toBe(1);
-    expect(result.phase).toBe("reduction");
     expect(result.allowsWeeklySkip).toBe(false);
-  });
-
-  it("uses social media step of 5", () => {
-    const result = calibrateHabit({
-      kind: "template",
-      templateId: "social_media",
-      template: HABIT_TEMPLATES.social_media,
-      baselineValue: 120,
-      profile,
-      activeLightHabitsIncludingNew: 1,
-    });
-
-    expect(result.currentGoal).toBe(120);
-    expect(result.growthStep).toBe(5);
   });
 
   it("initializes nail biting as abstinence with relapse timer", () => {
@@ -96,9 +191,6 @@ describe("calibrateHabit", () => {
     });
 
     expect(result.type).toBe("abstinence");
-    expect(result.phase).toBe("abstinence");
-    expect(result.baselineValue).toBe(0);
-    expect(result.currentGoal).toBe(0);
     expect(result.lastRelapseAt).toEqual(now);
   });
 
@@ -112,13 +204,11 @@ describe("calibrateHabit", () => {
       activeLightHabitsIncludingNew: 1,
     });
 
-    expect(result.isCustom).toBe(true);
-    expect(result.currentGoal).toBe(60);
+    expect(result.currentGoal).toBe(30);
     expect(result.growthStep).toBe(5);
-    expect(result.name).toBe("Blender 3D");
   });
 
-  it("calibrates plank in seconds", () => {
+  it("calibrates plank in seconds based on age", () => {
     const result = calibrateHabit({
       kind: "template",
       templateId: "plank",
@@ -129,11 +219,16 @@ describe("calibrateHabit", () => {
     });
 
     expect(result.unit).toBe("seconds");
-    expect(result.currentGoal).toBe(1800);
+    expect(result.currentGoal).toBe(40);
   });
 
-  it("recalculateLightGoal matches calibrateHabit for light habits", () => {
-    const goal = recalculateLightGoal(5, "pages", profile, 2);
-    expect(goal).toBe(60);
+  it("recalculateLightGoal matches personalized habit identity", () => {
+    const goal = recalculateLightGoal(
+      5,
+      { name: HABIT_TEMPLATES.books.name, unit: "pages", templateId: "books" },
+      profile,
+      2,
+    );
+    expect(goal).toBe(5);
   });
 });

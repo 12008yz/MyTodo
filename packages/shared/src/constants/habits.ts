@@ -1,4 +1,4 @@
-export const MAX_ACTIVE_HABITS = 6;
+export const MAX_ACTIVE_HABITS = 25;
 
 export const HABIT_SIDES = ["light", "dark"] as const;
 export type HabitSide = (typeof HABIT_SIDES)[number];

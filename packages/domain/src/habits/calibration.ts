@@ -1,12 +1,11 @@
 import {
-  BOOKS_PAGES_PER_MIN,
   CUSTOM_MINUTES_STEP,
   type CustomHabitUnit,
   type HabitTemplate,
   type HabitTemplateId,
   type HabitUnit,
-  PUSHUP_SECONDS_PER_REP,
 } from "@mytodo/shared";
+import { recommendLightGoal, type HabitIdentity } from "./workload.js";
 
 export type CalibrationProfile = {
   dailyBudgetMin: number;
@@ -54,45 +53,6 @@ export type CalibratedHabit = {
   templateId: HabitTemplateId | null;
 };
 
-function minutesPerLightHabit(dailyBudgetMin: number, activeLightHabitsIncludingNew: number): number {
-  if (activeLightHabitsIncludingNew <= 0) {
-    return dailyBudgetMin;
-  }
-
-  return dailyBudgetMin / activeLightHabitsIncludingNew;
-}
-
-function recommendedLightGoal(
-  unit: HabitUnit,
-  minutesShare: number,
-): number {
-  switch (unit) {
-    case "pages":
-      return Math.round(BOOKS_PAGES_PER_MIN * minutesShare);
-    case "minutes":
-      return Math.round(minutesShare);
-    case "reps":
-      return Math.round((minutesShare * 60) / PUSHUP_SECONDS_PER_REP);
-    case "seconds":
-      return Math.round(minutesShare * 60);
-    case "lessons":
-      return 1;
-    default:
-      return Math.round(minutesShare);
-  }
-}
-
-export function recalculateLightGoal(
-  baselineValue: number,
-  unit: HabitUnit,
-  profile: CalibrationProfile,
-  activeLightHabitsCount: number,
-): number {
-  const minutesShare = minutesPerLightHabit(profile.dailyBudgetMin, activeLightHabitsCount);
-  const recommended = recommendedLightGoal(unit, minutesShare);
-  return Math.max(baselineValue, recommended);
-}
-
 function growthStepForCustomUnit(unit: CustomHabitUnit): number {
   return unit === "minutes" ? CUSTOM_MINUTES_STEP : 1;
 }
@@ -107,11 +67,28 @@ function customHabitMeta(unit: CustomHabitUnit): Pick<CalibratedHabit, "type" | 
   };
 }
 
+function goalFromHabitIdentity(
+  habit: HabitIdentity,
+  profile: CalibrationProfile,
+  baselineValue: number,
+): number {
+  return recommendLightGoal(habit, profile, baselineValue);
+}
+
+export function recalculateLightGoal(
+  baselineValue: number,
+  habit: HabitIdentity,
+  profile: CalibrationProfile,
+  _activeLightHabitsCount: number,
+): number {
+  return goalFromHabitIdentity(habit, profile, baselineValue);
+}
+
 export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
   const now = input.now ?? new Date();
 
   if (input.kind === "template") {
-    const { template, templateId, baselineValue, profile, activeLightHabitsIncludingNew } = input;
+    const { template, templateId, baselineValue, profile } = input;
 
     if (templateId === "nail_biting") {
       return {
@@ -151,11 +128,10 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
       };
     }
 
-    const currentGoal = recalculateLightGoal(
-      baselineValue,
-      template.unit,
+    const currentGoal = goalFromHabitIdentity(
+      { name: template.name, unit: template.unit, templateId },
       profile,
-      activeLightHabitsIncludingNew,
+      baselineValue,
     );
 
     return {
@@ -176,12 +152,11 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
     };
   }
 
-  const { name, unit, baselineValue, profile, activeLightHabitsIncludingNew, icon } = input;
-  const currentGoal = recalculateLightGoal(
-    baselineValue,
-    unit,
+  const { name, unit, baselineValue, profile, icon } = input;
+  const currentGoal = goalFromHabitIdentity(
+    { name, unit, templateId: null },
     profile,
-    activeLightHabitsIncludingNew,
+    baselineValue,
   );
   const meta = customHabitMeta(unit);
 

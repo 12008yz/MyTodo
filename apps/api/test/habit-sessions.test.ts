@@ -124,7 +124,7 @@ describe("Habit sessions", () => {
       blockId: "2026-06-24:test:1",
     });
 
-    const startedAt = new Date(Date.now() - 10 * 60_000);
+    const startedAt = new Date(Date.now() - 9 * 60_000 - 30_000);
     await app.db
       .update(habitSessions)
       .set({ startedAt })

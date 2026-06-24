@@ -5,20 +5,12 @@ import { SideToggle } from "../../components/SideToggle/SideToggle";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { useHabitSide } from "../../features/shell/SideContext";
 import { DailyPlanList } from "../../features/today/DailyPlanList";
-import { HabitTaskCard } from "../../features/today/HabitTaskCard";
 import { useTodayDashboard, type TodayDashboard } from "../../features/today/useTodayData";
 import { getPlaceholderWeekDays, WeekStrip } from "../../features/today/WeekStrip";
-import { ClientApiError } from "../../lib/api";
 import { isDemoMode } from "../../lib/demo-mode";
 
 function isLightDashboard(dashboard: TodayDashboard | undefined): dashboard is TodayLightResponse {
   return dashboard !== undefined && "daily_budget_min" in dashboard;
-}
-
-function hasDailyPlan(
-  dashboard: TodayDashboard | undefined,
-): dashboard is TodayDashboard & { daily_plan: NonNullable<TodayDashboard["daily_plan"]> } {
-  return Boolean(dashboard?.daily_plan);
 }
 
 function getUserInitial(name: string): string {
@@ -35,7 +27,6 @@ export function HomePage() {
   const name = dashboard?.greeting_name ?? user?.name ?? "Пользователь";
   const habits = dashboard?.habits ?? [];
   const stats = dashboard?.stats;
-  const pendingCount = habits.filter((h) => !h.checkin || h.checkin.status === "pending").length;
   const weekDays = week?.days ?? placeholderWeek;
 
   return (
@@ -104,56 +95,18 @@ export function HomePage() {
         </div>
       </section>
 
-      {hasDailyPlan(dashboard) ? <DailyPlanList dailyPlan={dashboard.daily_plan} side={side} /> : null}
-
-      <section className="home__section home__section--tasks" aria-labelledby="tasks-heading">
-        <div className="home__tasks-heading">
-          <h2 id="tasks-heading" className="home__section-title">
-            Сегодня
-          </h2>
-          <span className="home__tasks-count">{pendingCount}</span>
-        </div>
-
-        {isError ? (
-          <p className="home__placeholder home__placeholder--error">
-            {error instanceof ClientApiError
-              ? error.message
-              : "Не удалось загрузить привычки"}
-          </p>
-        ) : isLoading && habits.length === 0 ? (
-          <div className="home__tasks-skeleton" aria-busy="true" aria-label="Загрузка привычек" />
-        ) : habits.length === 0 ? (
-          <p className="home__placeholder">
-            Нет активных привычек на {side === "light" ? "светлой" : "тёмной"} стороне.
-          </p>
-        ) : (
-          <div
-            className={[
-              "home__tasks-list",
-              "home__side-panel",
-              isFetching && habits.length > 0 ? "home__side-panel--refreshing" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-          >
-            {habits.map((habit) => (
-              <HabitTaskCard key={habit.id} habit={habit} side={side} />
-            ))}
-          </div>
-        )}
-
-        {isLightDashboard(dashboard) ? (
-          <p className="home__budget">
-            Сегодня: {dashboard.minutes_logged_today} из {dashboard.daily_budget_min} мин
-          </p>
-        ) : null}
-
-        {user?.trial_ends_at ? (
-          <p className="home__trial">
-            Trial до {new Date(user.trial_ends_at).toLocaleDateString("ru-RU")}
-          </p>
-        ) : null}
-      </section>
+      <DailyPlanList
+        dailyPlan={dashboard?.daily_plan}
+        habits={habits}
+        side={side}
+        isLoading={isLoading}
+        isFetching={isFetching}
+        isError={isError}
+        error={error}
+        minutesLoggedToday={isLightDashboard(dashboard) ? dashboard.minutes_logged_today : undefined}
+        dailyBudgetMin={isLightDashboard(dashboard) ? dashboard.daily_budget_min : undefined}
+        trialEndsAt={user?.trial_ends_at}
+      />
     </>
   );
 }

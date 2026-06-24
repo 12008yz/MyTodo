@@ -2,11 +2,10 @@ import {
   BOOKS_PAGES_PER_MIN,
   LESSON_MINUTES_ESTIMATE,
   PUSHUP_SECONDS_PER_REP,
-  SESSION_MAX_MIN,
-  SESSION_MIN_MIN,
-  SESSION_TARGET_MIN,
+  type HabitTemplateId,
   type HabitUnit,
 } from "@mytodo/shared";
+import { resolveSessionPlanProfile } from "./workload.js";
 
 export type HabitPlanInput = {
   id: string;
@@ -15,6 +14,7 @@ export type HabitPlanInput = {
   unit: HabitUnit;
   current_goal: number;
   checkin_value: number;
+  template_id?: string | null;
 };
 
 export type DailyPlanBlock = {
@@ -36,6 +36,17 @@ export type DailyPlan = {
   minutes_planned: number;
   minutes_completed: number;
   minutes_remaining: number;
+};
+
+type SessionTier = "micro" | "language" | "books" | "flexible";
+
+type HabitPlanEntry = {
+  habit: HabitPlanInput;
+  neededMin: number;
+  tier: SessionTier;
+  preferredMin: number;
+  minMin: number;
+  maxMin: number;
 };
 
 export function goalToMinutes(unit: HabitUnit, goal: number): number {
@@ -81,6 +92,112 @@ function blockId(date: string, habitId: string, remainingGoal: number, index: nu
   return `${date}:${habitId}:${remainingGoal}:${index}`;
 }
 
+function resolveHabitPlanEntry(habit: HabitPlanInput, neededMin: number): HabitPlanEntry {
+  const profile = resolveSessionPlanProfile(
+    {
+      name: habit.name,
+      unit: habit.unit,
+      templateId: (habit.template_id as HabitTemplateId | null) ?? null,
+    },
+    neededMin,
+  );
+
+  return {
+    habit,
+    neededMin,
+    tier: profile.tier,
+    preferredMin: profile.preferredMin,
+    minMin: profile.minMin,
+    maxMin: profile.maxMin,
+  };
+}
+
+function allocateBlockMinutes(entries: HabitPlanEntry[], budgetMin: number): Map<string, number> {
+  const allocations = new Map<string, number>();
+  let remaining = budgetMin;
+
+  const microEntries = entries.filter((entry) => entry.tier === "micro");
+  for (const entry of microEntries) {
+    const allocated = clamp(
+      entry.preferredMin,
+      entry.minMin,
+      Math.min(entry.maxMin, entry.neededMin, remaining),
+    );
+    allocations.set(entry.habit.id, allocated);
+    remaining -= allocated;
+  }
+
+  const languageEntries = entries.filter((entry) => entry.tier === "language");
+  for (const entry of languageEntries) {
+    const cappedPreferred = Math.min(entry.preferredMin, entry.neededMin, remaining);
+    const allocated =
+      remaining >= entry.minMin
+        ? clamp(cappedPreferred, entry.minMin, Math.min(entry.maxMin, entry.neededMin, remaining))
+        : Math.max(0, Math.min(remaining, entry.neededMin));
+    allocations.set(entry.habit.id, allocated);
+    remaining -= allocated;
+  }
+
+  const booksEntries = entries.filter((entry) => entry.tier === "books");
+  for (const entry of booksEntries) {
+    const allocated = clamp(
+      entry.preferredMin,
+      entry.minMin,
+      Math.min(entry.maxMin, remaining),
+    );
+    allocations.set(entry.habit.id, allocated);
+    remaining -= allocated;
+  }
+
+  const flexibleEntries = entries.filter((entry) => entry.tier === "flexible");
+  if (flexibleEntries.length === 0) {
+    return allocations;
+  }
+
+  const flexibleNeeded = flexibleEntries.reduce((sum, entry) => sum + entry.neededMin, 0);
+  if (flexibleNeeded <= 0) {
+    for (const entry of flexibleEntries) {
+      allocations.set(entry.habit.id, 0);
+    }
+    return allocations;
+  }
+
+  let flexibleRemaining = remaining;
+  const provisional = flexibleEntries.map((entry) => {
+    const rawShare = (remaining * entry.neededMin) / flexibleNeeded;
+    const allocated = Math.min(
+      entry.neededMin,
+      Math.max(entry.minMin, Math.round(rawShare)),
+    );
+    flexibleRemaining -= allocated;
+    return { entry, allocated };
+  });
+
+  while (flexibleRemaining > 0) {
+    const candidate = provisional
+      .filter(({ entry, allocated }) => allocated < entry.neededMin)
+      .sort((left, right) => right.entry.neededMin - left.entry.neededMin)[0];
+    if (!candidate) break;
+    candidate.allocated += 1;
+    flexibleRemaining -= 1;
+  }
+
+  while (flexibleRemaining < 0) {
+    const candidate = provisional
+      .filter(({ entry, allocated }) => allocated > entry.minMin)
+      .sort((left, right) => left.allocated - right.allocated)[0];
+    if (!candidate) break;
+    candidate.allocated -= 1;
+    flexibleRemaining += 1;
+  }
+
+  for (const { entry, allocated } of provisional) {
+    allocations.set(entry.habit.id, allocated);
+  }
+
+  return allocations;
+}
+
 type HabitBlockDraft = Omit<DailyPlanBlock, "order" | "status" | "actual_value" | "actual_minutes">;
 
 export function buildDailyPlan(input: {
@@ -100,24 +217,17 @@ export function buildDailyPlan(input: {
     completedBlockMeta = new Map(),
   } = input;
 
-  const habitBudgets: Array<{
-    habit: HabitPlanInput;
-    neededMin: number;
-    habitBudgetMin: number;
-  }> = [];
-
-  let totalNeeded = 0;
+  const entries: HabitPlanEntry[] = [];
 
   for (const habit of habits) {
     const remainingGoal = Math.max(0, habit.current_goal - habit.checkin_value);
     if (remainingGoal <= 0) continue;
 
     const neededMin = goalToMinutes(habit.unit, remainingGoal);
-    totalNeeded += neededMin;
-    habitBudgets.push({ habit, neededMin, habitBudgetMin: neededMin });
+    entries.push(resolveHabitPlanEntry(habit, neededMin));
   }
 
-  if (totalNeeded === 0) {
+  if (entries.length === 0) {
     return {
       blocks: [],
       minutes_planned: 0,
@@ -126,51 +236,26 @@ export function buildDailyPlan(input: {
     };
   }
 
-  const scale = Math.min(1, budgetMin / totalNeeded);
+  const allocations = allocateBlockMinutes(entries, budgetMin);
+  const drafts: HabitBlockDraft[] = [];
 
-  for (const entry of habitBudgets) {
-    entry.habitBudgetMin = entry.neededMin * scale;
+  for (const entry of entries) {
+    const remainingGoal = Math.max(0, entry.habit.current_goal - entry.habit.checkin_value);
+    const durationMin = allocations.get(entry.habit.id) ?? 0;
+    if (durationMin <= 0) continue;
+
+    drafts.push({
+      id: blockId(date, entry.habit.id, remainingGoal, 0),
+      habit_id: entry.habit.id,
+      habit_name: entry.habit.name,
+      icon: entry.habit.icon,
+      unit: entry.habit.unit,
+      duration_min: durationMin,
+      expected_yield: minutesToExpectedYield(entry.habit.unit, durationMin),
+    });
   }
 
-  const blocksByHabit: HabitBlockDraft[][] = [];
-
-  for (const { habit, habitBudgetMin } of habitBudgets) {
-    const remainingGoal = Math.max(0, habit.current_goal - habit.checkin_value);
-    const sessionCount = Math.max(1, Math.round(habitBudgetMin / SESSION_TARGET_MIN));
-    const rawSessionMin = Math.round(habitBudgetMin / sessionCount);
-    const sessionMin =
-      scale < 1
-        ? clamp(1, rawSessionMin, SESSION_MAX_MIN)
-        : clamp(SESSION_MIN_MIN, rawSessionMin, SESSION_MAX_MIN);
-
-    const habitBlocks: HabitBlockDraft[] = [];
-    for (let index = 0; index < sessionCount; index++) {
-      habitBlocks.push({
-        id: blockId(date, habit.id, remainingGoal, index),
-        habit_id: habit.id,
-        habit_name: habit.name,
-        icon: habit.icon,
-        unit: habit.unit,
-        duration_min: sessionMin,
-        expected_yield: minutesToExpectedYield(habit.unit, sessionMin),
-      });
-    }
-    blocksByHabit.push(habitBlocks);
-  }
-
-  const interleaved: HabitBlockDraft[] = [];
-  const maxBlocks = Math.max(0, ...blocksByHabit.map((blocks) => blocks.length));
-
-  for (let round = 0; round < maxBlocks; round++) {
-    for (const habitBlocks of blocksByHabit) {
-      const block = habitBlocks[round];
-      if (block) {
-        interleaved.push(block);
-      }
-    }
-  }
-
-  const blocks: DailyPlanBlock[] = interleaved.map((draft, order) => {
+  const blocks: DailyPlanBlock[] = drafts.map((draft, order) => {
     const isCompleted = completedBlockIds.has(draft.id);
     const isActive = !isCompleted && activeBlockId === draft.id;
     const meta = completedBlockMeta.get(draft.id);

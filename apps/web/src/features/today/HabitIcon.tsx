@@ -4,6 +4,10 @@ function isHabitIconImage(icon: string): boolean {
   return icon.startsWith("/") || icon.startsWith("http://") || icon.startsWith("https://");
 }
 
+function hasDisplayableIcon(icon: string | null | undefined): icon is string {
+  return typeof icon === "string" && icon.trim().length > 0;
+}
+
 type HabitIconProps = {
   icon: string | null | undefined;
   side: TodaySide;
@@ -11,7 +15,7 @@ type HabitIconProps = {
 
 export function HabitIcon({ icon, side }: HabitIconProps) {
   const fallback = side === "light" ? "☀️" : "🌑";
-  const value = icon ?? fallback;
+  const value = hasDisplayableIcon(icon) ? icon : fallback;
 
   if (isHabitIconImage(value)) {
     return <img className="home__task-icon" src={value} alt="" />;
