@@ -41,7 +41,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(profile);
       return profile;
     } catch (err) {
-      if (err instanceof ClientApiError && err.status === 401) {
+      if (
+        err instanceof ClientApiError &&
+        (err.status === 401 || err.status === 404 || err.status >= 500)
+      ) {
         clearTokens();
       }
       setUser(null);

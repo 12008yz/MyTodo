@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { AuthPanels, type AuthPanel } from "../../components/AuthPanels";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { WelcomeLayout } from "../../components/WelcomeLayout";
@@ -198,7 +198,6 @@ export function GuestWelcomeFlow() {
           pending={pending}
         />
       </div>
-      <Outlet />
     </WelcomeLayout>
   );
 }

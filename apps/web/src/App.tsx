@@ -18,11 +18,9 @@ export default function App() {
         <main className="app">
           <Routes>
             <Route element={<GuestGuard />}>
-              <Route element={<GuestWelcomeFlow />}>
-                <Route path="/welcome" />
-                <Route path="/login" />
-                <Route path="/register" />
-              </Route>
+              <Route path="/welcome" element={<GuestWelcomeFlow />} />
+              <Route path="/login" element={<GuestWelcomeFlow />} />
+              <Route path="/register" element={<GuestWelcomeFlow />} />
             </Route>
 
             <Route element={<OnboardingGuard />}>

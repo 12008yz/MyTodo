@@ -104,6 +104,8 @@ export function HomePage() {
         </div>
       </section>
 
+      {hasDailyPlan(dashboard) ? <DailyPlanList dailyPlan={dashboard.daily_plan} side={side} /> : null}
+
       <section className="home__section home__section--tasks" aria-labelledby="tasks-heading">
         <div className="home__tasks-heading">
           <h2 id="tasks-heading" className="home__section-title">
@@ -152,8 +154,6 @@ export function HomePage() {
           </p>
         ) : null}
       </section>
-
-      {hasDailyPlan(dashboard) ? <DailyPlanList dailyPlan={dashboard.daily_plan} side={side} /> : null}
     </>
   );
 }
