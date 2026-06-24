@@ -12,8 +12,10 @@ import { validateDarkHabits } from "../../features/onboarding/darkPaths";
 import {
   LIGHT_PATHS,
   LIGHT_PATH_TAB_LABELS,
+  keepCompleteLightHabits,
   validateLightHabits,
 } from "../../features/onboarding/lightPaths";
+import { maxLightHabitsForBudget } from "@mytodo/shared";
 import type {
   BodyFormData,
   LightPathId,
@@ -124,6 +126,15 @@ function validateHabits(habits: SelectedHabit[], side: "light" | "dark"): string
   return validateDarkHabits(habits);
 }
 
+function validateLightHabitBudget(habits: SelectedHabit[], freeTimeMin: number): string | null {
+  const maxLight = maxLightHabitsForBudget(freeTimeMin);
+  if (keepCompleteLightHabits(habits).length > maxLight) {
+    return `При ${freeTimeMin} мин в день — не больше ${maxLight} полезных привычек. Увеличь время или убери лишнее.`;
+  }
+
+  return null;
+}
+
 const DEFAULT_BODY: BodyFormData = {
   age: "",
   gender: null,
@@ -166,6 +177,7 @@ export function OnboardingPage() {
   const activeLightPathId = LIGHT_PATHS[lightPathIndex]?.id ?? "mindfulness";
   const isLastLightPath = lightPathIndex >= LIGHT_PATHS.length - 1;
   const progress = Math.round((stepIndex / (ONBOARDING_STEPS.length - 1)) * 100);
+  const maxLightHabits = maxLightHabitsForBudget(body.freeTimeMin);
 
   const handleStepChange = useCallback((nextStep: OnboardingStepId) => {
     const nextIndex = ONBOARDING_STEPS.indexOf(nextStep);
@@ -284,6 +296,13 @@ export function OnboardingPage() {
       return;
     }
 
+    const lightBudgetValidation = validateLightHabitBudget(lightHabits, body.freeTimeMin);
+    if (lightBudgetValidation) {
+      setError(lightBudgetValidation);
+      goToStepIndex(ONBOARDING_STEPS.indexOf("body"));
+      return;
+    }
+
     const darkValidation = validateHabits(darkHabits, "dark");
     if (darkValidation) {
       setError(darkValidation);
@@ -365,6 +384,12 @@ export function OnboardingPage() {
           setError(validation);
           return;
         }
+
+        const budgetValidation = validateLightHabitBudget(lightHabits, body.freeTimeMin);
+        if (budgetValidation) {
+          setError(budgetValidation);
+          return;
+        }
         goNext();
         return;
       }
@@ -384,6 +409,12 @@ export function OnboardingPage() {
           const validation = validateBodyForm(body);
           if (validation) {
             setError(validation);
+            return;
+          }
+
+          const budgetValidation = validateLightHabitBudget(lightHabits, body.freeTimeMin);
+          if (budgetValidation) {
+            setError(budgetValidation);
             return;
           }
           goNext();
@@ -460,6 +491,8 @@ export function OnboardingPage() {
           <LightPathStep
             ref={lightPathStepRef}
             lightHabits={lightHabits}
+            maxLightHabits={maxLightHabits}
+            freeTimeMin={body.freeTimeMin}
             activePathId={activeLightPathId}
             onActivePathChange={handleActivePathChange}
             onChange={setLightHabits}

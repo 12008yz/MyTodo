@@ -28,6 +28,8 @@ import "../../components/ContentPanels/ContentPanels.css";
 
 type LightPathStepProps = {
   lightHabits: SelectedHabit[];
+  maxLightHabits: number;
+  freeTimeMin: number;
   activePathId: LightPathId;
   onActivePathChange: (pathId: LightPathId) => void;
   onChange: (habits: SelectedHabit[]) => void;
@@ -175,7 +177,15 @@ function HabitSetupPanel({
 
 export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>(
   function LightPathStep(
-    { lightHabits, activePathId, onActivePathChange, onChange, onPathTransitionChange },
+    {
+      lightHabits,
+      maxLightHabits,
+      freeTimeMin,
+      activePathId,
+      onActivePathChange,
+      onChange,
+      onPathTransitionChange,
+    },
     ref,
   ) {
     const [setupActivityId, setSetupActivityId] = useState<string | null>(null);
@@ -191,6 +201,8 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     const activeSetupHabit = setupActivityId
       ? findHabitByActivityId(lightHabits, setupActivityId)
       : undefined;
+    const completeLightCount = keepCompleteLightHabits(lightHabits).length;
+    const atLightHabitLimit = completeLightCount >= maxLightHabits;
 
     useEffect(() => {
       if (!setupActivityId || !activeSetupHabit) return;
@@ -249,6 +261,10 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
         return;
       }
 
+      if (keepCompleteLightHabits(lightHabits).length >= maxLightHabits) {
+        return;
+      }
+
       onChange(toggleLightActivity(keepCompleteLightHabits(lightHabits), activity));
       setSetupActivityId(activity.id);
     };
@@ -268,6 +284,10 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     };
 
     const handleAddCustom = () => {
+      if (keepCompleteLightHabits(lightHabits).length >= maxLightHabits) {
+        return;
+      }
+
       if (customPracticesNow === null) {
         setLocalError("Ответь, занимаешься ли ты этим сейчас");
         return;
@@ -314,6 +334,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     const renderHabitItem = (activity: LightActivity, onClick: () => void) => {
       const selected = findHabitByActivityId(lightHabits, activity.id);
       const complete = selected ? isLightSetupComplete(selected) : false;
+      const isDisabled = atLightHabitLimit && !selected;
       const isSetupTarget = setupActivityId === activity.id && selected;
       const showPanel = isSetupTarget && !complete;
       const setupSettled = setupActivityId !== activity.id;
@@ -343,6 +364,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
             ]
               .filter(Boolean)
               .join(" ")}
+            disabled={isDisabled}
             onClick={onClick}
           >
             <OptionRadio selected={complete} />
@@ -423,7 +445,9 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
                 ]
                   .filter(Boolean)
                   .join(" ")}
+                disabled={atLightHabitLimit && !customOpen}
                 onClick={() => {
+                  if (atLightHabitLimit && !customOpen) return;
                   setCustomOpen((value) => !value);
                   setLocalError(null);
                 }}
@@ -533,6 +557,11 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
         <p className="onboarding__eyebrow">Шаг 1 · Светлая сторона</p>
         <h1 className="onboarding__title">Выбери свой путь</h1>
         <p className="onboarding__subtitle">Отметь привычки, которые возьмёшь в эту главу.</p>
+
+        <p className="onboarding__time-limit-hint" role="status">
+          При {freeTimeMin} мин в день — не больше {maxLightHabits} полезных привычек. Увеличь
+          время или убери лишнее.
+        </p>
 
         <div className="onboarding__step-hero" aria-hidden="true">
           <img
