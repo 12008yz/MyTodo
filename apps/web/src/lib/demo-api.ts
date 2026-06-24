@@ -1,4 +1,7 @@
+import { buildDailyPlan } from "@mytodo/domain";
 import {
+  AWARENESS_SESSION_MIN,
+  SESSION_TARGET_MIN,
   computeDailyBudgetMin,
   HABIT_TEMPLATES,
   todayDarkResponseSchema,
@@ -10,12 +13,17 @@ import {
   type CreateHabitRequest,
   type EnglishSettingsResponse,
   type HabitResponse,
+  type HabitSessionActiveResponse,
+  type HabitSessionCompleteResponse,
+  type HabitSessionResponse,
   type LoginRequest,
+  type CompleteHabitSessionRequest,
   type PatchEnglishSettingsRequest,
   type PatchMeRequest,
   type PushSubscribeRequest,
   type PushSubscribeResponse,
   type RegisterRequest,
+  type StartHabitSessionRequest,
   type ProgressPeriod,
   type StatsCalendarResponse,
   type StatsMonthResponse,
@@ -40,7 +48,10 @@ type DemoState = {
   habits: HabitResponse[];
   english: EnglishSettingsResponse;
   checkins: CheckinResponse[];
+  sessions: DemoHabitSession[];
 };
+
+type DemoHabitSession = Omit<HabitSessionResponse, "remaining_seconds">;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -109,6 +120,7 @@ function loadState(): DemoState | null {
     return {
       ...parsed,
       checkins: parsed.checkins ?? [],
+      sessions: parsed.sessions ?? [],
     };
   } catch {
     return null;
@@ -128,6 +140,7 @@ function ensureState(): DemoState {
     habits: [],
     english: defaultEnglish(),
     checkins: [],
+    sessions: [],
   };
   saveState(state);
   return state;
@@ -261,6 +274,7 @@ export function demoRegister(data: RegisterRequest): AuthResponse {
     habits: [],
     english: defaultEnglish(),
     checkins: [],
+    sessions: [],
   });
 
   return toAuthResponse(user);
@@ -320,6 +334,13 @@ function addDaysLocal(date: string, delta: number): string {
   const year = parsed.getFullYear();
   const month = String(parsed.getMonth() + 1).padStart(2, "0");
   const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatLocalDate(input: Date): string {
+  const year = input.getFullYear();
+  const month = String(input.getMonth() + 1).padStart(2, "0");
+  const day = String(input.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -426,15 +447,12 @@ function buildShowcaseState(): DemoState {
     habits,
     english: defaultEnglish(),
     checkins,
+    sessions: [],
   };
 }
 
 function todayDate(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return formatLocalDate(new Date());
 }
 
 function resolveDemoCheckinStatus(
@@ -559,6 +577,7 @@ function buildLightTodayResponse(): TodayLightResponse {
       const checkin = todayCheckins.find((c) => c.habit_id === habit.id) ?? null;
       return mapHabitToTodayLight(habit, checkin);
     }),
+    daily_plan: buildDemoDailyPlan(state, "light", date),
   });
 }
 
@@ -578,7 +597,214 @@ function buildDarkTodayResponse(): TodayDarkResponse {
       const checkin = todayCheckins.find((c) => c.habit_id === habit.id) ?? null;
       return mapHabitToTodayDark(habit, checkin);
     }),
+    daily_plan: buildDemoDailyPlan(state, "dark", date),
   });
+}
+
+function findDemoActiveSessionByHabit(
+  state: DemoState,
+  habitId: string,
+): DemoHabitSession | null {
+  const session = state.sessions.find(
+    (row) => row.habit_id === habitId && !row.completed && row.ended_at === null,
+  );
+  return session ?? null;
+}
+
+function listCompletedBlockMeta(
+  state: DemoState,
+  date: string,
+): Map<string, { actual_value: number | null; actual_minutes: number | null }> {
+  const result = new Map<string, { actual_value: number | null; actual_minutes: number | null }>();
+
+  for (const session of state.sessions) {
+    if (!session.completed || !session.block_id || !session.ended_at) {
+      continue;
+    }
+
+    if (formatLocalDate(new Date(session.ended_at)) !== date) {
+      continue;
+    }
+
+    result.set(session.block_id, {
+      actual_value: session.value_added,
+      actual_minutes: session.actual_min,
+    });
+  }
+
+  return result;
+}
+
+function resolveActiveBlockId(state: DemoState): string | null {
+  const active = state.sessions
+    .filter((session) => !session.completed && session.ended_at === null && session.block_id)
+    .sort((a, b) => a.started_at.localeCompare(b.started_at))[0];
+  return active?.block_id ?? null;
+}
+
+function buildDemoDailyPlan(
+  state: DemoState,
+  side: "light" | "dark",
+  date: string,
+) {
+  const todayCheckins = new Map(
+    state.checkins.filter((checkin) => checkin.date === date).map((checkin) => [checkin.habit_id, checkin]),
+  );
+  const completedBlockMeta = listCompletedBlockMeta(state, date);
+  const completedBlockIds = new Set(completedBlockMeta.keys());
+  const activeBlockId = resolveActiveBlockId(state);
+
+  if (side === "light") {
+    return buildDailyPlan({
+      date,
+      budgetMin: state.user.daily_budget_min,
+      habits: state.habits
+        .filter((habit) => habit.side === "light" && habit.is_active)
+        .map((habit) => ({
+          id: habit.id,
+          name: habit.name,
+          icon: habit.icon,
+          unit: habit.unit,
+          current_goal: habit.current_goal,
+          checkin_value: todayCheckins.get(habit.id)?.value ?? 0,
+        })),
+      completedBlockIds,
+      activeBlockId,
+      completedBlockMeta,
+    });
+  }
+
+  const darkAwarenessHabits = state.habits.filter((habit) => {
+    if (!habit.is_active || habit.side !== "dark") {
+      return false;
+    }
+    if (habit.type !== "limit" || habit.template_id === "social_media") {
+      return false;
+    }
+    return todayCheckins.get(habit.id)?.status !== "success";
+  });
+
+  if (darkAwarenessHabits.length === 0) {
+    return undefined;
+  }
+
+  const basePlan = buildDailyPlan({
+    date,
+    budgetMin: darkAwarenessHabits.length * AWARENESS_SESSION_MIN,
+    habits: darkAwarenessHabits.map((habit) => ({
+      id: habit.id,
+      name: habit.name,
+      icon: habit.icon,
+      unit: habit.unit,
+      current_goal: AWARENESS_SESSION_MIN,
+      checkin_value: 0,
+    })),
+    completedBlockIds,
+    activeBlockId,
+    completedBlockMeta,
+  });
+
+  return {
+    ...basePlan,
+    blocks: basePlan.blocks.map((block) => ({
+      ...block,
+      expected_yield: 0,
+    })),
+  };
+}
+
+function getSupportedSessionHabit(state: DemoState, habitId: string): HabitResponse {
+  const habit = state.habits.find((row) => row.id === habitId && row.is_active);
+  if (!habit) {
+    throw new Error("Habit not found");
+  }
+
+  const isLightHabit = habit.side === "light";
+  const isAllowedDarkLimit =
+    habit.side === "dark" && habit.type === "limit" && habit.template_id !== "social_media";
+
+  if (!isLightHabit && !isAllowedDarkLimit) {
+    throw new Error("Habit sessions are not available for this habit");
+  }
+
+  return habit;
+}
+
+function elapsedMinutesSince(startedAtIso: string): number {
+  const elapsedMs = Date.now() - new Date(startedAtIso).getTime();
+  return Math.max(0, Math.floor(elapsedMs / 60_000));
+}
+
+function toDemoSessionResponse(session: DemoHabitSession): HabitSessionResponse {
+  const remainingSeconds =
+    session.completed || session.ended_at
+      ? 0
+      : Math.max(
+          0,
+          Math.ceil(
+            (new Date(session.started_at).getTime() + session.planned_min * 60_000 - Date.now()) /
+              1000,
+          ),
+        );
+  return {
+    ...session,
+    remaining_seconds: remainingSeconds,
+  };
+}
+
+function upsertSessionCheckin(
+  state: DemoState,
+  habit: HabitResponse,
+  valueToAdd: number,
+  now: string,
+): { date: string; status: CheckinResponse["status"]; value: number; current_goal: number; preview_next_goal: number } {
+  const date = todayDate();
+  const existingIndex = state.checkins.findIndex(
+    (checkin) => checkin.habit_id === habit.id && checkin.date === date,
+  );
+  const existing = existingIndex >= 0 ? state.checkins[existingIndex]! : null;
+
+  if (existing?.status === "skipped") {
+    throw new Error("Cannot add session value on a skipped day");
+  }
+
+  const currentValue = existing?.value ?? 0;
+  const value = currentValue + valueToAdd;
+  const status: CheckinResponse["status"] =
+    habit.type === "target"
+      ? value >= habit.current_goal
+        ? "success"
+        : "fail"
+      : habit.type === "limit"
+        ? value <= habit.current_goal
+          ? "success"
+          : "fail"
+        : "pending";
+
+  const checkin: CheckinResponse = {
+    id: existing?.id ?? crypto.randomUUID(),
+    habit_id: habit.id,
+    date,
+    status,
+    value,
+    updated_at: now,
+    current_goal: habit.current_goal,
+    preview_next_goal: habit.current_goal,
+  };
+
+  if (existingIndex >= 0) {
+    state.checkins[existingIndex] = checkin;
+  } else {
+    state.checkins.push(checkin);
+  }
+
+  return {
+    date,
+    status,
+    value,
+    current_goal: habit.current_goal,
+    preview_next_goal: habit.current_goal,
+  };
 }
 
 export function demoGetTodayLight(): TodayLightResponse {
@@ -623,6 +849,118 @@ export function demoCreateCheckin(data: CreateCheckinRequest): CheckinResponse {
 
   saveState(state);
   return checkin;
+}
+
+export function demoStartHabitSession(
+  habitId: string,
+  data: StartHabitSessionRequest = {},
+): HabitSessionResponse {
+  const state = ensureState();
+  getSupportedSessionHabit(state, habitId);
+
+  if (findDemoActiveSessionByHabit(state, habitId)) {
+    throw new Error("Habit session already active for this habit");
+  }
+
+  const session: DemoHabitSession = {
+    id: crypto.randomUUID(),
+    habit_id: habitId,
+    block_id: data.block_id ?? null,
+    started_at: nowIso(),
+    ended_at: null,
+    planned_min: data.planned_min ?? SESSION_TARGET_MIN,
+    actual_min: null,
+    value_added: null,
+    completed: false,
+  };
+
+  state.sessions.push(session);
+  saveState(state);
+  return toDemoSessionResponse(session);
+}
+
+export function demoCompleteHabitSession(
+  habitId: string,
+  data: CompleteHabitSessionRequest = {},
+): HabitSessionCompleteResponse {
+  const state = ensureState();
+  const habit = getSupportedSessionHabit(state, habitId);
+  const session = findDemoActiveSessionByHabit(state, habitId);
+
+  if (!session) {
+    throw new Error("No active habit session for this habit");
+  }
+
+  const actualMin = Math.max(1, elapsedMinutesSince(session.started_at));
+  const valueToAdd =
+    habit.unit === "minutes"
+      ? actualMin
+      : data.actual_value == null || data.actual_value <= 0
+        ? null
+        : data.actual_value;
+
+  if (valueToAdd == null) {
+    throw new Error("actual_value must be greater than zero for non-minute habits");
+  }
+
+  const now = nowIso();
+  const checkin = upsertSessionCheckin(state, habit, valueToAdd, now);
+
+  const updatedSession: DemoHabitSession = {
+    ...session,
+    ended_at: now,
+    completed: true,
+    actual_min: actualMin,
+    value_added: valueToAdd,
+    block_id: data.block_id ?? session.block_id,
+  };
+
+  const index = state.sessions.findIndex((row) => row.id === session.id);
+  if (index >= 0) {
+    state.sessions[index] = updatedSession;
+  }
+
+  saveState(state);
+  return {
+    session: toDemoSessionResponse(updatedSession),
+    checkin,
+    value_added: valueToAdd,
+  };
+}
+
+export function demoStopHabitSession(habitId: string): HabitSessionResponse {
+  const state = ensureState();
+  getSupportedSessionHabit(state, habitId);
+  const session = findDemoActiveSessionByHabit(state, habitId);
+
+  if (!session) {
+    throw new Error("No active habit session for this habit");
+  }
+
+  const updatedSession: DemoHabitSession = {
+    ...session,
+    ended_at: nowIso(),
+    completed: false,
+    actual_min: null,
+    value_added: null,
+  };
+
+  const index = state.sessions.findIndex((row) => row.id === session.id);
+  if (index >= 0) {
+    state.sessions[index] = updatedSession;
+  }
+
+  saveState(state);
+  return toDemoSessionResponse(updatedSession);
+}
+
+export function demoGetActiveHabitSession(habitId: string): HabitSessionActiveResponse {
+  const state = ensureState();
+  getSupportedSessionHabit(state, habitId);
+  const session = findDemoActiveSessionByHabit(state, habitId);
+  return {
+    session: session ? toDemoSessionResponse(session) : null,
+  };
 }
 
 function listMonthDates(month: string): string[] {

@@ -99,6 +99,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@mytodo/domain':
+        specifier: workspace:^
+        version: link:../../packages/domain
       '@mytodo/shared':
         specifier: workspace:*
         version: link:../../packages/shared

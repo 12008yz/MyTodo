@@ -57,8 +57,10 @@ import {
 } from "./auth-storage";
 import { isDemoMode } from "./demo-mode";
 import {
+  demoCompleteHabitSession,
   demoCreateCheckin,
   demoCreateHabit,
+  demoGetActiveHabitSession,
   demoGetMe,
   demoGetHabitProgress,
   demoGetStatsCalendar,
@@ -69,6 +71,8 @@ import {
   demoLogin,
   demoLogout,
   demoRegister,
+  demoStartHabitSession,
+  demoStopHabitSession,
   demoSubscribePush,
   demoUpdateEnglishSettings,
   demoUpdateMe,
@@ -326,7 +330,7 @@ export async function startHabitSession(
   startHabitSessionRequestSchema.parse(data);
 
   if (isDemoMode()) {
-    throw new ClientApiError("Сессии пока недоступны в демо-режиме", 501);
+    return demoStartHabitSession(habitId, data);
   }
 
   const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/sessions/start`, {
@@ -343,7 +347,7 @@ export async function completeHabitSession(
   completeHabitSessionRequestSchema.parse(data);
 
   if (isDemoMode()) {
-    throw new ClientApiError("Сессии пока недоступны в демо-режиме", 501);
+    return demoCompleteHabitSession(habitId, data);
   }
 
   const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/sessions/complete`, {
@@ -355,7 +359,7 @@ export async function completeHabitSession(
 
 export async function stopHabitSession(habitId: string): Promise<HabitSessionResponse> {
   if (isDemoMode()) {
-    throw new ClientApiError("Сессии пока недоступны в демо-режиме", 501);
+    return demoStopHabitSession(habitId);
   }
 
   const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/sessions/stop`, {
@@ -366,7 +370,7 @@ export async function stopHabitSession(habitId: string): Promise<HabitSessionRes
 
 export async function getActiveHabitSession(habitId: string): Promise<HabitSessionActiveResponse> {
   if (isDemoMode()) {
-    throw new ClientApiError("Сессии пока недоступны в демо-режиме", 501);
+    return demoGetActiveHabitSession(habitId);
   }
 
   const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/sessions/active`);
