@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, asc, eq, isNotNull, isNull } from "drizzle-orm";
 import { getUserLocalDate } from "@mytodo/domain";
 import {
   ApiError,
@@ -237,6 +237,24 @@ export class HabitSessionService {
     }
 
     return result;
+  }
+
+  async findActiveBlockIdForUser(userId: string): Promise<string | null> {
+    const [session] = await this.db
+      .select()
+      .from(habitSessions)
+      .where(
+        and(
+          eq(habitSessions.userId, userId),
+          eq(habitSessions.completed, false),
+          isNull(habitSessions.endedAt),
+          isNotNull(habitSessions.blockId),
+        ),
+      )
+      .orderBy(asc(habitSessions.startedAt))
+      .limit(1);
+
+    return session?.blockId ?? null;
   }
 
   toResponse(session: typeof habitSessions.$inferSelect, now: Date): HabitSessionResponse {

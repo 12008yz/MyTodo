@@ -1,4 +1,5 @@
 import {
+  buildDailyPlan,
   computeAbstinenceElapsed,
   computeGlobalStreak,
   computeHabitStreak,
@@ -9,12 +10,14 @@ import {
   isDateInRange,
   type DayCheckin,
 } from "@mytodo/domain";
+import { AWARENESS_SESSION_MIN, type HabitUnit } from "@mytodo/shared";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Database } from "../db/index.js";
 import { checkins, habits, type Habit, type User } from "../db/schema/index.js";
 import { toHabitResponse } from "../lib/habit-mapper.js";
 import { previewStatusFromCheckin, toProgressionHabit } from "../lib/habit-progression.js";
 import type { DoomScrollService } from "./doom-scroll.js";
+import type { HabitSessionService } from "./habit-sessions.js";
 import type { PomodoroService } from "./pomodoro.js";
 
 type Side = "light" | "dark";
@@ -26,6 +29,7 @@ export class TodayService {
     private readonly db: Database,
     private readonly pomodoroService: PomodoroService,
     private readonly doomScrollService: DoomScrollService,
+    private readonly habitSessionService: HabitSessionService,
   ) {}
 
   async getLightDashboard(user: User) {
@@ -46,6 +50,7 @@ export class TodayService {
       date: dashboard.date,
       greeting_name: user.name,
       stats: dashboard.stats,
+      daily_plan: dashboard.daily_plan,
       habits: dashboard.habits.map((habit) => ({
         ...habit,
         timer: isAbstinenceTimerHabit(habit.phase)
@@ -134,6 +139,7 @@ export class TodayService {
             userHabits.filter((habit) => habit.unit === "minutes"),
             todayCheckins,
           );
+    const dailyPlan = await this.buildDailyPlanForSide(user, side, userHabits, todayCheckins, today);
 
     return {
       date: today,
@@ -142,6 +148,82 @@ export class TodayService {
       minutes_logged_today: minutesLoggedToday,
       stats,
       habits: habitsPayload,
+      daily_plan: dailyPlan ?? undefined,
+    };
+  }
+
+  private async buildDailyPlanForSide(
+    user: User,
+    side: Side,
+    userHabits: Habit[],
+    todayCheckins: Map<string, CheckinRow>,
+    today: string,
+  ) {
+    const completedBlockMeta = await this.habitSessionService.listCompletedBlockMetaForDate(
+      user.id,
+      user.timezone,
+      today,
+    );
+    const completedBlockIds = new Set(completedBlockMeta.keys());
+    const activeBlockId = await this.habitSessionService.findActiveBlockIdForUser(user.id);
+
+    if (side === "light") {
+      const habitsForPlan = userHabits.map((habit) => {
+        const checkin = todayCheckins.get(habit.id);
+        return {
+          id: habit.id,
+          name: habit.name,
+          icon: habit.icon,
+          unit: (habit.unit ?? "minutes") as HabitUnit,
+          current_goal: Number(habit.currentGoal),
+          checkin_value: checkin?.value == null ? 0 : Number(checkin.value),
+        };
+      });
+
+      return buildDailyPlan({
+        date: today,
+        budgetMin: user.dailyBudgetMin,
+        habits: habitsForPlan,
+        completedBlockIds,
+        activeBlockId,
+        completedBlockMeta,
+      });
+    }
+
+    const darkAwarenessHabits = userHabits.filter((habit) => {
+      if (habit.type !== "limit" || habit.templateId === "social_media") {
+        return false;
+      }
+
+      return todayCheckins.get(habit.id)?.status !== "success";
+    });
+
+    if (darkAwarenessHabits.length === 0) {
+      return null;
+    }
+
+    const basePlan = buildDailyPlan({
+      date: today,
+      budgetMin: darkAwarenessHabits.length * AWARENESS_SESSION_MIN,
+      habits: darkAwarenessHabits.map((habit) => ({
+        id: habit.id,
+        name: habit.name,
+        icon: habit.icon,
+        unit: (habit.unit ?? "minutes") as HabitUnit,
+        current_goal: AWARENESS_SESSION_MIN,
+        checkin_value: 0,
+      })),
+      completedBlockIds,
+      activeBlockId,
+      completedBlockMeta,
+    });
+
+    return {
+      ...basePlan,
+      blocks: basePlan.blocks.map((block) => ({
+        ...block,
+        expected_yield: 0,
+      })),
     };
   }
 

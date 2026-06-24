@@ -75,14 +75,14 @@ describe("Today dashboards", () => {
     return auth;
   }
 
-  async function createLightHabit(token: string) {
+  async function createLightHabit(token: string, templateId: "running" | "books" = "running") {
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/habits",
       headers: { authorization: `Bearer ${token}` },
       payload: {
-        template_id: "running",
-        baseline_value: 30,
+        template_id: templateId,
+        baseline_value: templateId === "books" ? 10 : 30,
       },
     });
 
@@ -144,6 +144,28 @@ describe("Today dashboards", () => {
         "success",
       ),
     );
+  });
+
+  it("includes daily_plan with blocks for light dashboard", async () => {
+    const auth = await createOnboardedUser("today-light-plan@example.com");
+    const firstHabit = await createLightHabit(auth.access_token, "running");
+    const secondHabit = await createLightHabit(auth.access_token, "books");
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/today/light",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = todayLightResponseSchema.parse(JSON.parse(response.body));
+    const plannedHabitIds = new Set(body.daily_plan.blocks.map((block) => block.habit_id));
+
+    expect(body.habits).toHaveLength(2);
+    expect(body.daily_plan.minutes_planned).toBeGreaterThan(0);
+    expect(body.daily_plan.blocks.length).toBeGreaterThan(0);
+    expect(plannedHabitIds.has(firstHabit.id)).toBe(true);
+    expect(plannedHabitIds.has(secondHabit.id)).toBe(true);
   });
 
   it("returns dark dashboard with timer for abstinence habits", async () => {

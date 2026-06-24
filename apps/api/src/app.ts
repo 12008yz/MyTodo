@@ -92,7 +92,7 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
   const pomodoroService = new PomodoroService(db, pledgeService);
   const habitSessionService = new HabitSessionService(db, pledgeService);
   const doomScrollService = new DoomScrollService(db, checkinService, pushService, pushQueue);
-  const todayService = new TodayService(db, pomodoroService, doomScrollService);
+  const todayService = new TodayService(db, pomodoroService, doomScrollService, habitSessionService);
   const statsService = new StatsService(db);
   const englishService = new EnglishService(db);
   const requireAccess = createRequireAccess(db, billingService);
