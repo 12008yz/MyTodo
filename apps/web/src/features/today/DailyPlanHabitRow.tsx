@@ -244,7 +244,13 @@ export function DailyPlanHabitRow({
           <div className="home__plan-item-main">
             <div className="home__plan-item-header">
               <h3 className="home__plan-item-title">
-                <HabitIcon icon={habit.icon ?? block?.icon} side={side} />
+                <HabitIcon
+                  icon={habit.icon ?? block?.icon}
+                  side={side}
+                  template_id={habit.template_id}
+                  category_key={habit.category_key}
+                  name={habit.name}
+                />
                 <span className="home__plan-item-name">{habit.name}</span>
               </h3>
               <span className="home__plan-item-goal">{formatGoalLabel(habit)}</span>

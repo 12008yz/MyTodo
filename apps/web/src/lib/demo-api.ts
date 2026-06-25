@@ -5,6 +5,7 @@ import {
   SOCIAL_MEDIA_MIN_GOAL,
   computeDailyBudgetMin,
   HABIT_TEMPLATES,
+  resolveHabitIcon,
   type CustomHabitUnit,
   todayDarkResponseSchema,
   todayLightResponseSchema,
@@ -628,6 +629,13 @@ function mapHabitToTodayLight(
   const previewNextGoal = demoPreviewNextGoal(habit, checkin?.status);
   return {
     ...habit,
+    icon: resolveHabitIcon({
+      icon: habit.icon,
+      template_id: habit.template_id,
+      category_key: habit.category_key,
+      name: habit.name,
+      side: habit.side,
+    }),
     checkin: checkin
       ? {
           id: checkin.id,
@@ -771,7 +779,13 @@ function buildDemoDailyPlan(
         .map((habit) => ({
           id: habit.id,
           name: habit.name,
-          icon: habit.icon,
+          icon: resolveHabitIcon({
+            icon: habit.icon,
+            template_id: habit.template_id,
+            category_key: habit.category_key,
+            name: habit.name,
+            side: habit.side,
+          }),
           unit: habit.unit,
           current_goal: habit.current_goal,
           checkin_value: todayCheckins.get(habit.id)?.value ?? 0,

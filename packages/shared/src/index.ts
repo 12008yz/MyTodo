@@ -55,6 +55,11 @@ export {
   type ProgressionDirection,
 } from "./constants/habits.js";
 export {
+  HABIT_CATEGORY_ICONS,
+  resolveHabitIcon,
+  type HabitIconSource,
+} from "./habits/resolve-icon.js";
+export {
   authTokensSchema,
   loginRequestSchema,
   logoutRequestSchema,

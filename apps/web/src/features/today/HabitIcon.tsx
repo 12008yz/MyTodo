@@ -1,21 +1,24 @@
-import type { TodaySide } from "./useTodayData";
+import type { HabitSide } from "@mytodo/shared";
+import { resolveHabitIcon, type HabitIconSource } from "@mytodo/shared";
 
 function isHabitIconImage(icon: string): boolean {
   return icon.startsWith("/") || icon.startsWith("http://") || icon.startsWith("https://");
 }
 
-function hasDisplayableIcon(icon: string | null | undefined): icon is string {
-  return typeof icon === "string" && icon.trim().length > 0;
-}
-
-type HabitIconProps = {
-  icon: string | null | undefined;
-  side: TodaySide;
+type HabitIconProps = HabitIconSource & {
+  side: HabitSide;
 };
 
-export function HabitIcon({ icon, side }: HabitIconProps) {
+export function HabitIcon({
+  icon,
+  side,
+  template_id,
+  category_key,
+  name,
+}: HabitIconProps) {
+  const resolved = resolveHabitIcon({ icon, template_id, category_key, name, side });
   const fallback = side === "light" ? "☀️" : "🌑";
-  const value = hasDisplayableIcon(icon) ? icon : fallback;
+  const value = resolved?.trim() || fallback;
 
   if (isHabitIconImage(value)) {
     return <img className="home__task-icon" src={value} alt="" />;

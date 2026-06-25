@@ -1,6 +1,7 @@
 import {
   CUSTOM_MINUTES_STEP,
   EARLY_RISE_SHIFT_MIN,
+  resolveHabitIcon,
   type CustomHabitUnit,
   type HabitCategoryKey,
   type HabitTemplate,
@@ -187,7 +188,13 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
     lastRelapseAt: null,
     allowsWeeklySkip: true,
     isCustom: true,
-    icon: icon ?? null,
+    icon:
+      icon ??
+      resolveHabitIcon({
+        category_key: categoryKey ?? null,
+        name,
+        side: "light",
+      }),
     templateId: null,
     categoryKey: categoryKey ?? null,
   };
