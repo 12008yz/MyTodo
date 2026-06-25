@@ -188,6 +188,7 @@ function createHabitResponse(
       icon: resolveTemplateIcon(data.template_id),
       is_active: true,
       template_id: data.template_id,
+      category_key: null,
       harshness_level: user.harshness_level,
       created_at: createdAt,
     };
@@ -213,6 +214,7 @@ function createHabitResponse(
     icon: data.icon ?? null,
     is_active: true,
     template_id: null,
+    category_key: data.category_key ?? null,
     harshness_level: user.harshness_level,
     created_at: createdAt,
   };

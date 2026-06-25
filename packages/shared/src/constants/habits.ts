@@ -40,6 +40,20 @@ export type HabitTemplateId = (typeof HABIT_TEMPLATE_IDS)[number];
 export const CUSTOM_HABIT_UNITS = ["minutes", "pages", "reps", "lessons"] as const;
 export type CustomHabitUnit = (typeof CUSTOM_HABIT_UNITS)[number];
 
+export const HABIT_CATEGORY_KEYS = [
+  "meditation",
+  "language",
+  "gratitude",
+  "strength_workout",
+  "stretching",
+  "programming",
+  "creative_project",
+  "walking",
+  "early_rise",
+  "hobby",
+] as const;
+export type HabitCategoryKey = (typeof HABIT_CATEGORY_KEYS)[number];
+
 export const SOCIAL_MEDIA_MIN_GOAL = 15;
 export const SOCIAL_MEDIA_STEP = 5;
 export const CUSTOM_MINUTES_STEP = 5;

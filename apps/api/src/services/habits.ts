@@ -113,6 +113,7 @@ export class HabitService {
         isCustom: calibrated.isCustom,
         icon: calibrated.icon,
         templateId: calibrated.templateId,
+        categoryKey: calibrated.categoryKey,
         harshnessLevel: user.harshnessLevel,
       })
       .returning();
@@ -268,7 +269,13 @@ export class HabitService {
   }
 
   private calibrateCustom(
-    body: { name: string; unit: "minutes" | "pages" | "reps" | "lessons"; baseline_value: number; icon?: string },
+    body: {
+      name: string;
+      unit: "minutes" | "pages" | "reps" | "lessons";
+      baseline_value: number;
+      category_key?: import("@mytodo/shared").HabitCategoryKey;
+      icon?: string;
+    },
     user: User,
     activeLightCount: number,
   ) {
@@ -277,6 +284,7 @@ export class HabitService {
       name: body.name,
       unit: body.unit,
       baselineValue: body.baseline_value,
+      categoryKey: body.category_key,
       profile: toProfile(user),
       activeLightHabitsIncludingNew: activeLightCount + 1,
       icon: body.icon,
@@ -297,6 +305,7 @@ export class HabitService {
           name: habit.name,
           unit: (habit.unit ?? "minutes") as HabitUnit,
           templateId: habit.templateId as HabitTemplateId | null,
+          categoryKey: (habit.categoryKey as import("@mytodo/shared").HabitCategoryKey | null) ?? null,
         },
         baselineValue: Number(habit.baselineValue),
       })),

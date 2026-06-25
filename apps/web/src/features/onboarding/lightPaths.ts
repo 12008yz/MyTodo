@@ -1,4 +1,4 @@
-import { HABIT_TEMPLATES, type HabitTemplateId } from "@mytodo/shared";
+import { HABIT_TEMPLATES, type HabitCategoryKey, type HabitTemplateId } from "@mytodo/shared";
 import type { LightPathId, SelectedCustomHabit, SelectedHabit } from "./types";
 
 export type { LightPathId } from "./types";
@@ -63,6 +63,7 @@ export type LightActivityCustom = LightActivityBase & {
   kind: "custom";
   name: string;
   unit: SelectedCustomHabit["unit"];
+  categoryKey?: HabitCategoryKey;
 };
 
 export type LightActivityCustomForm = LightActivityBase & {
@@ -83,6 +84,7 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     hint: "Минут в день",
     name: "Медитация",
     unit: "minutes",
+    categoryKey: "meditation",
   },
   {
     id: "mindfulness-books",
@@ -101,6 +103,7 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     description: "Английский — самый лёгкий язык, его и учим",
     name: "Иностранный язык",
     unit: "minutes",
+    categoryKey: "language",
   },
   {
     id: "mindfulness-gratitude",
@@ -111,6 +114,7 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     description: "Запиши 3–5 вещей, за которые благодарен",
     name: "Дневник благодарности",
     unit: "minutes",
+    categoryKey: "gratitude",
   },
   {
     id: "strength-workout",
@@ -121,6 +125,7 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     description: "Упражнения под твой вес, рост и возраст",
     name: "Силовая тренировка",
     unit: "reps",
+    categoryKey: "strength_workout",
   },
   {
     id: "strength-running",
@@ -149,6 +154,7 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     description: "Растяжка под твои цели и гибкость",
     name: "Растяжка",
     unit: "minutes",
+    categoryKey: "stretching",
   },
   {
     id: "creator-programming",
@@ -159,6 +165,7 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     description: "С чего начать код под твой уровень",
     name: "Программирование",
     unit: "minutes",
+    categoryKey: "programming",
   },
   {
     id: "creator-creative",
@@ -169,6 +176,7 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     description: "Первый шаг в рисовании, музыке или дизайне",
     name: "Творческий проект",
     unit: "minutes",
+    categoryKey: "creative_project",
   },
   {
     id: "creator-custom",
@@ -186,6 +194,7 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     hint: "Минут в день",
     name: "Ходьба на свежем воздухе",
     unit: "minutes",
+    categoryKey: "walking",
   },
   {
     id: "energy-early",
@@ -195,6 +204,7 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     hint: "Минут утренней рутины",
     name: "Ранний подъём",
     unit: "minutes",
+    categoryKey: "early_rise",
   },
   {
     id: "energy-hobby",
@@ -204,6 +214,7 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     hint: "Минут в день",
     name: "Творчество / Хобби",
     unit: "minutes",
+    categoryKey: "hobby",
   },
 ];
 
@@ -289,6 +300,7 @@ function createHabitFromActivity(
     kind: "custom",
     name: activity.name,
     unit: activity.unit,
+    categoryKey: activity.categoryKey,
     baseline: "",
     pathId: activity.pathId,
     activityId: activity.id,

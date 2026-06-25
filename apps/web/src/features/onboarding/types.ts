@@ -1,4 +1,4 @@
-import type { CreateHabitRequest, HabitTemplateId } from "@mytodo/shared";
+import type { CreateHabitRequest, HabitCategoryKey, HabitTemplateId } from "@mytodo/shared";
 
 export type OnboardingStepId =
   | "welcome"
@@ -24,6 +24,7 @@ export type SelectedCustomHabit = {
   name: string;
   unit: "minutes" | "pages" | "reps" | "lessons";
   baseline: string;
+  categoryKey?: HabitCategoryKey;
   practicesNow?: boolean;
   pathId?: LightPathId;
   activityId?: string;
@@ -54,5 +55,6 @@ export function toCreateHabitRequest(habit: SelectedHabit): CreateHabitRequest {
     name: habit.name.trim(),
     unit: habit.unit,
     baseline_value: Number(habit.baseline.replace(",", ".")),
+    category_key: habit.categoryKey,
   };
 }

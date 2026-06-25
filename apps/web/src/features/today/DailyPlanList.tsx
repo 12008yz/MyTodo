@@ -117,7 +117,9 @@ function HabitListLayer({
   } else if (sideData.habits.length === 0) {
     content = (
       <p className="home__placeholder">
-        Нет активных привычек на {side === "light" ? "светлой" : "тёмной"} стороне.
+        {side === "light"
+          ? "Добавь первую привычку роста и здесь появится твой маршрут дня."
+          : "Добавь первую привычку контроля и начни день без лишнего шума."}
       </p>
     );
   } else {
@@ -280,10 +282,14 @@ export function DailyPlanList({
     <section className="home__section home__section--plan" aria-labelledby="plan-heading">
       <div className="home__section-heading-row">
         <h2 id="plan-heading" className="home__section-title">
-          План дня
+          {activeSide === "light" ? "Твой план на сегодня" : "Под контролем сегодня"}
         </h2>
         <span className="home__plan-summary">
-          {plan.minutes_completed}/{plan.minutes_planned} мин
+          {plan.minutes_completed > 0 || plan.minutes_planned > 0
+            ? `${plan.minutes_completed}/${plan.minutes_planned} мин`
+            : activeSide === "light"
+              ? "Можно начинать"
+              : "Держим линию"}
         </span>
       </div>
 
