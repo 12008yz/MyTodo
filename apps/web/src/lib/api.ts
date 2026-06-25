@@ -72,6 +72,8 @@ import {
   demoLogout,
   demoRegister,
   demoStartHabitSession,
+  demoPauseHabitSession,
+  demoResumeHabitSession,
   demoStopHabitSession,
   demoSubscribePush,
   demoUpdateEnglishSettings,
@@ -363,6 +365,28 @@ export async function stopHabitSession(habitId: string): Promise<HabitSessionRes
   }
 
   const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/sessions/stop`, {
+    method: "POST",
+  });
+  return habitSessionSchema.parse(response);
+}
+
+export async function pauseHabitSession(habitId: string): Promise<HabitSessionResponse> {
+  if (isDemoMode()) {
+    return demoPauseHabitSession(habitId);
+  }
+
+  const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/sessions/pause`, {
+    method: "POST",
+  });
+  return habitSessionSchema.parse(response);
+}
+
+export async function resumeHabitSession(habitId: string): Promise<HabitSessionResponse> {
+  if (isDemoMode()) {
+    return demoResumeHabitSession(habitId);
+  }
+
+  const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/sessions/resume`, {
     method: "POST",
   });
   return habitSessionSchema.parse(response);

@@ -167,6 +167,8 @@ export const habitSessions = pgTable(
     actualMin: integer("actual_min"),
     valueAdded: numeric("value_added"),
     completed: boolean("completed").notNull().default(false),
+    pausedAt: timestamp("paused_at", { withTimezone: true, mode: "date" }),
+    pausedRemainingSeconds: integer("paused_remaining_seconds"),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),

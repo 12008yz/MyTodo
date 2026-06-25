@@ -8,6 +8,8 @@ import type {
 import {
   completeHabitSession,
   getActiveHabitSession,
+  pauseHabitSession,
+  resumeHabitSession,
   startHabitSession,
   stopHabitSession,
 } from "../../lib/api";
@@ -28,6 +30,14 @@ export function completeSession(
 
 export function stopSession(habitId: string): Promise<HabitSessionResponse> {
   return stopHabitSession(habitId);
+}
+
+export function pauseSession(habitId: string): Promise<HabitSessionResponse> {
+  return pauseHabitSession(habitId);
+}
+
+export function resumeSession(habitId: string): Promise<HabitSessionResponse> {
+  return resumeHabitSession(habitId);
 }
 
 export function getActiveSession(habitId: string): Promise<HabitSessionActiveResponse> {

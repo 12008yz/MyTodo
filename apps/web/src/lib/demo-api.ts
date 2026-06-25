@@ -53,7 +53,10 @@ type DemoState = {
   sessions: DemoHabitSession[];
 };
 
-type DemoHabitSession = Omit<HabitSessionResponse, "remaining_seconds">;
+type DemoHabitSession = Omit<HabitSessionResponse, "remaining_seconds" | "is_paused"> & {
+  paused_at?: string | null;
+  paused_remaining_seconds?: number | null;
+};
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -837,27 +840,40 @@ function getSupportedSessionHabit(state: DemoState, habitId: string): HabitRespo
   return habit;
 }
 
-function elapsedMinutesSince(startedAtIso: string): number {
-  const elapsedMs = Date.now() - new Date(startedAtIso).getTime();
-  if (elapsedMs < 5_000) {
-    throw new Error("Session is too short to complete");
+function getDemoExerciseElapsedMs(session: DemoHabitSession): number {
+  if (session.paused_at && session.paused_remaining_seconds != null) {
+    const totalMs = session.planned_min * 60_000;
+    return Math.max(0, totalMs - session.paused_remaining_seconds * 1000);
   }
-  return Math.max(1, Math.ceil(elapsedMs / 60_000));
+
+  return Math.max(0, Date.now() - new Date(session.started_at).getTime());
 }
 
 function toDemoSessionResponse(session: DemoHabitSession): HabitSessionResponse {
+  const isPaused = Boolean(session.paused_at && !session.completed && !session.ended_at);
   const remainingSeconds =
     session.completed || session.ended_at
       ? 0
-      : Math.max(
-          0,
-          Math.ceil(
-            (new Date(session.started_at).getTime() + session.planned_min * 60_000 - Date.now()) /
-              1000,
-          ),
-        );
+      : isPaused && session.paused_remaining_seconds != null
+        ? session.paused_remaining_seconds
+        : Math.max(
+            0,
+            Math.ceil(
+              (new Date(session.started_at).getTime() + session.planned_min * 60_000 - Date.now()) /
+                1000,
+            ),
+          );
   return {
-    ...session,
+    id: session.id,
+    habit_id: session.habit_id,
+    block_id: session.block_id,
+    started_at: session.started_at,
+    ended_at: session.ended_at,
+    planned_min: session.planned_min,
+    actual_min: session.actual_min,
+    value_added: session.value_added,
+    completed: session.completed,
+    is_paused: isPaused,
     remaining_seconds: remainingSeconds,
   };
 }
@@ -1006,7 +1022,12 @@ export function demoCompleteHabitSession(
     throw new Error("No active habit session for this habit");
   }
 
-  const actualMin = elapsedMinutesSince(session.started_at);
+  const elapsedMs = getDemoExerciseElapsedMs(session);
+  if (elapsedMs < 5_000) {
+    throw new Error("Session is too short to complete");
+  }
+
+  const actualMin = Math.max(1, Math.ceil(elapsedMs / 60_000));
   const useDailyTotal = habit.side === "dark" && habit.type === "limit";
 
   let valueToAdd: number;
@@ -1069,6 +1090,72 @@ export function demoStopHabitSession(habitId: string): HabitSessionResponse {
     completed: false,
     actual_min: null,
     value_added: null,
+  };
+
+  const index = state.sessions.findIndex((row) => row.id === session.id);
+  if (index >= 0) {
+    state.sessions[index] = updatedSession;
+  }
+
+  saveState(state);
+  return toDemoSessionResponse(updatedSession);
+}
+
+export function demoPauseHabitSession(habitId: string): HabitSessionResponse {
+  const state = ensureState();
+  getSupportedSessionHabit(state, habitId);
+  const session = findDemoActiveSessionByHabit(state, habitId);
+
+  if (!session) {
+    throw new Error("No active habit session for this habit");
+  }
+
+  if (session.paused_at && session.paused_remaining_seconds != null) {
+    return toDemoSessionResponse(session);
+  }
+
+  const remainingSeconds = Math.max(
+    0,
+    Math.ceil(
+      (new Date(session.started_at).getTime() + session.planned_min * 60_000 - Date.now()) / 1000,
+    ),
+  );
+  const updatedSession: DemoHabitSession = {
+    ...session,
+    paused_at: nowIso(),
+    paused_remaining_seconds: remainingSeconds,
+  };
+
+  const index = state.sessions.findIndex((row) => row.id === session.id);
+  if (index >= 0) {
+    state.sessions[index] = updatedSession;
+  }
+
+  saveState(state);
+  return toDemoSessionResponse(updatedSession);
+}
+
+export function demoResumeHabitSession(habitId: string): HabitSessionResponse {
+  const state = ensureState();
+  getSupportedSessionHabit(state, habitId);
+  const session = findDemoActiveSessionByHabit(state, habitId);
+
+  if (!session) {
+    throw new Error("No active habit session for this habit");
+  }
+
+  if (!session.paused_at || session.paused_remaining_seconds == null) {
+    return toDemoSessionResponse(session);
+  }
+
+  const totalSeconds = session.planned_min * 60;
+  const elapsedSeconds = Math.max(0, totalSeconds - session.paused_remaining_seconds);
+  const newStartedAt = new Date(Date.now() - elapsedSeconds * 1000).toISOString();
+  const updatedSession: DemoHabitSession = {
+    ...session,
+    started_at: newStartedAt,
+    paused_at: null,
+    paused_remaining_seconds: null,
   };
 
   const index = state.sessions.findIndex((row) => row.id === session.id);

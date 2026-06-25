@@ -60,6 +60,26 @@ export async function registerHabitSessionRoutes(
     },
   );
 
+  app.post(
+    "/api/v1/habits/:id/sessions/pause",
+    { preHandler: sessionPreHandlers },
+    async (request) => {
+      const params = z.object({ id: z.string().uuid() }).parse(request.params);
+      const session = await habitSessionService.pause(request.userId, params.id);
+      return habitSessionSchema.parse(session);
+    },
+  );
+
+  app.post(
+    "/api/v1/habits/:id/sessions/resume",
+    { preHandler: sessionPreHandlers },
+    async (request) => {
+      const params = z.object({ id: z.string().uuid() }).parse(request.params);
+      const session = await habitSessionService.resume(request.userId, params.id);
+      return habitSessionSchema.parse(session);
+    },
+  );
+
   app.get(
     "/api/v1/habits/:id/sessions/active",
     { preHandler: sessionPreHandlers },

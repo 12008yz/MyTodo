@@ -177,4 +177,30 @@ describe("Habit sessions", () => {
     expect(active?.id).toBe(start.id);
     expect(active?.remaining_seconds).toBeGreaterThan(0);
   });
+
+  it("pause freezes remaining and resume continues from the same point", async () => {
+    const { user, auth } = await createOnboardedUser("sessions-pause@example.com");
+    const habit = await createRunningHabit(auth.access_token);
+    const service = new HabitSessionService(app.db);
+
+    const start = await service.start(user, habit.id, { plannedMin: 25 });
+    const startedAt = new Date(Date.now() - 23_000);
+    await app.db
+      .update(habitSessions)
+      .set({ startedAt })
+      .where(and(eq(habitSessions.id, start.id), eq(habitSessions.habitId, habit.id)));
+
+    const paused = await service.pause(user.id, habit.id);
+    expect(paused.is_paused).toBe(true);
+    expect(paused.remaining_seconds).toBeGreaterThan(0);
+
+    await new Promise((resolve) => setTimeout(resolve, 1_100));
+
+    const stillPaused = await service.getActive(user.id, habit.id);
+    expect(stillPaused?.remaining_seconds).toBe(paused.remaining_seconds);
+
+    const resumed = await service.resume(user.id, habit.id);
+    expect(resumed.is_paused).toBe(false);
+    expect(resumed.remaining_seconds).toBeLessThanOrEqual((paused.remaining_seconds ?? 0) + 2);
+  });
 });

@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { BottomNav } from "../../components/BottomNav/BottomNav";
 import { AddHabitModal } from "../../components/AddHabitModal/AddHabitModal";
 import { SideProvider, useHabitSide } from "../../features/shell/SideContext";
+import { FocusSessionProvider, useFocusSession } from "../../features/shell/FocusSessionContext";
 import { requestPushSubscription } from "../../lib/push";
 import { AnimatedOutlet } from "./AnimatedOutlet";
 import "../../pages/HomePage/HomePage.css";
 
 function AppShellInner() {
   const { side } = useHabitSide();
+  const { isActive: isFocusSessionActive } = useFocusSession();
   const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
@@ -15,7 +17,7 @@ function AppShellInner() {
   }, []);
 
   return (
-    <div className="home" data-side={side}>
+    <div className="home" data-side={side} data-focus-active={isFocusSessionActive || undefined}>
       <div className="home__side-stage" aria-hidden="true">
         <div className="home__side-layer home__side-layer--light" />
         <div className="home__side-layer home__side-layer--dark" />
@@ -41,7 +43,7 @@ function AppShellInner() {
         <AnimatedOutlet />
       </div>
 
-      <BottomNav onAddClick={() => setAddOpen(true)} />
+      {!isFocusSessionActive ? <BottomNav onAddClick={() => setAddOpen(true)} /> : null}
       <AddHabitModal open={addOpen} onClose={() => setAddOpen(false)} />
     </div>
   );
@@ -50,7 +52,9 @@ function AppShellInner() {
 export function AppShell() {
   return (
     <SideProvider>
-      <AppShellInner />
+      <FocusSessionProvider>
+        <AppShellInner />
+      </FocusSessionProvider>
     </SideProvider>
   );
 }

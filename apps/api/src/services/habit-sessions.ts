@@ -10,7 +10,7 @@ import {
 } from "@mytodo/shared";
 import type { Database, DbExecutor } from "../db/index.js";
 import { habitSessions, habits, type User } from "../db/schema/index.js";
-import { computeElapsedMinutes, computeRemainingSeconds } from "../lib/session-minutes.js";
+import { computeRemainingSeconds } from "../lib/session-minutes.js";
 import { CheckinService } from "./checkins.js";
 import type { PledgeService } from "./pledges.js";
 
@@ -93,8 +93,7 @@ export class HabitSessionService {
       );
     }
 
-    const elapsedMin = computeElapsedMinutes(session.startedAt, new Date());
-    const elapsedMs = new Date().getTime() - session.startedAt.getTime();
+    const elapsedMs = this.getExerciseElapsedMs(session, new Date());
     const MIN_SESSION_MS = 5_000;
 
     if (elapsedMs < MIN_SESSION_MS) {
@@ -105,7 +104,7 @@ export class HabitSessionService {
       );
     }
 
-    const actualMin = Math.max(1, elapsedMin);
+    const actualMin = Math.max(1, Math.ceil(elapsedMs / 60_000));
 
     let valueToAdd: number;
     const useDailyTotal = habit.side === "dark" && habit.type === "limit";
@@ -230,6 +229,86 @@ export class HabitSessionService {
     return session ? this.toResponse(session, new Date()) : null;
   }
 
+  async pause(userId: string, habitId: string): Promise<HabitSessionResponse> {
+    const habit = await this.getSupportedHabit(userId, habitId);
+    const session = await this.findActiveSession(habit.id);
+
+    if (!session) {
+      throw new ApiError(
+        HTTP_STATUS.NOT_FOUND,
+        ERROR_CODES.NOT_FOUND,
+        "No active habit session for this habit",
+      );
+    }
+
+    const now = new Date();
+    if (session.pausedAt && session.pausedRemainingSeconds != null) {
+      return this.toResponse(session, now);
+    }
+
+    const endsAt = new Date(session.startedAt.getTime() + session.plannedMin * 60_000);
+    const remaining = computeRemainingSeconds(now, endsAt);
+    const [updated] = await this.db
+      .update(habitSessions)
+      .set({
+        pausedAt: now,
+        pausedRemainingSeconds: remaining,
+      })
+      .where(eq(habitSessions.id, session.id))
+      .returning();
+
+    if (!updated) {
+      throw new ApiError(
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        ERROR_CODES.INTERNAL_ERROR,
+        "Failed to pause habit session",
+      );
+    }
+
+    return this.toResponse(updated, now);
+  }
+
+  async resume(userId: string, habitId: string): Promise<HabitSessionResponse> {
+    const habit = await this.getSupportedHabit(userId, habitId);
+    const session = await this.findActiveSession(habit.id);
+
+    if (!session) {
+      throw new ApiError(
+        HTTP_STATUS.NOT_FOUND,
+        ERROR_CODES.NOT_FOUND,
+        "No active habit session for this habit",
+      );
+    }
+
+    const now = new Date();
+    if (!session.pausedAt || session.pausedRemainingSeconds == null) {
+      return this.toResponse(session, now);
+    }
+
+    const totalSeconds = session.plannedMin * 60;
+    const elapsedSeconds = Math.max(0, totalSeconds - session.pausedRemainingSeconds);
+    const newStartedAt = new Date(now.getTime() - elapsedSeconds * 1000);
+    const [updated] = await this.db
+      .update(habitSessions)
+      .set({
+        startedAt: newStartedAt,
+        pausedAt: null,
+        pausedRemainingSeconds: null,
+      })
+      .where(eq(habitSessions.id, session.id))
+      .returning();
+
+    if (!updated) {
+      throw new ApiError(
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        ERROR_CODES.INTERNAL_ERROR,
+        "Failed to resume habit session",
+      );
+    }
+
+    return this.toResponse(updated, now);
+  }
+
   async listCompletedBlockMetaForDate(
     userId: string,
     timezone: string,
@@ -282,6 +361,9 @@ export class HabitSessionService {
 
   toResponse(session: typeof habitSessions.$inferSelect, now: Date): HabitSessionResponse {
     const endsAt = new Date(session.startedAt.getTime() + session.plannedMin * 60_000);
+    const isPaused = Boolean(
+      session.pausedAt && !session.completed && !session.endedAt,
+    );
 
     return {
       id: session.id,
@@ -293,10 +375,26 @@ export class HabitSessionService {
       actual_min: session.actualMin,
       value_added: session.valueAdded == null ? null : Number(session.valueAdded),
       completed: session.completed,
-      remaining_seconds: session.completed || session.endedAt
-        ? 0
-        : computeRemainingSeconds(now, endsAt),
+      is_paused: isPaused,
+      remaining_seconds:
+        session.completed || session.endedAt
+          ? 0
+          : isPaused && session.pausedRemainingSeconds != null
+            ? session.pausedRemainingSeconds
+            : computeRemainingSeconds(now, endsAt),
     };
+  }
+
+  private getExerciseElapsedMs(
+    session: typeof habitSessions.$inferSelect,
+    now: Date,
+  ): number {
+    if (session.pausedAt && session.pausedRemainingSeconds != null) {
+      const totalMs = session.plannedMin * 60_000;
+      return Math.max(0, totalMs - session.pausedRemainingSeconds * 1000);
+    }
+
+    return Math.max(0, now.getTime() - session.startedAt.getTime());
   }
 
   private async getSupportedHabit(userId: string, habitId: string) {

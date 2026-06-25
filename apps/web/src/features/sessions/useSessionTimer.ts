@@ -1,65 +1,97 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { getRemainingSecondsFromStart } from "./sessionRecovery";
 
 type UseSessionTimerOptions = {
   sessionKey: string | null;
   plannedMin: number;
-  initialRemainingSeconds?: number;
+  startedAt?: string | null;
   autoStart?: boolean;
 };
 
 export function useSessionTimer({
   sessionKey,
   plannedMin,
-  initialRemainingSeconds,
+  startedAt,
   autoStart = true,
 }: UseSessionTimerOptions) {
   const totalSeconds = Math.max(1, Math.round(plannedMin * 60));
-  const isActive = Boolean(sessionKey);
+  const isActive = Boolean(sessionKey && startedAt);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [isPaused, setIsPaused] = useState(true);
   const [armed, setArmed] = useState(false);
 
+  const syncRemaining = useCallback(() => {
+    if (!startedAt) {
+      return 0;
+    }
+    return getRemainingSecondsFromStart(startedAt, plannedMin);
+  }, [plannedMin, startedAt]);
+
   useLayoutEffect(() => {
-    if (!sessionKey) {
+    if (!sessionKey || !startedAt) {
       setRemainingSeconds(0);
       setIsPaused(true);
       setArmed(false);
       return;
     }
 
-    const nextRemaining =
-      initialRemainingSeconds != null && initialRemainingSeconds > 0
-        ? Math.min(initialRemainingSeconds, totalSeconds)
-        : totalSeconds;
-
-    setRemainingSeconds(nextRemaining);
+    setRemainingSeconds(syncRemaining());
     setIsPaused(!autoStart);
     setArmed(true);
-  }, [autoStart, initialRemainingSeconds, sessionKey, totalSeconds]);
+  }, [autoStart, sessionKey, startedAt, syncRemaining]);
 
   useEffect(() => {
-    if (!armed || isPaused || remainingSeconds <= 0) {
+    if (!armed || isPaused || !startedAt) {
       return;
     }
 
-    const timerId = window.setInterval(() => {
-      setRemainingSeconds((prev) => {
-        if (prev <= 1) {
-          window.clearInterval(timerId);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    const tick = () => setRemainingSeconds(syncRemaining());
+
+    tick();
+    const timerId = window.setInterval(tick, 1000);
 
     return () => window.clearInterval(timerId);
-  }, [armed, isPaused, remainingSeconds]);
+  }, [armed, isPaused, startedAt, syncRemaining]);
+
+  useEffect(() => {
+    if (!armed || isPaused || !startedAt) {
+      return;
+    }
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        setRemainingSeconds(syncRemaining());
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [armed, isPaused, startedAt, syncRemaining]);
 
   const pause = useCallback(() => setIsPaused(true), []);
-  const resume = useCallback(() => setIsPaused(false), []);
-  const togglePause = useCallback(() => setIsPaused((value) => !value), []);
+  const resume = useCallback(() => {
+    setRemainingSeconds(syncRemaining());
+    setIsPaused(false);
+  }, [syncRemaining]);
+  const togglePause = useCallback(() => {
+    setIsPaused((paused) => {
+      if (paused) {
+        setRemainingSeconds(syncRemaining());
+      }
+      return !paused;
+    });
+  }, [syncRemaining]);
 
-  const elapsedSeconds = Math.max(totalSeconds - remainingSeconds, 0);
+  const elapsedSeconds = useMemo(
+    () => Math.min(totalSeconds, Math.max(totalSeconds - remainingSeconds, 0)),
+    [remainingSeconds, totalSeconds],
+  );
+
   const elapsedMin = useMemo(() => {
     if (elapsedSeconds <= 0) {
       return 0;

@@ -1,5 +1,5 @@
 import { useState, type MouseEvent } from "react";
-import type { DailyPlanBlock, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
+import type { DailyPlanBlock, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
 import { ClientApiError } from "../../lib/api";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import {
@@ -12,6 +12,7 @@ import { HabitIcon } from "./HabitIcon";
 import { QuickAddPrompt } from "./QuickAddPrompt";
 import type { TodaySide } from "./useTodayData";
 import { useCheckinMutation } from "./useTodayData";
+import { getSessionRemainingSeconds } from "../sessions/sessionRecovery";
 
 function PlanInfoIcon({ className }: { className?: string }) {
   return (
@@ -62,10 +63,18 @@ type DailyPlanHabitRowProps = {
   block: DailyPlanBlock | null;
   side: TodaySide;
   hasActiveFocus: boolean;
+  resumeSession: HabitSessionResponse | null;
+  sessionElapsedSeconds: number;
   sessionBusy: boolean;
   focusLocked: boolean;
   onStart?: () => void;
 };
+
+function formatSessionCountdown(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
 
 function hasTimerField(habit: TodayLightHabit | TodayDarkHabit): habit is TodayDarkHabit {
   return "timer" in habit;
@@ -101,6 +110,8 @@ export function DailyPlanHabitRow({
   block,
   side,
   hasActiveFocus,
+  resumeSession,
+  sessionElapsedSeconds,
   sessionBusy,
   focusLocked,
   onStart,
@@ -113,17 +124,27 @@ export function DailyPlanHabitRow({
 
   const isPending = checkinMutation.isPending;
   const timer = hasTimerField(habit) ? habit.timer : null;
-  const blockCompleted = block?.status === "completed";
   const goalReached = status === "success";
   const canStartSession = habit.type !== "abstinence" && Boolean(onStart);
   const startDisabled =
-    sessionBusy || focusLocked || hasActiveFocus || !canStartSession || (blockCompleted && !goalReached);
+    sessionBusy || focusLocked || hasActiveFocus || !canStartSession;
   const canQuickAdd = habit.type === "target" && status !== "skipped";
   const currentValue = habit.checkin?.value ?? 0;
+  const hasSessionProgress = sessionElapsedSeconds > 0;
+  const progressValue =
+    habit.unit === "minutes" && hasSessionProgress
+      ? currentValue + sessionElapsedSeconds / 60
+      : currentValue;
   const progressPercent =
     habit.type !== "abstinence" && habit.current_goal > 0
-      ? Math.min(100, Math.round((currentValue / habit.current_goal) * 100))
+      ? Math.min(100, (progressValue / habit.current_goal) * 100)
       : 0;
+  const progressLabelValue =
+    habit.unit === "minutes" && hasSessionProgress
+      ? progressValue < 10
+        ? progressValue.toFixed(1)
+        : String(Math.floor(progressValue))
+      : String(currentValue);
 
   const runCheckin = async (payload: Parameters<typeof checkinMutation.mutateAsync>[0]) => {
     setActionError(null);
@@ -168,11 +189,15 @@ export function DailyPlanHabitRow({
 
   const badge = hasActiveFocus
     ? { label: "Фокус", className: "home__plan-badge--active" }
-    : resolveBadge(habit, block);
+    : resumeSession
+      ? { label: "В процессе", className: "home__plan-badge--active" }
+      : resolveBadge(habit, block);
 
   const startLabel = hasActiveFocus
     ? "Идёт фокус"
-    : block?.status === "active"
+    : resumeSession
+      ? `Продолжить · ${formatSessionCountdown(getSessionRemainingSeconds(resumeSession))}`
+      : block?.status === "active"
       ? `Продолжить · ${block.duration_min} мин`
       : goalReached
       ? "Ещё сессия"
@@ -189,6 +214,7 @@ export function DailyPlanHabitRow({
           "home__plan-item",
           expanded ? "home__plan-item--expanded" : "",
           hasActiveFocus ? "home__plan-item--focus-active" : "",
+          resumeSession ? "home__plan-item--session-paused" : "",
           goalReached ? "home__plan-item--completed" : "",
         ]
           .filter(Boolean)
@@ -225,7 +251,7 @@ export function DailyPlanHabitRow({
                   role="progressbar"
                   aria-valuemin={0}
                   aria-valuemax={habit.current_goal}
-                  aria-valuenow={currentValue}
+                  aria-valuenow={Math.floor(progressValue)}
                 >
                   <span
                     className="home__plan-item-progress-fill"
@@ -233,7 +259,7 @@ export function DailyPlanHabitRow({
                   />
                 </div>
                 <p className="home__task-progress">
-                  {currentValue} / {habit.current_goal} {formatUnit(habit.unit)}
+                  {progressLabelValue} / {habit.current_goal} {formatUnit(habit.unit)}
                 </p>
               </div>
             ) : null}

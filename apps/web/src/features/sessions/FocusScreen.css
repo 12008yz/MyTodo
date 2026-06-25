@@ -1,7 +1,7 @@
 .focus-screen {
   position: fixed;
   inset: 0;
-  z-index: 90;
+  z-index: 200;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -22,6 +22,7 @@
 }
 
 .focus-screen__panel {
+  position: relative;
   width: min(100%, 380px);
   border-radius: 24px;
   padding: 28px 22px 24px;
@@ -31,6 +32,34 @@
     0 24px 60px rgba(0, 0, 0, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
   text-align: center;
+}
+
+.focus-screen__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(245, 245, 247, 0.85);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.focus-screen__close:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.focus-screen__close:focus-visible {
+  outline: 2px solid rgba(171, 148, 255, 0.85);
+  outline-offset: 2px;
 }
 
 .focus-screen__eyebrow {
@@ -145,10 +174,57 @@
   box-shadow: none;
 }
 
-.focus-screen__hint {
-  margin: 12px 0 0;
-  font-size: 12px;
-  color: rgba(245, 245, 247, 0.5);
+.focus-screen__ring-wrap--prep .focus-screen__ring-progress,
+.focus-screen__ring-progress--prep {
+  stroke: #6ecbff;
+}
+
+.focus-screen__prep {
+  margin-top: 20px;
+}
+
+.focus-screen__prep-label {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: rgba(245, 245, 247, 0.72);
+}
+
+.focus-screen__prep-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.focus-screen__prep-chip {
+  padding: 10px 14px;
+  border: 1.5px solid rgba(110, 203, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(110, 203, 255, 0.12);
+  color: #d8f3ff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.focus-screen__prep-chip:active {
+  transform: scale(0.97);
+}
+
+.focus-screen__actions--prep {
+  flex-direction: column;
+}
+
+.focus-screen__btn--prep {
+  background: rgba(110, 203, 255, 0.16);
+  color: #d8f3ff;
+  border: 1.5px solid rgba(110, 203, 255, 0.32);
+}
+
+.focus-screen__prep-back {
+  margin-top: 12px;
+  width: 100%;
 }
 
 @media (max-width: 420px) {

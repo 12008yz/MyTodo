@@ -122,10 +122,10 @@
       "breakpoints": true
     },
     {
-      "idx": 17,
+      "idx": 18,
       "version": "7",
-      "when": 1782742800000,
-      "tag": "0017_healthy_nutrition_category",
+      "when": 1782746400000,
+      "tag": "0018_habit_session_pause",
       "breakpoints": true
     }
   ]

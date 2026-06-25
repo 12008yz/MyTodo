@@ -10,6 +10,7 @@ export const habitSessionSchema = z.object({
   actual_min: z.number().int().nullable(),
   value_added: z.number().nullable(),
   completed: z.boolean(),
+  is_paused: z.boolean().optional(),
   remaining_seconds: z.number().int().min(0).optional(),
 });
 
