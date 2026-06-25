@@ -1,4 +1,4 @@
-import type { HabitUnit, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
+import type { DailyPlanBlock, HabitUnit, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
 
 const UNIT_LABELS: Record<HabitUnit, string> = {
   pages: "стр.",
@@ -61,4 +61,60 @@ export function statusLabel(
     default:
       return "В процессе";
   }
+}
+
+function formatStreakDays(days: number): string {
+  const mod10 = days % 10;
+  const mod100 = days % 100;
+  let word = "дней";
+  if (mod100 < 11 || mod100 > 14) {
+    if (mod10 === 1) word = "день";
+    else if (mod10 >= 2 && mod10 <= 4) word = "дня";
+  }
+  return `${days} ${word} подряд`;
+}
+
+type CardHint = {
+  text: string;
+  variant: "success" | "hint";
+};
+
+export function formatCardHint(params: {
+  habit: TodayLightHabit | TodayDarkHabit;
+  block: DailyPlanBlock | null;
+  goalReached: boolean;
+  resumeSession: boolean;
+  hasActiveFocus: boolean;
+}): CardHint | null {
+  const { habit, block, goalReached, resumeSession, hasActiveFocus } = params;
+
+  if (goalReached) {
+    return {
+      text: `Цель выполнена · завтра: ${habit.preview_next_goal} ${formatUnit(habit.unit)}`,
+      variant: "success",
+    };
+  }
+
+  if (resumeSession && !hasActiveFocus) {
+    return {
+      text: "Сессия на паузе — нажмите «Продолжить»",
+      variant: "hint",
+    };
+  }
+
+  if (habit.streak_days >= 2) {
+    return {
+      text: `Серия: ${formatStreakDays(habit.streak_days)}`,
+      variant: "hint",
+    };
+  }
+
+  if (block && block.unit !== "minutes" && block.expected_yield > 0) {
+    return {
+      text: `Сессия: ~${block.expected_yield} ${formatUnit(block.unit)}`,
+      variant: "hint",
+    };
+  }
+
+  return null;
 }

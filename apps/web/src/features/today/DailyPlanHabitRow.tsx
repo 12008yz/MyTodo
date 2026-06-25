@@ -3,6 +3,7 @@ import type { DailyPlanBlock, HabitSessionResponse, TodayDarkHabit, TodayLightHa
 import { ClientApiError } from "../../lib/api";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import {
+  formatCardHint,
   formatGoalLabel,
   formatTimer,
   formatUnit,
@@ -152,7 +153,13 @@ export function DailyPlanHabitRow({
           ),
         )
     : String(currentValue);
-  const todayValue = hasSessionProgress ? progressLabelValue : String(currentValue);
+  const cardHint = formatCardHint({
+    habit,
+    block,
+    goalReached,
+    resumeSession: Boolean(resumeSession),
+    hasActiveFocus,
+  });
 
   const runCheckin = async (payload: Parameters<typeof checkinMutation.mutateAsync>[0]) => {
     setActionError(null);
@@ -240,134 +247,118 @@ export function DailyPlanHabitRow({
           }
         }}
       >
-        <div className="home__plan-item-top">
-          <div className="home__plan-item-main">
-            <div className="home__plan-item-header">
-              <h3 className="home__plan-item-title">
-                <HabitIcon
-                  icon={habit.icon ?? block?.icon}
-                  side={side}
-                  template_id={habit.template_id}
-                  category_key={habit.category_key}
-                  name={habit.name}
-                />
-                <span className="home__plan-item-name">{habit.name}</span>
-              </h3>
-              <span className="home__plan-item-goal">{formatGoalLabel(habit)}</span>
+        <header className="home__plan-item-header">
+          <h3 className="home__plan-item-title">
+            <HabitIcon
+              icon={habit.icon ?? block?.icon}
+              side={side}
+              template_id={habit.template_id}
+              category_key={habit.category_key}
+              name={habit.name}
+            />
+            <span className="home__plan-item-name">{habit.name}</span>
+          </h3>
+          <span className={["home__plan-badge", badge.className].join(" ")}>{badge.label}</span>
+        </header>
+
+        <p className="home__plan-item-goal">{formatGoalLabel(habit)}</p>
+
+        {timer ? (
+          <p className="home__task-timer">Чистое время: {formatTimer(timer.elapsed)}</p>
+        ) : null}
+
+        {!timer && habit.type !== "abstinence" ? (
+          <div className="home__plan-item-progress">
+            <div
+              className="home__plan-item-progress-track"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={habit.current_goal}
+              aria-valuenow={Math.floor(progressValue)}
+            >
+              <span
+                className="home__plan-item-progress-fill"
+                style={{ width: `${progressPercent}%` }}
+              />
             </div>
-
-            {timer ? (
-              <p className="home__task-timer">Чистое время: {formatTimer(timer.elapsed)}</p>
-            ) : null}
-
-            {!timer && habit.type !== "abstinence" ? (
-              <div className="home__plan-item-progress">
-                <div
-                  className="home__plan-item-progress-track"
-                  role="progressbar"
-                  aria-valuemin={0}
-                  aria-valuemax={habit.current_goal}
-                  aria-valuenow={Math.floor(progressValue)}
-                >
-                  <span
-                    className="home__plan-item-progress-fill"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-                <p className="home__task-progress">
-                  {progressLabelValue} / {habit.current_goal} {formatUnit(habit.unit)}
-                </p>
-              </div>
-            ) : null}
-
-            {block && !goalReached ? (
-              <p className="home__plan-item-meta">
-                Сессия {block.duration_min} мин · ~{block.expected_yield}{" "}
-                {formatUnit(block.unit)}
-                {block.status === "completed" ? (
-                  <>
-                    {" "}
-                    · факт: {block.actual_value ?? 0} {formatUnit(block.unit)}
-                  </>
-                ) : null}
-              </p>
-            ) : null}
-
-            {goalReached ? (
-              <p className="home__plan-item-meta home__plan-item-meta--success">
-                Цель выполнена · завтра: {habit.preview_next_goal} {formatUnit(habit.unit)}
-              </p>
-            ) : (
-              <p className="home__task-time">
-                Сегодня: {todayValue} {formatUnit(habit.unit)}
-              </p>
-            )}
-
-            <div className="home__task-actions">
-              {canStartSession ? (
-                <button
-                  type="button"
-                  className="home__task-btn home__task-btn--start"
-                  disabled={startDisabled}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onStart?.();
-                  }}
-                >
-                  {startLabel}
-                </button>
-              ) : null}
-
-              {canQuickAdd ? (
-                <button
-                  type="button"
-                  className="home__task-btn home__task-btn--plus"
-                  disabled={isPending || sessionBusy}
-                  aria-label="Добавить сверх плана"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setQuickAddOpen(true);
-                  }}
-                >
-                  +
-                </button>
-              ) : null}
-
-              {habit.type === "abstinence" ? (
-                <button
-                  type="button"
-                  className="home__task-btn home__task-btn--danger"
-                  disabled={isPending || status === "fail"}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void runCheckin({ habit_id: habit.id, status: "fail" });
-                  }}
-                >
-                  Сорвался
-                </button>
-              ) : null}
-
-              <button
-                type="button"
-                className="home__plan-expand-btn"
-                aria-expanded={expanded}
-                aria-label={expanded ? "Свернуть" : "Развернуть"}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setExpanded((value) => !value);
-                }}
-              >
-                <ChevronIcon className="home__plan-expand-btn-icon" open={expanded} />
-              </button>
-            </div>
-
-            {actionError ? <p className="home__task-error">{actionError}</p> : null}
+            <p className="home__task-progress">
+              {progressLabelValue} / {habit.current_goal} {formatUnit(habit.unit)}
+            </p>
           </div>
+        ) : null}
 
-          <div className="home__plan-item-aside">
-            <span className={["home__plan-badge", badge.className].join(" ")}>{badge.label}</span>
-          </div>
+        {cardHint ? (
+          <p
+            className={[
+              "home__plan-item-hint",
+              cardHint.variant === "success" ? "home__plan-item-hint--success" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            {cardHint.text}
+          </p>
+        ) : null}
+
+        <div className="home__task-actions">
+          {canStartSession ? (
+            <button
+              type="button"
+              className="home__task-btn home__task-btn--start"
+              disabled={startDisabled}
+              onClick={(event) => {
+                event.stopPropagation();
+                onStart?.();
+              }}
+            >
+              {startLabel}
+            </button>
+          ) : null}
+
+          {canQuickAdd ? (
+            <button
+              type="button"
+              className="home__task-btn home__task-btn--plus"
+              disabled={isPending || sessionBusy}
+              aria-label="Добавить сверх плана"
+              onClick={(event) => {
+                event.stopPropagation();
+                setQuickAddOpen(true);
+              }}
+            >
+              +
+            </button>
+          ) : null}
+
+          {habit.type === "abstinence" ? (
+            <button
+              type="button"
+              className="home__task-btn home__task-btn--danger"
+              disabled={isPending || status === "fail"}
+              onClick={(event) => {
+                event.stopPropagation();
+                void runCheckin({ habit_id: habit.id, status: "fail" });
+              }}
+            >
+              Сорвался
+            </button>
+          ) : null}
+
+          <button
+            type="button"
+            className="home__plan-expand-btn"
+            aria-expanded={expanded}
+            aria-label={expanded ? "Свернуть" : "Развернуть"}
+            onClick={(event) => {
+              event.stopPropagation();
+              setExpanded((value) => !value);
+            }}
+          >
+            <ChevronIcon className="home__plan-expand-btn-icon" open={expanded} />
+          </button>
         </div>
+
+        {actionError ? <p className="home__task-error">{actionError}</p> : null}
 
         <CollapsibleReveal
           open={expanded}
