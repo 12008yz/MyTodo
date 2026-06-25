@@ -19,6 +19,7 @@ import {
   PUSHUP_SECONDS_PER_REP,
   RUNNING_MIN_MINUTES,
   STRETCH_TARGET_MINUTES,
+  STRENGTH_WORKOUT_TARGET_MINUTES,
   WALKING_MIN_MINUTES,
   type CustomHabitUnit,
   type HabitCategoryKey,
@@ -182,6 +183,31 @@ function beginnerPushupDailyTarget(profile: CalibrationProfile): number {
   return clamp(roundTo(Math.max(scaled, 6), 2), 6, 30);
 }
 
+function isPushupsOnlyHabit(habit: HabitIdentity): boolean {
+  return habit.templateId === "pushups";
+}
+
+function isStrengthWorkoutCircuit(habit: HabitIdentity): boolean {
+  return resolveLightActivityId(habit) === "strength-workout" && !isPushupsOnlyHabit(habit);
+}
+
+/** Recommended daily target expressed in minutes of effort (for budget estimates). */
+export function recommendDailyMinutesForHabit(
+  habit: HabitIdentity,
+  profile: CalibrationProfile,
+): number {
+  const activityId = resolveLightActivityId(habit);
+
+  if (activityId === "strength-workout") {
+    if (isPushupsOnlyHabit(habit)) {
+      return (beginnerPushupDailyTarget(profile) * PUSHUP_SECONDS_PER_REP) / 60;
+    }
+    return STRENGTH_WORKOUT_TARGET_MINUTES;
+  }
+
+  return recommendDailyMinutes(activityId, profile);
+}
+
 /** Recommended daily target expressed in minutes of effort (for budget estimates). */
 export function recommendDailyMinutes(
   activityId: LightActivityId,
@@ -197,7 +223,7 @@ export function recommendDailyMinutes(
     case "mindfulness-gratitude":
       return GRATITUDE_DAILY_MIN;
     case "strength-workout":
-      return (beginnerPushupDailyTarget(profile) * PUSHUP_SECONDS_PER_REP) / 60;
+      return STRENGTH_WORKOUT_TARGET_MINUTES;
     case "strength-running":
       return RUNNING_MIN_MINUTES;
     case "strength-plank":
@@ -257,7 +283,7 @@ export function recommendLightGoal(
     return Math.max(baselineValue, EARLY_RISE_SHIFT_MIN);
   }
 
-  const minutes = recommendDailyMinutes(activityId, profile);
+  const minutes = recommendDailyMinutesForHabit(habit, profile);
   const recommended = minutesToGoal(habit.unit, minutes);
   return Math.max(baselineValue, recommended);
 }
@@ -315,6 +341,16 @@ export function resolveSessionPlanProfile(
     };
   }
 
+  if (isStrengthWorkoutCircuit(habit)) {
+    const workoutMin = Math.max(STRENGTH_WORKOUT_TARGET_MINUTES, Math.ceil(neededMin));
+    return {
+      tier: "flexible",
+      preferredMin: workoutMin,
+      minMin: STRENGTH_WORKOUT_TARGET_MINUTES,
+      maxMin: workoutMin,
+    };
+  }
+
   if (habit.unit === "reps") {
     return {
       tier: "flexible",
@@ -345,7 +381,7 @@ export function estimateHabitComfortMinutes(
     return booksSessionMinutesForPages(BOOKS_START_PAGES);
   }
 
-  return recommendDailyMinutes(activityId, profile);
+  return recommendDailyMinutesForHabit(habit, profile);
 }
 
 export function habitGoalToComfortMinutes(

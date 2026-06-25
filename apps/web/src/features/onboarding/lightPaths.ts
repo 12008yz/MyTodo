@@ -129,10 +129,10 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "strength",
     kind: "custom",
     label: "Силовая тренировка",
-    hint: "Повторений в день",
+    hint: "Минут в день",
     description: "Упражнения под твой вес, рост и возраст",
     name: "Силовая тренировка",
-    unit: "reps",
+    unit: "minutes",
     categoryKey: "strength_workout",
   },
   {
@@ -375,6 +375,9 @@ export function getDefaultLightBaseline(habit: SelectedHabit): string {
   if (habit.activityId === "mindfulness-books") {
     return "0";
   }
+  if (habit.activityId === "strength-workout") {
+    return "5";
+  }
   return "0";
 }
 
@@ -468,6 +471,9 @@ export function getLightHabitSummary(habit: SelectedHabit, wakeTime?: string): s
   if (habit.practicesNow === false) {
     if (habit.activityId === "mindfulness-meditation") {
       return "1 мин/день";
+    }
+    if (habit.activityId === "strength-workout") {
+      return "5 мин/день";
     }
     return "Рост понемногу";
   }

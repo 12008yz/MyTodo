@@ -80,9 +80,23 @@ describe("workload", () => {
     expect(senior).toBe(10);
   });
 
+  it("recommends strength workout circuit at 5 min", () => {
+    expect(recommendDailyMinutes("strength-workout", profile)).toBe(5);
+    const goal = recommendLightGoal(
+      {
+        name: "Силовая тренировка",
+        unit: "minutes",
+        categoryKey: "strength_workout",
+      },
+      profile,
+      0,
+    );
+    expect(goal).toBe(5);
+  });
+
   it("recommends beginner-friendly push-up volume", () => {
     const goal = recommendLightGoal(
-      { name: "Силовая тренировка", unit: "reps", templateId: null },
+      { name: "Отжимания", unit: "reps", templateId: "pushups" },
       profile,
       0,
     );
@@ -129,7 +143,7 @@ describe("workload", () => {
       [
         { name: HABIT_TEMPLATES.plank.name, unit: "seconds", templateId: "plank" },
         { name: MEDITATION_HABIT_NAME, unit: "minutes", categoryKey: "meditation" },
-        { name: "Силовая тренировка", unit: "reps", categoryKey: "strength_workout" },
+        { name: "Силовая тренировка", unit: "minutes", categoryKey: "strength_workout" },
       ],
       profile,
     );
