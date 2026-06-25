@@ -1,0 +1,38 @@
+import { minutesToExpectedYield } from "@mytodo/domain";
+import type { DailyPlanBlock } from "@mytodo/shared";
+
+type CompletionHabit = {
+  side: "light" | "dark";
+  type: "target" | "limit" | "abstinence";
+};
+
+export function needsCompletionValuePrompt(
+  habit: CompletionHabit,
+  block: DailyPlanBlock,
+  endedEarly: boolean,
+): boolean {
+  if (block.unit === "minutes") {
+    return false;
+  }
+
+  if (endedEarly) {
+    return habit.side === "dark" && habit.type === "limit";
+  }
+
+  return true;
+}
+
+export function resolveEarlyCompletionValue(
+  block: DailyPlanBlock,
+  plannedMin: number,
+): number {
+  if (block.unit === "minutes") {
+    return plannedMin;
+  }
+
+  if (block.expected_yield > 0) {
+    return block.expected_yield;
+  }
+
+  return minutesToExpectedYield(block.unit, plannedMin);
+}

@@ -178,6 +178,55 @@ describe("Habit sessions", () => {
     expect(active?.remaining_seconds).toBeGreaterThan(0);
   });
 
+  it("completes books session with full block yield when ended early", async () => {
+    const { user, auth } = await createOnboardedUser("sessions-books-early@example.com");
+    const habit = await createBooksHabit(auth.access_token);
+    const service = new HabitSessionService(app.db);
+
+    const start = await service.start(user, habit.id, {
+      plannedMin: 10,
+      blockId: "2026-06-24:test:books-early",
+    });
+
+    const startedAt = new Date(Date.now() - 8_000);
+    await app.db
+      .update(habitSessions)
+      .set({ startedAt })
+      .where(and(eq(habitSessions.id, start.id), eq(habitSessions.habitId, habit.id)));
+
+    const complete = await service.complete(user, habit.id, {
+      actualValue: 5,
+      endedEarly: true,
+    });
+    expect(complete.checkin.value).toBe(5);
+    expect(complete.value_added).toBe(5);
+    expect(complete.session.actual_min).toBe(10);
+  });
+
+  it("completes running session with full planned minutes when ended early", async () => {
+    const { user, auth } = await createOnboardedUser("sessions-ended-early@example.com");
+    const habit = await createRunningHabit(auth.access_token);
+    const service = new HabitSessionService(app.db);
+
+    const start = await service.start(user, habit.id, {
+      plannedMin: 25,
+      blockId: "2026-06-24:test:early",
+    });
+
+    const startedAt = new Date(Date.now() - 6_000);
+    await app.db
+      .update(habitSessions)
+      .set({ startedAt })
+      .where(and(eq(habitSessions.id, start.id), eq(habitSessions.habitId, habit.id)));
+
+    const complete = await service.complete(user, habit.id, {
+      endedEarly: true,
+    });
+    expect(complete.checkin.value).toBe(25);
+    expect(complete.value_added).toBe(25);
+    expect(complete.session.actual_min).toBe(25);
+  });
+
   it("pause freezes remaining and resume continues from the same point", async () => {
     const { user, auth } = await createOnboardedUser("sessions-pause@example.com");
     const habit = await createRunningHabit(auth.access_token);

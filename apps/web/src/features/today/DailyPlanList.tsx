@@ -16,6 +16,7 @@ import {
 import { pauseSession, resumeSession } from "../sessions/session-api";
 import { useCompleteHabitSession, useStartHabitSession } from "../sessions/useHabitSession";
 import { useSessionTimer } from "../sessions/useSessionTimer";
+import { resolveEarlyCompletionValue, needsCompletionValuePrompt } from "../sessions/sessionCompletion";
 import { useFocusSession } from "../shell/FocusSessionContext";
 import { DailyPlanHabitRow } from "./DailyPlanHabitRow";
 import type { TodaySide } from "./useTodayData";
@@ -572,6 +573,32 @@ export function DailyPlanList({
         next.delete(currentFocus.habit.id);
         return next;
       });
+
+      if (endedEarly) {
+        if (needsCompletionValuePrompt(currentFocus.habit, currentFocus.block, true)) {
+          setValuePrompt({
+            habitId: currentFocus.habit.id,
+            block: currentFocus.block,
+            sessionBlockId: currentFocus.sessionBlockId,
+            endedEarly: true,
+            isPlanBlock: currentFocus.isPlanBlock,
+          });
+          setIsEnding(false);
+          return;
+        }
+
+        await submitCompletion(
+          currentFocus.habit.id,
+          currentFocus.sessionBlockId,
+          currentFocus.isPlanBlock,
+          {
+            value: resolveEarlyCompletionValue(currentFocus.block, currentFocus.plannedMin),
+            endedEarly: true,
+          },
+        );
+        setIsEnding(false);
+        return;
+      }
 
       if (currentFocus.block.unit === "minutes") {
         await submitCompletion(

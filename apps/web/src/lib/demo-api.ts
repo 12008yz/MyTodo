@@ -1027,11 +1027,26 @@ export function demoCompleteHabitSession(
     throw new Error("Session is too short to complete");
   }
 
-  const actualMin = Math.max(1, Math.ceil(elapsedMs / 60_000));
+  const actualMin = data.ended_early
+    ? session.planned_min
+    : Math.max(1, Math.ceil(elapsedMs / 60_000));
   const useDailyTotal = habit.side === "dark" && habit.type === "limit";
 
   let valueToAdd: number;
-  if (habit.unit === "minutes") {
+  if (data.ended_early) {
+    if (habit.unit === "minutes") {
+      valueToAdd = session.planned_min;
+    } else if (useDailyTotal) {
+      if (data.actual_value == null || data.actual_value < 0) {
+        throw new Error("actual_value must be zero or greater for limit habits");
+      }
+      valueToAdd = data.actual_value;
+    } else if (data.actual_value == null || data.actual_value <= 0) {
+      throw new Error("actual_value must be greater than zero for non-minute habits");
+    } else {
+      valueToAdd = data.actual_value;
+    }
+  } else if (habit.unit === "minutes") {
     valueToAdd = actualMin;
   } else if (useDailyTotal) {
     if (data.actual_value == null || data.actual_value < 0) {

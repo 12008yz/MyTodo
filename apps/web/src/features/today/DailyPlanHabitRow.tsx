@@ -12,6 +12,10 @@ import { HabitIcon } from "./HabitIcon";
 import { QuickAddPrompt } from "./QuickAddPrompt";
 import type { TodaySide } from "./useTodayData";
 import { useCheckinMutation } from "./useTodayData";
+import {
+  getLiveSessionProgress,
+  getLiveSessionProgressLabel,
+} from "../sessions/sessionProgress";
 import { getSessionRemainingSeconds } from "../sessions/sessionRecovery";
 
 function PlanInfoIcon({ className }: { className?: string }) {
@@ -132,21 +136,23 @@ export function DailyPlanHabitRow({
     sessionBusy || focusLocked || hasActiveFocus || !canStartSession;
   const canQuickAdd = habit.type === "target" && status !== "skipped";
   const currentValue = habit.checkin?.value ?? 0;
-  const hasSessionProgress = sessionElapsedSeconds > 0;
-  const progressValue =
-    habit.unit === "minutes" && hasSessionProgress
-      ? currentValue + sessionElapsedSeconds / 60
-      : currentValue;
+  const sessionProgress = getLiveSessionProgress(habit.unit, sessionElapsedSeconds);
+  const hasSessionProgress = sessionProgress > 0;
+  const progressValue = hasSessionProgress ? currentValue + sessionProgress : currentValue;
   const progressPercent =
     habit.type !== "abstinence" && habit.current_goal > 0
       ? Math.min(100, (progressValue / habit.current_goal) * 100)
       : 0;
-  const progressLabelValue =
-    habit.unit === "minutes" && hasSessionProgress
-      ? progressValue < 10
-        ? progressValue.toFixed(1)
-        : String(Math.floor(progressValue))
-      : String(currentValue);
+  const progressLabelValue = hasSessionProgress
+    ? habit.unit === "minutes" && progressValue < 10
+      ? progressValue.toFixed(1)
+      : String(
+          Math.floor(
+            currentValue + getLiveSessionProgressLabel(habit.unit, sessionElapsedSeconds),
+          ),
+        )
+    : String(currentValue);
+  const todayValue = hasSessionProgress ? progressLabelValue : String(currentValue);
 
   const runCheckin = async (payload: Parameters<typeof checkinMutation.mutateAsync>[0]) => {
     setActionError(null);
@@ -287,7 +293,7 @@ export function DailyPlanHabitRow({
               </p>
             ) : (
               <p className="home__task-time">
-                Сегодня: {currentValue} {formatUnit(habit.unit)}
+                Сегодня: {todayValue} {formatUnit(habit.unit)}
               </p>
             )}
 

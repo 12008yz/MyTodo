@@ -81,7 +81,6 @@ export class HabitSessionService {
     habitId: string,
     opts: CompleteHabitSessionOptions = {},
   ): Promise<HabitSessionCompleteResponse> {
-    void opts.endedEarly;
     const habit = await this.getSupportedHabit(user.id, habitId);
     const session = await this.findActiveSession(habit.id);
 
@@ -104,12 +103,36 @@ export class HabitSessionService {
       );
     }
 
-    const actualMin = Math.max(1, Math.ceil(elapsedMs / 60_000));
+    const actualMin = opts.endedEarly
+      ? session.plannedMin
+      : Math.max(1, Math.ceil(elapsedMs / 60_000));
 
     let valueToAdd: number;
     const useDailyTotal = habit.side === "dark" && habit.type === "limit";
 
-    if (habit.unit === "minutes") {
+    if (opts.endedEarly) {
+      if (habit.unit === "minutes") {
+        valueToAdd = session.plannedMin;
+      } else if (useDailyTotal) {
+        if (opts.actualValue == null || opts.actualValue < 0) {
+          throw new ApiError(
+            HTTP_STATUS.BAD_REQUEST,
+            ERROR_CODES.VALIDATION_ERROR,
+            "actual_value must be zero or greater for limit habits",
+          );
+        }
+        valueToAdd = opts.actualValue;
+      } else {
+        if (opts.actualValue == null || opts.actualValue <= 0) {
+          throw new ApiError(
+            HTTP_STATUS.BAD_REQUEST,
+            ERROR_CODES.VALIDATION_ERROR,
+            "actual_value must be greater than zero for non-minute habits",
+          );
+        }
+        valueToAdd = opts.actualValue;
+      }
+    } else if (habit.unit === "minutes") {
       valueToAdd = actualMin;
       if (valueToAdd <= 0) {
         throw new ApiError(
