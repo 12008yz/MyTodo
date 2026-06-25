@@ -783,7 +783,6 @@ export function DailyPlanList({
             ? timer.remainingSeconds
             : Math.round((focusState?.plannedMin ?? 0) * 60)
         }
-        elapsedSeconds={focusState?.sessionId ? timer.elapsedSeconds : 0}
         isPaused={timer.isPaused}
         skipPrep={focusState?.skipPrep ?? false}
         canStopEarly={timer.elapsedSeconds >= MIN_STALE_SESSION_SECONDS}

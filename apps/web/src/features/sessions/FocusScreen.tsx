@@ -14,7 +14,6 @@ type FocusScreenProps = {
   habitName: string;
   plannedMin: number;
   remainingSeconds: number;
-  elapsedSeconds: number;
   isPaused: boolean;
   skipPrep: boolean;
   canStopEarly: boolean;
@@ -35,7 +34,6 @@ export function FocusScreen({
   habitName,
   plannedMin,
   remainingSeconds,
-  elapsedSeconds,
   isPaused,
   skipPrep,
   canStopEarly,
@@ -190,15 +188,13 @@ export function FocusScreen({
           </p>
         </div>
 
-        {showSessionControls ? (
-          <p className="focus-screen__meta">
-            {isPaused ? "На паузе" : "Осталось"} · прошло {formatCountdown(elapsedSeconds)}
-          </p>
-        ) : isPrepActive ? (
-          <p className="focus-screen__meta">Соберитесь — скоро начнём упражнение</p>
-        ) : (
-          <p className="focus-screen__meta">Можно взять время на подготовку или начать сразу</p>
-        )}
+        {!showSessionControls ? (
+          isPrepActive ? (
+            <p className="focus-screen__meta">Соберитесь — скоро начнём упражнение</p>
+          ) : (
+            <p className="focus-screen__meta">Можно взять время на подготовку или начать сразу</p>
+          )
+        ) : null}
 
         {showPrepSetup ? (
           <div className="focus-screen__prep">
