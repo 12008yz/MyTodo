@@ -1,29 +1,44 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 type UseSessionTimerOptions = {
+  sessionKey: string | null;
   plannedMin: number;
+  initialRemainingSeconds?: number;
   autoStart?: boolean;
-  onFinish?: () => void;
 };
 
 export function useSessionTimer({
+  sessionKey,
   plannedMin,
+  initialRemainingSeconds,
   autoStart = true,
-  onFinish,
 }: UseSessionTimerOptions) {
-  const totalSeconds = Math.max(0, Math.round(plannedMin * 60));
-  const [remainingSeconds, setRemainingSeconds] = useState(totalSeconds);
-  const [isPaused, setIsPaused] = useState(!autoStart);
-  const hasNotifiedFinishRef = useRef(false);
+  const totalSeconds = Math.max(1, Math.round(plannedMin * 60));
+  const isActive = Boolean(sessionKey);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [isPaused, setIsPaused] = useState(true);
+  const [armed, setArmed] = useState(false);
 
-  useEffect(() => {
-    setRemainingSeconds(totalSeconds);
+  useLayoutEffect(() => {
+    if (!sessionKey) {
+      setRemainingSeconds(0);
+      setIsPaused(true);
+      setArmed(false);
+      return;
+    }
+
+    const nextRemaining =
+      initialRemainingSeconds != null && initialRemainingSeconds > 0
+        ? Math.min(initialRemainingSeconds, totalSeconds)
+        : totalSeconds;
+
+    setRemainingSeconds(nextRemaining);
     setIsPaused(!autoStart);
-    hasNotifiedFinishRef.current = false;
-  }, [autoStart, totalSeconds]);
+    setArmed(true);
+  }, [autoStart, initialRemainingSeconds, sessionKey, totalSeconds]);
 
   useEffect(() => {
-    if (isPaused || remainingSeconds <= 0) {
+    if (!armed || isPaused || remainingSeconds <= 0) {
       return;
     }
 
@@ -38,14 +53,7 @@ export function useSessionTimer({
     }, 1000);
 
     return () => window.clearInterval(timerId);
-  }, [isPaused, remainingSeconds]);
-
-  useEffect(() => {
-    if (remainingSeconds === 0 && !hasNotifiedFinishRef.current) {
-      hasNotifiedFinishRef.current = true;
-      onFinish?.();
-    }
-  }, [onFinish, remainingSeconds]);
+  }, [armed, isPaused, remainingSeconds]);
 
   const pause = useCallback(() => setIsPaused(true), []);
   const resume = useCallback(() => setIsPaused(false), []);
@@ -53,15 +61,22 @@ export function useSessionTimer({
 
   const elapsedSeconds = Math.max(totalSeconds - remainingSeconds, 0);
   const elapsedMin = useMemo(() => {
-    if (elapsedSeconds === 0) return 0;
+    if (elapsedSeconds <= 0) {
+      return 0;
+    }
     return Math.ceil(elapsedSeconds / 60);
   }, [elapsedSeconds]);
 
+  const isFinished = armed && isActive && remainingSeconds <= 0;
+
   return {
     remainingSeconds,
+    elapsedSeconds,
     elapsedMin,
+    totalSeconds,
     isPaused,
-    isFinished: remainingSeconds === 0,
+    isFinished,
+    isActive,
     pause,
     resume,
     togglePause,

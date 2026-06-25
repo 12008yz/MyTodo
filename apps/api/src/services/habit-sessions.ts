@@ -94,6 +94,17 @@ export class HabitSessionService {
     }
 
     const elapsedMin = computeElapsedMinutes(session.startedAt, new Date());
+    const elapsedMs = new Date().getTime() - session.startedAt.getTime();
+    const MIN_SESSION_MS = 5_000;
+
+    if (elapsedMs < MIN_SESSION_MS) {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
+        "Session is too short to complete",
+      );
+    }
+
     const actualMin = Math.max(1, elapsedMin);
 
     let valueToAdd: number;

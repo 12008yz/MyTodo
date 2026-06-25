@@ -839,7 +839,10 @@ function getSupportedSessionHabit(state: DemoState, habitId: string): HabitRespo
 
 function elapsedMinutesSince(startedAtIso: string): number {
   const elapsedMs = Date.now() - new Date(startedAtIso).getTime();
-  return Math.max(0, Math.floor(elapsedMs / 60_000));
+  if (elapsedMs < 5_000) {
+    throw new Error("Session is too short to complete");
+  }
+  return Math.max(1, Math.ceil(elapsedMs / 60_000));
 }
 
 function toDemoSessionResponse(session: DemoHabitSession): HabitSessionResponse {
@@ -1003,7 +1006,7 @@ export function demoCompleteHabitSession(
     throw new Error("No active habit session for this habit");
   }
 
-  const actualMin = Math.max(1, elapsedMinutesSince(session.started_at));
+  const actualMin = elapsedMinutesSince(session.started_at);
   const useDailyTotal = habit.side === "dark" && habit.type === "limit";
 
   let valueToAdd: number;

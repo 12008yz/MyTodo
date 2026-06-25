@@ -1,8 +1,16 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { DailyPlan, DailyPlanBlock, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { DailyPlan, DailyPlanBlock, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
+import { SESSION_TARGET_MIN } from "@mytodo/shared";
+import { useQueryClient } from "@tanstack/react-query";
 import { ClientApiError } from "../../lib/api";
 import { FocusScreen } from "../sessions/FocusScreen";
 import { ValuePrompt } from "../sessions/ValuePrompt";
+import {
+  fetchActiveSession,
+  finalizeInterruptedSession,
+  isActiveSessionConflict,
+  MIN_STALE_SESSION_SECONDS,
+} from "../sessions/sessionRecovery";
 import { useCompleteHabitSession, useStartHabitSession } from "../sessions/useHabitSession";
 import { useSessionTimer } from "../sessions/useSessionTimer";
 import { DailyPlanHabitRow } from "./DailyPlanHabitRow";
@@ -34,14 +42,41 @@ type DailyPlanListProps = {
 };
 
 type ValuePromptState = {
+  habitId: string;
   block: DailyPlanBlock;
+  sessionBlockId: string | null;
   endedEarly: boolean;
+  isPlanBlock: boolean;
 } | null;
 
 type FocusState = {
+  habit: TodayLightHabit | TodayDarkHabit;
   block: DailyPlanBlock;
+  sessionId: string;
+  sessionBlockId: string | null;
   plannedMin: number;
+  initialRemainingSeconds: number;
+  isPlanBlock: boolean;
 } | null;
+
+function createFocusBlock(
+  habit: TodayLightHabit | TodayDarkHabit,
+  plannedMin: number,
+): DailyPlanBlock {
+  return {
+    id: `bonus-${habit.id}`,
+    habit_id: habit.id,
+    habit_name: habit.name,
+    icon: habit.icon ?? null,
+    unit: habit.unit,
+    duration_min: plannedMin,
+    expected_yield: 0,
+    order: 0,
+    status: "pending",
+    actual_value: null,
+    actual_minutes: null,
+  };
+}
 
 function toErrorText(error: unknown): string {
   if (error instanceof ClientApiError) return error.message;
@@ -69,13 +104,46 @@ function getPlan(sideData: SidePlanData): DailyPlan {
   return sideData.dailyPlan ?? EMPTY_PLAN;
 }
 
+function resolveBlockForSession(
+  plan: DailyPlan,
+  fallback: DailyPlanBlock | null,
+  sessionBlockId: string | null,
+): DailyPlanBlock | null {
+  if (sessionBlockId) {
+    const matched = plan.blocks.find((block) => block.id === sessionBlockId);
+    if (matched) {
+      return matched;
+    }
+  }
+  return fallback;
+}
+
+function buildFocusState(
+  habit: TodayLightHabit | TodayDarkHabit,
+  block: DailyPlanBlock | null,
+  session: HabitSessionResponse,
+  planBlockIds: Set<string>,
+): FocusState {
+  const isPlanBlock = Boolean(session.block_id && planBlockIds.has(session.block_id));
+
+  return {
+    habit,
+    block: block ?? createFocusBlock(habit, session.planned_min),
+    sessionId: session.id,
+    sessionBlockId: session.block_id,
+    plannedMin: session.planned_min,
+    initialRemainingSeconds: session.remaining_seconds ?? session.planned_min * 60,
+    isPlanBlock,
+  };
+}
+
 type HabitListLayerProps = {
   side: TodaySide;
   sideData: SidePlanData;
   isActive: boolean;
   focusHabitId: string | null;
   sessionBusy: boolean;
-  onStart: (block: DailyPlanBlock) => void;
+  onStart: (habit: TodayLightHabit | TodayDarkHabit, block: DailyPlanBlock | null) => void;
 };
 
 function HabitListLayer({
@@ -94,7 +162,9 @@ function HabitListLayer({
   const blockByHabitId = useMemo(() => {
     const map = new Map<string, DailyPlanBlock>();
     for (const block of blocks) {
-      map.set(block.habit_id, block);
+      if (block.status !== "completed") {
+        map.set(block.habit_id, block);
+      }
     }
     return map;
   }, [blocks]);
@@ -143,7 +213,11 @@ function HabitListLayer({
               hasActiveFocus={hasActiveFocus}
               sessionBusy={sessionBusy}
               focusLocked={Boolean(focusHabitId && !hasActiveFocus)}
-              onStart={block ? () => onStart(block) : undefined}
+              onStart={
+                habit.type !== "abstinence"
+                  ? () => onStart(habit, block)
+                  : undefined
+              }
             />
           );
         })}
@@ -177,16 +251,22 @@ export function DailyPlanList({
 }: DailyPlanListProps) {
   const activeData = activeSide === "light" ? light : dark;
   const plan = getPlan(activeData);
+  const planBlockIds = useMemo(() => new Set(plan.blocks.map((block) => block.id)), [plan.blocks]);
+  const queryClient = useQueryClient();
   const startSession = useStartHabitSession(activeSide);
   const completeSession = useCompleteHabitSession(activeSide);
   const [focusState, setFocusState] = useState<FocusState>(null);
   const [valuePrompt, setValuePrompt] = useState<ValuePromptState>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isEnding, setIsEnding] = useState(false);
+  const [isRecovering, setIsRecovering] = useState(false);
+  const recoveryKeyRef = useRef<string | null>(null);
 
   const timer = useSessionTimer({
+    sessionKey: focusState?.sessionId ?? null,
     plannedMin: focusState?.plannedMin ?? 0,
-    autoStart: Boolean(focusState),
+    initialRemainingSeconds: focusState?.initialRemainingSeconds,
+    autoStart: true,
   });
 
   const progressPercent =
@@ -195,13 +275,18 @@ export function DailyPlanList({
       : 0;
 
   const submitCompletion = useCallback(
-    async (block: DailyPlanBlock, payload: { value: number; endedEarly: boolean }) => {
+    async (
+      habitId: string,
+      sessionBlockId: string | null,
+      isPlanBlock: boolean,
+      payload: { value: number; endedEarly: boolean },
+    ) => {
       setActionError(null);
       try {
         await completeSession.mutateAsync({
-          habitId: block.habit_id,
+          habitId,
           payload: {
-            block_id: block.id,
+            ...(isPlanBlock && sessionBlockId ? { block_id: sessionBlockId } : {}),
             actual_value: payload.value,
             ended_early: payload.endedEarly,
           },
@@ -213,26 +298,59 @@ export function DailyPlanList({
     [completeSession],
   );
 
+  const openFocusFromSession = useCallback(
+    (
+      habit: TodayLightHabit | TodayDarkHabit,
+      block: DailyPlanBlock | null,
+      session: HabitSessionResponse,
+    ) => {
+      const resolvedBlock = resolveBlockForSession(plan, block, session.block_id);
+      setFocusState(buildFocusState(habit, resolvedBlock, session, planBlockIds));
+    },
+    [plan, planBlockIds],
+  );
+
   const handleStart = useCallback(
-    async (block: DailyPlanBlock) => {
+    async (habit: TodayLightHabit | TodayDarkHabit, block: DailyPlanBlock | null) => {
+      if (focusState || startSession.isPending || isEnding || isRecovering) {
+        return;
+      }
+
       setActionError(null);
+      const plannedMin = block?.duration_min ?? SESSION_TARGET_MIN;
+      const isPlanBlock = Boolean(block && planBlockIds.has(block.id));
+
       try {
+        const activeSession = await fetchActiveSession(habit.id);
+        if (activeSession) {
+          openFocusFromSession(habit, block, activeSession);
+          return;
+        }
+
         const session = await startSession.mutateAsync({
-          habitId: block.habit_id,
+          habitId: habit.id,
           payload: {
-            block_id: block.id,
-            planned_min: block.duration_min,
+            ...(isPlanBlock && block ? { block_id: block.id } : {}),
+            planned_min: plannedMin,
           },
         });
-        setFocusState({
-          block,
-          plannedMin: session.planned_min,
-        });
+        openFocusFromSession(habit, block, session);
       } catch (startError) {
+        if (isActiveSessionConflict(startError)) {
+          try {
+            const activeSession = await fetchActiveSession(habit.id);
+            if (activeSession) {
+              openFocusFromSession(habit, block, activeSession);
+              return;
+            }
+          } catch {
+            // fall through to generic error
+          }
+        }
         setActionError(toErrorText(startError));
       }
     },
-    [startSession],
+    [focusState, isEnding, isRecovering, openFocusFromSession, planBlockIds, startSession],
   );
 
   const finishCurrentSession = useCallback(
@@ -241,24 +359,37 @@ export function DailyPlanList({
         return;
       }
 
+      if (endedEarly && timer.elapsedSeconds < MIN_STALE_SESSION_SECONDS) {
+        setActionError(`Подождите ещё ${MIN_STALE_SESSION_SECONDS - timer.elapsedSeconds} сек`);
+        return;
+      }
+
       setIsEnding(true);
       const elapsedValue = Math.max(timer.elapsedMin, 0);
-      const currentBlock = focusState.block;
+      const currentFocus = focusState;
       setFocusState(null);
 
-      if (currentBlock.unit === "minutes") {
-        await submitCompletion(currentBlock, { value: elapsedValue, endedEarly });
+      if (currentFocus.block.unit === "minutes") {
+        await submitCompletion(
+          currentFocus.habit.id,
+          currentFocus.sessionBlockId,
+          currentFocus.isPlanBlock,
+          { value: elapsedValue, endedEarly },
+        );
         setIsEnding(false);
         return;
       }
 
       setValuePrompt({
-        block: currentBlock,
+        habitId: currentFocus.habit.id,
+        block: currentFocus.block,
+        sessionBlockId: currentFocus.sessionBlockId,
         endedEarly,
+        isPlanBlock: currentFocus.isPlanBlock,
       });
       setIsEnding(false);
     },
-    [focusState, isEnding, submitCompletion, timer.elapsedMin],
+    [focusState, isEnding, submitCompletion, timer.elapsedMin, timer.elapsedSeconds],
   );
 
   useEffect(() => {
@@ -267,13 +398,77 @@ export function DailyPlanList({
     }
   }, [finishCurrentSession, focusState, isEnding, timer.isFinished]);
 
-  const isBusy = startSession.isPending || completeSession.isPending || isEnding;
-  const focusHabitId = focusState?.block.habit_id ?? null;
+  const isBusy =
+    isRecovering ||
+    Boolean(focusState) ||
+    startSession.isPending ||
+    completeSession.isPending ||
+    isEnding;
+  const focusHabitId = focusState?.habit.id ?? null;
+
+  useEffect(() => {
+    const sidesLoading = light.isLoading && dark.isLoading;
+    if (sidesLoading) {
+      return;
+    }
+
+    const habitsToRecover = [
+      ...(light.isLoading ? [] : light.habits),
+      ...(dark.isLoading ? [] : dark.habits),
+    ].filter((habit) => habit.type !== "abstinence");
+
+    const recoveryKey = habitsToRecover
+      .map((habit) => habit.id)
+      .sort()
+      .join(",");
+    if (recoveryKeyRef.current === recoveryKey) {
+      return;
+    }
+    recoveryKeyRef.current = recoveryKey;
+
+    let cancelled = false;
+    setIsRecovering(true);
+
+    void (async () => {
+      let changed = false;
+
+      for (const habit of habitsToRecover) {
+        if (cancelled) {
+          return;
+        }
+
+        try {
+          const result = await finalizeInterruptedSession(habit.id, habit.unit);
+          if (result === "completed" || result === "stopped") {
+            changed = true;
+          }
+        } catch {
+          // ignore per-habit recovery errors
+        }
+      }
+
+      if (changed && !cancelled) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["today", "light"] }),
+          queryClient.invalidateQueries({ queryKey: ["today", "dark"] }),
+        ]);
+      }
+
+      if (!cancelled) {
+        setIsRecovering(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dark.habits, dark.isLoading, light.habits, light.isLoading, queryClient]);
 
   useEffect(() => {
     setFocusState(null);
     setValuePrompt(null);
     setActionError(null);
+    recoveryKeyRef.current = null;
   }, [activeSide]);
 
   return (
@@ -304,7 +499,7 @@ export function DailyPlanList({
           isActive={activeSide === "light"}
           focusHabitId={activeSide === "light" ? focusHabitId : null}
           sessionBusy={isBusy}
-          onStart={(block) => void handleStart(block)}
+          onStart={(habit, block) => void handleStart(habit, block)}
         />
         <HabitListLayer
           side="dark"
@@ -312,7 +507,7 @@ export function DailyPlanList({
           isActive={activeSide === "dark"}
           focusHabitId={activeSide === "dark" ? focusHabitId : null}
           sessionBusy={isBusy}
-          onStart={(block) => void handleStart(block)}
+          onStart={(habit, block) => void handleStart(habit, block)}
         />
       </div>
 
@@ -332,9 +527,12 @@ export function DailyPlanList({
 
       <FocusScreen
         isOpen={Boolean(focusState)}
-        habitName={focusState?.block.habit_name ?? ""}
+        habitName={focusState?.habit.name ?? ""}
+        plannedMin={focusState?.plannedMin ?? 0}
         remainingSeconds={timer.remainingSeconds}
+        elapsedSeconds={timer.elapsedSeconds}
         isPaused={timer.isPaused}
+        canStopEarly={timer.elapsedSeconds >= MIN_STALE_SESSION_SECONDS}
         onTogglePause={timer.togglePause}
         onStopEarly={() => void finishCurrentSession(true)}
       />
@@ -353,10 +551,15 @@ export function DailyPlanList({
           }
 
           void (async () => {
-            await submitCompletion(valuePrompt.block, {
-              value,
-              endedEarly: valuePrompt.endedEarly,
-            });
+            await submitCompletion(
+              valuePrompt.habitId,
+              valuePrompt.sessionBlockId,
+              valuePrompt.isPlanBlock,
+              {
+                value,
+                endedEarly: valuePrompt.endedEarly,
+              },
+            );
             setValuePrompt(null);
           })();
         }}

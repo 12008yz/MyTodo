@@ -107,6 +107,12 @@ describe("Habit sessions", () => {
     expect(start.planned_min).toBe(10);
     expect(start.completed).toBe(false);
 
+    const startedAt = new Date(Date.now() - 6_000);
+    await app.db
+      .update(habitSessions)
+      .set({ startedAt })
+      .where(and(eq(habitSessions.id, start.id), eq(habitSessions.habitId, habit.id)));
+
     const complete = await service.complete(user, habit.id, {
       actualValue: 8,
     });
@@ -144,6 +150,18 @@ describe("Habit sessions", () => {
 
     await expect(service.start(user, habit.id, { plannedMin: 10 })).rejects.toMatchObject({
       statusCode: 409,
+    });
+  });
+
+  it("rejects completion when session is too short", async () => {
+    const { user, auth } = await createOnboardedUser("sessions-too-short@example.com");
+    const habit = await createRunningHabit(auth.access_token);
+    const service = new HabitSessionService(app.db);
+
+    await service.start(user, habit.id, { plannedMin: 10 });
+
+    await expect(service.complete(user, habit.id, {})).rejects.toMatchObject({
+      statusCode: 400,
     });
   });
 

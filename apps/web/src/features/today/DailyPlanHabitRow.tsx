@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import type { DailyPlanBlock, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
 import { ClientApiError } from "../../lib/api";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
@@ -9,6 +9,7 @@ import {
   statusLabel,
 } from "./format";
 import { HabitIcon } from "./HabitIcon";
+import { QuickAddPrompt } from "./QuickAddPrompt";
 import type { TodaySide } from "./useTodayData";
 import { useCheckinMutation } from "./useTodayData";
 
@@ -34,6 +35,28 @@ function PlanInfoIcon({ className }: { className?: string }) {
   );
 }
 
+function ChevronIcon({ className, open }: { className?: string; open: boolean }) {
+  return (
+    <svg
+      className={className}
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      style={{ transform: open ? "rotate(180deg)" : undefined }}
+    >
+      <path
+        d="M4 6L8 10L12 6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 type DailyPlanHabitRowProps = {
   habit: TodayLightHabit | TodayDarkHabit;
   block: DailyPlanBlock | null;
@@ -50,13 +73,9 @@ function hasTimerField(habit: TodayLightHabit | TodayDarkHabit): habit is TodayD
 
 function resolveBadge(
   habit: TodayLightHabit | TodayDarkHabit,
-  block: DailyPlanBlock | null,
+  _block: DailyPlanBlock | null,
 ): { label: string; className: string } {
   const status = habit.checkin?.status;
-
-  if (block?.status === "active") {
-    return { label: "Фокус", className: "home__plan-badge--active" };
-  }
 
   if (status === "success") {
     return { label: statusLabel(status, habit.type), className: "home__plan-badge--completed" };
@@ -73,6 +92,10 @@ function resolveBadge(
   return { label: statusLabel(status, habit.type), className: "home__plan-badge--pending" };
 }
 
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && Boolean(target.closest("button, a, input, label"));
+}
+
 export function DailyPlanHabitRow({
   habit,
   block,
@@ -84,14 +107,23 @@ export function DailyPlanHabitRow({
 }: DailyPlanHabitRowProps) {
   const checkinMutation = useCheckinMutation(side);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const status = habit.checkin?.status;
 
   const isPending = checkinMutation.isPending;
   const timer = hasTimerField(habit) ? habit.timer : null;
   const blockCompleted = block?.status === "completed";
-  const canStartSession = Boolean(block && !blockCompleted && onStart);
-  const startDisabled = sessionBusy || focusLocked || blockCompleted || !canStartSession;
+  const goalReached = status === "success";
+  const canStartSession = habit.type !== "abstinence" && Boolean(onStart);
+  const startDisabled =
+    sessionBusy || focusLocked || hasActiveFocus || !canStartSession || (blockCompleted && !goalReached);
+  const canQuickAdd = habit.type === "target" && status !== "skipped";
+  const currentValue = habit.checkin?.value ?? 0;
+  const progressPercent =
+    habit.type !== "abstinence" && habit.current_goal > 0
+      ? Math.min(100, Math.round((currentValue / habit.current_goal) * 100))
+      : 0;
 
   const runCheckin = async (payload: Parameters<typeof checkinMutation.mutateAsync>[0]) => {
     setActionError(null);
@@ -108,106 +140,236 @@ export function DailyPlanHabitRow({
     }
   };
 
-  const badge = resolveBadge(habit, block);
+  const handleQuickAdd = async (amount: number) => {
+    setActionError(null);
+    try {
+      await checkinMutation.mutateAsync({
+        habit_id: habit.id,
+        value: currentValue + amount,
+      });
+      setQuickAddOpen(false);
+    } catch (err) {
+      setActionError(
+        err instanceof ClientApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Не удалось добавить",
+      );
+    }
+  };
+
+  const handleCardClick = (event: MouseEvent<HTMLElement>) => {
+    if (isInteractiveTarget(event.target)) {
+      return;
+    }
+    setExpanded((value) => !value);
+  };
+
+  const badge = hasActiveFocus
+    ? { label: "Фокус", className: "home__plan-badge--active" }
+    : resolveBadge(habit, block);
+
+  const startLabel = hasActiveFocus
+    ? "Идёт фокус"
+    : block?.status === "active"
+      ? `Продолжить · ${block.duration_min} мин`
+      : goalReached
+      ? "Ещё сессия"
+      : block
+        ? `Начать · ${block.duration_min} мин`
+        : "Начать";
+
+  const quickAddChips = habit.unit === "minutes" ? [5, 10, 15] : [];
 
   return (
-    <article
-      className={["home__plan-item", detailsOpen ? "home__plan-item--details-open" : ""]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      <div className="home__plan-item-top">
-        <div className="home__plan-item-main">
-        <h3 className="home__plan-item-title">
-          <HabitIcon icon={habit.icon ?? block?.icon} side={side} />
-          <span>
-            {habit.name} — {formatGoalLabel(habit)}
-          </span>
-        </h3>
-
-        {timer ? (
-          <p className="home__task-timer">Чистое время: {formatTimer(timer.elapsed)}</p>
-        ) : null}
-
-        {!timer && habit.type !== "abstinence" ? (
-          <p className="home__task-progress">
-            Прогресс: {habit.checkin?.value ?? 0} / {habit.current_goal} {formatUnit(habit.unit)}
-          </p>
-        ) : null}
-
-        {block ? (
-          <p className="home__plan-item-meta">
-            {block.duration_min} мин · ожидание {block.expected_yield} {formatUnit(block.unit)}
-            {block.status === "completed" ? (
-              <>
-                {" "}
-                · факт: {block.actual_value ?? 0} {formatUnit(block.unit)}
-              </>
-            ) : null}
-          </p>
-        ) : null}
-
-        <div className="home__task-footer">
-          <span className="home__task-time">
-            {status === "success"
-              ? `Завтра: ${habit.preview_next_goal}`
-              : `Сегодня: ${habit.checkin?.value ?? 0} ${formatUnit(habit.unit)}`}
-          </span>
-        </div>
-
-        <div className="home__task-actions">
-          {canStartSession ? (
-            <button
-              type="button"
-              className="home__task-btn"
-              disabled={startDisabled}
-              onClick={onStart}
-            >
-              {hasActiveFocus ? "Идёт фокус" : "Начать"}
-            </button>
-          ) : null}
-
-          {habit.type === "abstinence" ? (
-            <button
-              type="button"
-              className="home__task-btn home__task-btn--danger"
-              disabled={isPending || status === "fail"}
-              onClick={() => void runCheckin({ habit_id: habit.id, status: "fail" })}
-            >
-              Сорвался
-            </button>
-          ) : null}
-        </div>
-
-        {actionError ? <p className="home__task-error">{actionError}</p> : null}
-        </div>
-
-        <div className="home__plan-item-aside">
-          <span className={["home__plan-badge", badge.className].join(" ")}>{badge.label}</span>
-          <button
-            type="button"
-            className="home__plan-info-btn"
-            aria-expanded={detailsOpen}
-            aria-label={detailsOpen ? "Скрыть подробности" : "Подробнее о привычке"}
-            onClick={() => setDetailsOpen((value) => !value)}
-          >
-            <PlanInfoIcon className="home__plan-info-btn-icon" />
-          </button>
-        </div>
-      </div>
-
-      <CollapsibleReveal
-        open={detailsOpen}
-        className="home__plan-item-drawer"
-        contentClassName="home__plan-item-drawer-inner"
+    <>
+      <article
+        className={[
+          "home__plan-item",
+          expanded ? "home__plan-item--expanded" : "",
+          hasActiveFocus ? "home__plan-item--focus-active" : "",
+          goalReached ? "home__plan-item--completed" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        onClick={handleCardClick}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setExpanded((value) => !value);
+          }
+        }}
       >
-        <div className="home__plan-item-drawer-body">
-          <p className="home__plan-item-drawer-title">Подробнее</p>
-          <p className="home__plan-item-drawer-text">
-            Здесь появятся подсказки, прогресс и дополнительные действия для этой привычки.
-          </p>
+        <div className="home__plan-item-top">
+          <div className="home__plan-item-main">
+            <div className="home__plan-item-header">
+              <h3 className="home__plan-item-title">
+                <HabitIcon icon={habit.icon ?? block?.icon} side={side} />
+                <span className="home__plan-item-name">{habit.name}</span>
+              </h3>
+              <span className="home__plan-item-goal">{formatGoalLabel(habit)}</span>
+            </div>
+
+            {timer ? (
+              <p className="home__task-timer">Чистое время: {formatTimer(timer.elapsed)}</p>
+            ) : null}
+
+            {!timer && habit.type !== "abstinence" ? (
+              <div className="home__plan-item-progress">
+                <div
+                  className="home__plan-item-progress-track"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={habit.current_goal}
+                  aria-valuenow={currentValue}
+                >
+                  <span
+                    className="home__plan-item-progress-fill"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+                <p className="home__task-progress">
+                  {currentValue} / {habit.current_goal} {formatUnit(habit.unit)}
+                </p>
+              </div>
+            ) : null}
+
+            {block && !goalReached ? (
+              <p className="home__plan-item-meta">
+                Сессия {block.duration_min} мин · ~{block.expected_yield}{" "}
+                {formatUnit(block.unit)}
+                {block.status === "completed" ? (
+                  <>
+                    {" "}
+                    · факт: {block.actual_value ?? 0} {formatUnit(block.unit)}
+                  </>
+                ) : null}
+              </p>
+            ) : null}
+
+            {goalReached ? (
+              <p className="home__plan-item-meta home__plan-item-meta--success">
+                Цель выполнена · завтра: {habit.preview_next_goal} {formatUnit(habit.unit)}
+              </p>
+            ) : (
+              <p className="home__task-time">
+                Сегодня: {currentValue} {formatUnit(habit.unit)}
+              </p>
+            )}
+
+            <div className="home__task-actions">
+              {canStartSession ? (
+                <button
+                  type="button"
+                  className="home__task-btn home__task-btn--start"
+                  disabled={startDisabled}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onStart?.();
+                  }}
+                >
+                  {startLabel}
+                </button>
+              ) : null}
+
+              {canQuickAdd ? (
+                <button
+                  type="button"
+                  className="home__task-btn home__task-btn--plus"
+                  disabled={isPending || sessionBusy}
+                  aria-label="Добавить сверх плана"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setQuickAddOpen(true);
+                  }}
+                >
+                  +
+                </button>
+              ) : null}
+
+              {habit.type === "abstinence" ? (
+                <button
+                  type="button"
+                  className="home__task-btn home__task-btn--danger"
+                  disabled={isPending || status === "fail"}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void runCheckin({ habit_id: habit.id, status: "fail" });
+                  }}
+                >
+                  Сорвался
+                </button>
+              ) : null}
+
+              <button
+                type="button"
+                className="home__plan-expand-btn"
+                aria-expanded={expanded}
+                aria-label={expanded ? "Свернуть" : "Развернуть"}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setExpanded((value) => !value);
+                }}
+              >
+                <ChevronIcon className="home__plan-expand-btn-icon" open={expanded} />
+              </button>
+            </div>
+
+            {actionError ? <p className="home__task-error">{actionError}</p> : null}
+          </div>
+
+          <div className="home__plan-item-aside">
+            <span className={["home__plan-badge", badge.className].join(" ")}>{badge.label}</span>
+          </div>
         </div>
-      </CollapsibleReveal>
-    </article>
+
+        <CollapsibleReveal
+          open={expanded}
+          className="home__plan-item-drawer"
+          contentClassName="home__plan-item-drawer-inner"
+        >
+          <div className="home__plan-item-drawer-body">
+            <p className="home__plan-item-drawer-title">
+              <PlanInfoIcon className="home__plan-item-drawer-icon" />
+              Подробнее
+            </p>
+            <p className="home__plan-item-drawer-text">
+              {block
+                ? `Следующая сессия: ${block.duration_min} мин. Ожидаемый результат — ~${block.expected_yield} ${formatUnit(block.unit)}.`
+                : goalReached
+                  ? "Цель на сегодня выполнена. Можно добавить сверх плана или начать ещё одну сессию."
+                  : "Нажмите «Начать», чтобы запустить таймер фокуса."}
+            </p>
+            {side === "light" && status !== "success" && status !== "fail" ? (
+              <button
+                type="button"
+                className="home__plan-drawer-btn"
+                disabled={isPending}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void runCheckin({ habit_id: habit.id, status: "skipped" });
+                }}
+              >
+                Пропустить сегодня
+              </button>
+            ) : null}
+          </div>
+        </CollapsibleReveal>
+      </article>
+
+      <QuickAddPrompt
+        isOpen={quickAddOpen}
+        habitName={habit.name}
+        unit={habit.unit}
+        chips={quickAddChips}
+        isSubmitting={checkinMutation.isPending}
+        onCancel={() => setQuickAddOpen(false)}
+        onAdd={(amount) => void handleQuickAdd(amount)}
+      />
+    </>
   );
 }
