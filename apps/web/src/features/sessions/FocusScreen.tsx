@@ -114,7 +114,9 @@ export function FocusScreen({
 
   const displaySeconds = isPrepActive ? prepRemainingSeconds : safeRemaining;
   const displayTotal = isPrepActive ? prepTotalSeconds : sessionTotalSeconds;
-  const progress = displayTotal > 0 ? 1 - displaySeconds / displayTotal : 0;
+  const remainingRatio =
+    displayTotal > 0 ? Math.max(0, Math.min(1, displaySeconds / displayTotal)) : 0;
+  const progress = isPrepActive ? remainingRatio : 1 - remainingRatio;
 
   const radius = 88;
   const circumference = 2 * Math.PI * radius;
@@ -158,7 +160,16 @@ export function FocusScreen({
             .filter(Boolean)
             .join(" ")}
         >
-          <svg className="focus-screen__ring" viewBox="0 0 200 200" aria-hidden="true">
+          <svg
+            className={[
+              "focus-screen__ring",
+              isPrepActive ? "focus-screen__ring--prep" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            viewBox="0 0 200 200"
+            aria-hidden="true"
+          >
             <circle className="focus-screen__ring-track" cx="100" cy="100" r={radius} />
             <circle
               className={[

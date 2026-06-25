@@ -65,6 +65,7 @@ type DailyPlanHabitRowProps = {
   hasActiveFocus: boolean;
   resumeSession: HabitSessionResponse | null;
   sessionElapsedSeconds: number;
+  isRecoveringSessions: boolean;
   sessionBusy: boolean;
   focusLocked: boolean;
   onStart?: () => void;
@@ -112,6 +113,7 @@ export function DailyPlanHabitRow({
   hasActiveFocus,
   resumeSession,
   sessionElapsedSeconds,
+  isRecoveringSessions,
   sessionBusy,
   focusLocked,
   onStart,
@@ -197,6 +199,8 @@ export function DailyPlanHabitRow({
     ? "Идёт фокус"
     : resumeSession
       ? `Продолжить · ${formatSessionCountdown(getSessionRemainingSeconds(resumeSession))}`
+      : isRecoveringSessions && block?.status === "active"
+        ? "Продолжить..."
       : block?.status === "active"
       ? `Продолжить · ${block.duration_min} мин`
       : goalReached

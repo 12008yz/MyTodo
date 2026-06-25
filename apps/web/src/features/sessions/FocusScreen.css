@@ -99,6 +99,10 @@
   transform: rotate(-90deg);
 }
 
+.focus-screen__ring--prep {
+  transform: rotate(-90deg) scaleX(-1);
+}
+
 .focus-screen__ring-track {
   fill: none;
   stroke: rgba(255, 255, 255, 0.08);
@@ -177,6 +181,7 @@
 .focus-screen__ring-wrap--prep .focus-screen__ring-progress,
 .focus-screen__ring-progress--prep {
   stroke: #6ecbff;
+  transition: stroke-dashoffset 1s linear;
 }
 
 .focus-screen__prep {

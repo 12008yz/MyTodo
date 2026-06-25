@@ -162,6 +162,7 @@ type HabitListLayerProps = {
   sessionBusy: boolean;
   backgroundSessions: Map<string, HabitSessionResponse>;
   focusElapsedByHabitId: Map<string, number>;
+  isRecoveringSessions: boolean;
   onStart: (habit: TodayLightHabit | TodayDarkHabit, block: DailyPlanBlock | null) => void;
 };
 
@@ -173,6 +174,7 @@ function HabitListLayer({
   sessionBusy,
   backgroundSessions,
   focusElapsedByHabitId,
+  isRecoveringSessions,
   onStart,
 }: HabitListLayerProps) {
   const plan = getPlan(sideData);
@@ -234,6 +236,7 @@ function HabitListLayer({
               hasActiveFocus={hasActiveFocus}
               resumeSession={backgroundSessions.get(habit.id) ?? null}
               sessionElapsedSeconds={focusElapsedByHabitId.get(habit.id) ?? 0}
+              isRecoveringSessions={isRecoveringSessions}
               sessionBusy={sessionBusy}
               focusLocked={Boolean(focusHabitId && !hasActiveFocus)}
               onStart={
@@ -286,7 +289,7 @@ export function DailyPlanList({
   const [backgroundSessions, setBackgroundSessions] = useState<Map<string, HabitSessionResponse>>(
     () => new Map(),
   );
-  const recoveryKeyRef = useRef<string | null>(null);
+  const sessionSyncGenerationRef = useRef(0);
   const { setActive: setFocusSessionActive } = useFocusSession();
 
   useEffect(() => {
@@ -618,51 +621,39 @@ export function DailyPlanList({
 
   useEffect(() => {
     if (light.isLoading && dark.isLoading) {
-      return;
-    }
-
-    if (recoveryKeyRef.current === recoverableHabitIds) {
       setIsRecovering(false);
       return;
     }
-    recoveryKeyRef.current = recoverableHabitIds;
 
     if (!recoverableHabitIds) {
+      setBackgroundSessions(new Map());
       setIsRecovering(false);
       return;
     }
 
-    let cancelled = false;
+    const generation = ++sessionSyncGenerationRef.current;
+    const habitIds = recoverableHabitIds.split(",").filter(Boolean);
     setIsRecovering(true);
 
     void (async () => {
       try {
-        const habitById = new Map(
-          [...light.habits, ...dark.habits].map((habit) => [habit.id, habit] as const),
-        );
         let changed = false;
+        const nextBackground = new Map<string, HabitSessionResponse>();
 
-        let nextBackground = new Map<string, HabitSessionResponse>();
-
-        for (const habitId of recoverableHabitIds.split(",")) {
-          if (cancelled) {
+        for (const habitId of habitIds) {
+          if (generation !== sessionSyncGenerationRef.current) {
             return;
           }
 
-          const habit = habitById.get(habitId);
-          if (!habit) {
-            continue;
-          }
-
           try {
-            const result = await recoverStaleSession(habit.id);
+            const result = await recoverStaleSession(habitId);
             if (result.status === "stopped") {
               changed = true;
             }
             if (result.status === "kept") {
-              const pausedSession = await ensurePausedSession(habit.id);
+              const pausedSession = await ensurePausedSession(habitId);
               if (pausedSession) {
-                nextBackground.set(habit.id, pausedSession);
+                nextBackground.set(habitId, pausedSession);
               }
             }
           } catch {
@@ -670,33 +661,30 @@ export function DailyPlanList({
           }
         }
 
-        if (changed && !cancelled) {
+        if (generation !== sessionSyncGenerationRef.current) {
+          return;
+        }
+
+        setBackgroundSessions(nextBackground);
+
+        if (changed) {
           await Promise.all([
             queryClient.invalidateQueries({ queryKey: ["today", "light"] }),
             queryClient.invalidateQueries({ queryKey: ["today", "dark"] }),
           ]);
         }
-
-        if (!cancelled) {
-          setBackgroundSessions(nextBackground);
-        }
       } finally {
-        if (!cancelled) {
+        if (generation === sessionSyncGenerationRef.current) {
           setIsRecovering(false);
         }
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [dark.habits, dark.isLoading, light.habits, light.isLoading, queryClient, recoverableHabitIds]);
+  }, [light.isLoading, dark.isLoading, queryClient, recoverableHabitIds]);
 
   useEffect(() => {
     setFocusState(null);
     setValuePrompt(null);
     setActionError(null);
-    recoveryKeyRef.current = null;
   }, [activeSide]);
 
   return (
@@ -729,6 +717,7 @@ export function DailyPlanList({
           sessionBusy={isBusy}
           backgroundSessions={backgroundSessions}
           focusElapsedByHabitId={focusElapsedByHabitId}
+          isRecoveringSessions={isRecovering}
           onStart={(habit, block) => void handleStart(habit, block)}
         />
         <HabitListLayer
@@ -739,6 +728,7 @@ export function DailyPlanList({
           sessionBusy={isBusy}
           backgroundSessions={backgroundSessions}
           focusElapsedByHabitId={focusElapsedByHabitId}
+          isRecoveringSessions={isRecovering}
           onStart={(habit, block) => void handleStart(habit, block)}
         />
       </div>
