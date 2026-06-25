@@ -55,7 +55,6 @@ export type LightActivityId =
   | "creator-custom"
   | "energy-walk"
   | "energy-early"
-  | "energy-hobby"
   | "generic-light";
 
 export type SessionPlanProfile = {
@@ -77,7 +76,6 @@ const NAME_TO_ACTIVITY: Record<string, LightActivityId> = {
   "Творческий проект": "creator-creative",
   "Ходьба на свежем воздухе": "energy-walk",
   [EARLY_RISE_HABIT_NAME]: "energy-early",
-  "Творчество / Хобби": "energy-hobby",
 };
 
 const TEMPLATE_TO_ACTIVITY: Partial<Record<HabitTemplateId, LightActivityId>> = {
@@ -97,7 +95,7 @@ const CATEGORY_TO_ACTIVITY: Record<HabitCategoryKey, LightActivityId> = {
   creative_project: "creator-creative",
   walking: "energy-walk",
   early_rise: "energy-early",
-  hobby: "energy-hobby",
+  hobby: "creator-creative",
 };
 
 /** ACSM-style conservative push-up test ceiling (sedentary / below-average). */
@@ -239,7 +237,6 @@ export function recommendDailyMinutes(
     case "creator-creative":
       return CREATIVE_PROJECT_TARGET_MINUTES;
     case "creator-custom":
-    case "energy-hobby":
     case "generic-light":
       return HOBBY_TARGET_MINUTES;
     default:
@@ -482,7 +479,6 @@ export function formatHabitComfortLabel(habit: HabitIdentity): string {
     case "creator-programming":
     case "creator-creative":
     case "creator-custom":
-    case "energy-hobby":
     case "generic-light":
       return "~20 мин/день";
     case "strength-workout":

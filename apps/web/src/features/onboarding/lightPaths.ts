@@ -214,16 +214,6 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     unit: "minutes",
     categoryKey: "early_rise",
   },
-  {
-    id: "energy-hobby",
-    pathId: "energy",
-    kind: "custom",
-    label: "Творчество / Хобби",
-    hint: "Минут в день",
-    name: "Творчество / Хобби",
-    unit: "minutes",
-    categoryKey: "hobby",
-  },
 ];
 
 const ACTIVITY_BY_ID = new Map(LIGHT_ACTIVITIES.map((activity) => [activity.id, activity]));
