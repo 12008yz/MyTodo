@@ -56,6 +56,8 @@ export type HabitCategoryKey = (typeof HABIT_CATEGORY_KEYS)[number];
 
 export const SOCIAL_MEDIA_MIN_GOAL = 15;
 export const SOCIAL_MEDIA_STEP = 5;
+/** Dark limit habits (smoking, sugar, sweets): reduce goal by 1 every N successful days. */
+export const DARK_REDUCTION_INTERVAL_DAYS = 3;
 export const CUSTOM_MINUTES_STEP = 5;
 export const BOOKS_PAGES_PER_MIN = 2;
 export const PUSHUP_SECONDS_PER_REP = 2;
@@ -68,6 +70,8 @@ export type HabitTemplate = {
   progressionDirection: ProgressionDirection;
   unit: HabitUnit;
   growthStep: number;
+  /** Successful days at current goal before goal changes (dark decrease habits). */
+  progressionIntervalDays: number;
   icon: string;
   phase: HabitPhase;
 };
@@ -81,6 +85,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "increase",
     unit: "pages",
     growthStep: 1,
+    progressionIntervalDays: 1,
     icon: "/habits/light/books.png",
     phase: "reduction",
   },
@@ -92,6 +97,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "increase",
     unit: "reps",
     growthStep: 1,
+    progressionIntervalDays: 1,
     icon: "💪",
     phase: "reduction",
   },
@@ -103,6 +109,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "increase",
     unit: "minutes",
     growthStep: 1,
+    progressionIntervalDays: 1,
     icon: "🏃",
     phase: "reduction",
   },
@@ -114,6 +121,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "increase",
     unit: "seconds",
     growthStep: 1,
+    progressionIntervalDays: 1,
     icon: "🧘",
     phase: "reduction",
   },
@@ -125,6 +133,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "decrease",
     unit: "cigarettes",
     growthStep: 1,
+    progressionIntervalDays: DARK_REDUCTION_INTERVAL_DAYS,
     icon: "/habits/dark/smoking.png",
     phase: "reduction",
   },
@@ -136,6 +145,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "decrease",
     unit: "spoons",
     growthStep: 1,
+    progressionIntervalDays: DARK_REDUCTION_INTERVAL_DAYS,
     icon: "🥄",
     phase: "reduction",
   },
@@ -147,6 +157,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "decrease",
     unit: "pieces",
     growthStep: 1,
+    progressionIntervalDays: DARK_REDUCTION_INTERVAL_DAYS,
     icon: "🍬",
     phase: "reduction",
   },
@@ -158,6 +169,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "decrease",
     unit: "minutes",
     growthStep: SOCIAL_MEDIA_STEP,
+    progressionIntervalDays: 1,
     icon: "/habits/dark/social-media.png",
     phase: "reduction",
   },
@@ -169,6 +181,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "abstain",
     unit: "minutes",
     growthStep: 1,
+    progressionIntervalDays: 1,
     icon: "💅",
     phase: "abstinence",
   },

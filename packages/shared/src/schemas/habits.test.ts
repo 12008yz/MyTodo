@@ -30,6 +30,8 @@ describe("habitResponseSchema", () => {
       baseline_value: 1,
       current_goal: 2,
       growth_step: 1,
+      progression_interval_days: 1,
+      success_days_at_goal: 0,
       progression_direction: "increase",
       phase: "reduction",
       last_relapse_at: null,

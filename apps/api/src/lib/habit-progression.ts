@@ -9,6 +9,8 @@ export function toProgressionHabit(habit: Habit): HabitForProgression {
     currentGoal: Number(habit.currentGoal),
     growthStep: Number(habit.growthStep),
     progressionDirection: habit.progressionDirection as HabitForProgression["progressionDirection"],
+    progressionIntervalDays: habit.progressionIntervalDays,
+    successDaysAtGoal: habit.successDaysAtGoal,
     minGoal: habit.templateId === "social_media" ? SOCIAL_MEDIA_MIN_GOAL : undefined,
   };
 }

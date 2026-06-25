@@ -60,6 +60,8 @@ export const habitResponseSchema = z.object({
   baseline_value: z.number(),
   current_goal: z.number(),
   growth_step: z.number(),
+  progression_interval_days: z.number().int().min(1),
+  success_days_at_goal: z.number().int().min(0),
   progression_direction: z.enum(["increase", "decrease", "abstain"]),
   phase: z.enum(["reduction", "abstinence"]),
   last_relapse_at: z.string().datetime().nullable(),

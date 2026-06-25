@@ -41,6 +41,8 @@ export {
 } from "./habits/checkin.js";
 export {
   computeNextGoal,
+  applyDayProgression,
+  type ProgressionResult,
   type DayStatus,
   type HabitForProgression,
 } from "./habits/progression.js";

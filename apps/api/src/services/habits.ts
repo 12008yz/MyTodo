@@ -106,6 +106,8 @@ export class HabitService {
         baselineValue: String(calibrated.baselineValue),
         currentGoal: String(calibrated.currentGoal),
         growthStep: String(calibrated.growthStep),
+        progressionIntervalDays: calibrated.progressionIntervalDays,
+        successDaysAtGoal: calibrated.successDaysAtGoal,
         progressionDirection: calibrated.progressionDirection,
         phase: calibrated.phase,
         lastRelapseAt: calibrated.lastRelapseAt,

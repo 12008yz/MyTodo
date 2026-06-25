@@ -16,6 +16,8 @@ export function toHabitResponse(habit: Habit): HabitResponse {
     baseline_value: toNumber(habit.baselineValue),
     current_goal: toNumber(habit.currentGoal),
     growth_step: toNumber(habit.growthStep),
+    progression_interval_days: habit.progressionIntervalDays,
+    success_days_at_goal: habit.successDaysAtGoal,
     progression_direction: habit.progressionDirection as HabitResponse["progression_direction"],
     phase: habit.phase as HabitResponse["phase"],
     last_relapse_at: habit.lastRelapseAt?.toISOString() ?? null,

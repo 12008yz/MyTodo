@@ -261,6 +261,11 @@ describe("Day close worker", () => {
       payload: { habit_id: habit.id, date: CLOSE_DATE, value: 0 },
     });
 
+    await db
+      .update(habits)
+      .set({ successDaysAtGoal: 2 })
+      .where(eq(habits.id, habit.id));
+
     await dayCloseService.closeDayForUser(user, CLOSE_DATE);
 
     const [updated] = await db.select().from(habits).where(eq(habits.id, habit.id));

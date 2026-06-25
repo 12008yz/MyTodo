@@ -188,6 +188,7 @@ export class DayCloseService {
 
       const habitUpdate: Partial<typeof habits.$inferInsert> = {
         currentGoal: String(result.nextGoal),
+        successDaysAtGoal: result.nextSuccessDaysAtGoal,
       };
 
       if (result.nextPhase) {
@@ -315,6 +316,8 @@ export class DayCloseService {
       currentGoal: Number(habit.currentGoal),
       growthStep: Number(habit.growthStep),
       progressionDirection: habit.progressionDirection as HabitForDayClose["progressionDirection"],
+      progressionIntervalDays: habit.progressionIntervalDays,
+      successDaysAtGoal: habit.successDaysAtGoal,
       phase: habit.phase,
       templateId: habit.templateId,
       minGoal: habit.templateId === "social_media" ? SOCIAL_MEDIA_MIN_GOAL : undefined,

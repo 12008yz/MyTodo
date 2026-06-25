@@ -37,6 +37,7 @@ describe("closeDayForHabit", () => {
       value: null,
       upsertCheckin: true,
       nextGoal: 0,
+      nextSuccessDaysAtGoal: 0,
     });
   });
 
@@ -46,6 +47,7 @@ describe("closeDayForHabit", () => {
       value: null,
       upsertCheckin: true,
       nextGoal: 10,
+      nextSuccessDaysAtGoal: 0,
     });
   });
 
@@ -55,6 +57,7 @@ describe("closeDayForHabit", () => {
       value: null,
       upsertCheckin: true,
       nextGoal: 20,
+      nextSuccessDaysAtGoal: 0,
     });
   });
 
@@ -66,6 +69,7 @@ describe("closeDayForHabit", () => {
       value: 12,
       upsertCheckin: false,
       nextGoal: 11,
+      nextSuccessDaysAtGoal: 0,
     });
   });
 
@@ -75,6 +79,7 @@ describe("closeDayForHabit", () => {
       value: 18,
       upsertCheckin: true,
       nextGoal: 19,
+      nextSuccessDaysAtGoal: 0,
     });
   });
 
@@ -89,6 +94,7 @@ describe("closeDayForHabit", () => {
       value: null,
       upsertCheckin: true,
       nextGoal: 10,
+      nextSuccessDaysAtGoal: 0,
     });
   });
 
@@ -123,6 +129,7 @@ describe("closeDayForHabit", () => {
       value: 0,
       upsertCheckin: false,
       nextGoal: 0,
+      nextSuccessDaysAtGoal: 0,
       nextPhase: "abstinence",
       setLastRelapseAt: true,
     });

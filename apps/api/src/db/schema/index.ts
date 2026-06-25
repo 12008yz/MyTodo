@@ -85,6 +85,8 @@ export const habits = pgTable("habits", {
   templateId: varchar("template_id", { length: 32 }),
   categoryKey: varchar("category_key", { length: 32 }),
   harshnessLevel: integer("harshness_level").notNull().default(1),
+  progressionIntervalDays: integer("progression_interval_days").notNull().default(1),
+  successDaysAtGoal: integer("success_days_at_goal").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
 });

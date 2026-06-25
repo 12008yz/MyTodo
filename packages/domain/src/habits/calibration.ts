@@ -47,6 +47,8 @@ export type CalibratedHabit = {
   baselineValue: number;
   currentGoal: number;
   growthStep: number;
+  progressionIntervalDays: number;
+  successDaysAtGoal: number;
   progressionDirection: "increase" | "decrease" | "abstain";
   phase: "reduction" | "abstinence";
   lastRelapseAt: Date | null;
@@ -103,6 +105,8 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
         baselineValue: 0,
         currentGoal: 0,
         growthStep: template.growthStep,
+        progressionIntervalDays: template.progressionIntervalDays,
+        successDaysAtGoal: 0,
         progressionDirection: template.progressionDirection,
         phase: "abstinence",
         lastRelapseAt: now,
@@ -123,6 +127,8 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
         baselineValue,
         currentGoal: baselineValue,
         growthStep: template.growthStep,
+        progressionIntervalDays: template.progressionIntervalDays,
+        successDaysAtGoal: 0,
         progressionDirection: template.progressionDirection,
         phase: template.phase,
         lastRelapseAt: null,
@@ -148,6 +154,8 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
       baselineValue,
       currentGoal,
       growthStep: template.growthStep,
+      progressionIntervalDays: template.progressionIntervalDays,
+      successDaysAtGoal: 0,
       progressionDirection: template.progressionDirection,
       phase: template.phase,
       lastRelapseAt: null,
@@ -174,6 +182,8 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
     baselineValue,
     currentGoal,
     growthStep: isEarlyRise ? EARLY_RISE_SHIFT_MIN : growthStepForCustomUnit(unit),
+    progressionIntervalDays: 1,
+    successDaysAtGoal: 0,
     lastRelapseAt: null,
     allowsWeeklySkip: true,
     isCustom: true,

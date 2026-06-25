@@ -94,7 +94,7 @@ describe("Checkins", () => {
     return habitResponseSchema.parse(JSON.parse(response.body));
   }
 
-  it("records dark limit success with decreased preview_next_goal", async () => {
+  it("records dark limit success with unchanged preview_next_goal until interval met", async () => {
     const auth = await createOnboardedUser("dark-success@example.com");
     const habit = await createDarkHabit(auth.access_token);
 
@@ -112,6 +112,33 @@ describe("Checkins", () => {
     expect(response.statusCode).toBe(201);
     const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
     expect(checkin.status).toBe("success");
+    expect(checkin.preview_next_goal).toBe(20);
+    expect(habit.progression_interval_days).toBe(3);
+  });
+
+  it("decreases dark limit preview_next_goal after third successful day", async () => {
+    const auth = await createOnboardedUser("dark-interval@example.com");
+    const habit = await createDarkHabit(auth.access_token);
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+
+    await db
+      .update(habits)
+      .set({ successDaysAtGoal: 2 })
+      .where(eq(habits.id, habit.id));
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins",
+      headers,
+      payload: {
+        habit_id: habit.id,
+        date: "2026-06-20",
+        value: 18,
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
     expect(checkin.preview_next_goal).toBe(19);
   });
 

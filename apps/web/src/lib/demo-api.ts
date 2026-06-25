@@ -1,7 +1,8 @@
-import { buildDailyPlan, calibrateHabit, recalculateLightGoal, type CalibrationProfile } from "@mytodo/domain";
+import { buildDailyPlan, calibrateHabit, computeNextGoal, recalculateLightGoal, type CalibrationProfile } from "@mytodo/domain";
 import {
   AWARENESS_SESSION_MIN,
   SESSION_TARGET_MIN,
+  SOCIAL_MEDIA_MIN_GOAL,
   computeDailyBudgetMin,
   HABIT_TEMPLATES,
   type CustomHabitUnit,
@@ -238,6 +239,8 @@ function createHabitResponse(
       baseline_value: calibrated.baselineValue,
       current_goal: calibrated.currentGoal,
       growth_step: calibrated.growthStep,
+      progression_interval_days: calibrated.progressionIntervalDays,
+      success_days_at_goal: calibrated.successDaysAtGoal,
       progression_direction: calibrated.progressionDirection,
       phase: calibrated.phase,
       last_relapse_at: calibrated.lastRelapseAt?.toISOString() ?? null,
@@ -273,6 +276,8 @@ function createHabitResponse(
     baseline_value: calibrated.baselineValue,
     current_goal: calibrated.currentGoal,
     growth_step: calibrated.growthStep,
+    progression_interval_days: calibrated.progressionIntervalDays,
+    success_days_at_goal: calibrated.successDaysAtGoal,
     progression_direction: calibrated.progressionDirection,
     phase: calibrated.phase,
     last_relapse_at: calibrated.lastRelapseAt?.toISOString() ?? null,
@@ -425,12 +430,40 @@ function computeDemoDayColor(
   return "skipped";
 }
 
+function toDemoProgressionHabit(habit: HabitResponse) {
+  return {
+    type: habit.type,
+    side: habit.side,
+    currentGoal: habit.current_goal,
+    growthStep: habit.growth_step,
+    progressionDirection: habit.progression_direction,
+    progressionIntervalDays: habit.progression_interval_days,
+    successDaysAtGoal: habit.success_days_at_goal,
+    minGoal: habit.template_id === "social_media" ? SOCIAL_MEDIA_MIN_GOAL : undefined,
+  };
+}
+
+function demoPreviewNextGoal(
+  habit: HabitResponse,
+  status: CheckinResponse["status"] | undefined,
+): number {
+  const dayStatus =
+    status === "success" || status === "fail" || status === "skipped"
+      ? status
+      : status === "pending"
+        ? "fail"
+        : "success";
+
+  return computeNextGoal(toDemoProgressionHabit(habit), dayStatus);
+}
+
 function makeCheckin(
   habit: HabitResponse,
   date: string,
   status: CheckinResponse["status"],
   value: number | null,
 ): CheckinResponse {
+  const previewNextGoal = demoPreviewNextGoal(habit, status);
   return {
     id: crypto.randomUUID(),
     habit_id: habit.id,
@@ -439,7 +472,7 @@ function makeCheckin(
     value,
     updated_at: nowIso(),
     current_goal: habit.current_goal,
-    preview_next_goal: habit.current_goal,
+    preview_next_goal: previewNextGoal,
   };
 }
 
@@ -589,6 +622,7 @@ function mapHabitToTodayLight(
   habit: HabitResponse,
   checkin: CheckinResponse | null,
 ): TodayLightHabit {
+  const previewNextGoal = demoPreviewNextGoal(habit, checkin?.status);
   return {
     ...habit,
     checkin: checkin
@@ -599,10 +633,10 @@ function mapHabitToTodayLight(
           value: checkin.value,
           updated_at: checkin.updated_at,
           current_goal: checkin.current_goal,
-          preview_next_goal: checkin.preview_next_goal,
+          preview_next_goal: previewNextGoal,
         }
       : null,
-    preview_next_goal: checkin?.preview_next_goal ?? habit.current_goal,
+    preview_next_goal: previewNextGoal,
     streak_days: checkin?.status === "success" ? 1 : 0,
   };
 }
@@ -856,6 +890,8 @@ function upsertSessionCheckin(
           : "fail"
         : "pending";
 
+  const previewNextGoal = demoPreviewNextGoal(habit, status);
+
   const checkin: CheckinResponse = {
     id: existing?.id ?? crypto.randomUUID(),
     habit_id: habit.id,
@@ -864,7 +900,7 @@ function upsertSessionCheckin(
     value: nextValue,
     updated_at: now,
     current_goal: habit.current_goal,
-    preview_next_goal: habit.current_goal,
+    preview_next_goal: previewNextGoal,
   };
 
   if (existingIndex >= 0) {
@@ -878,7 +914,7 @@ function upsertSessionCheckin(
     status,
     value: nextValue,
     current_goal: habit.current_goal,
-    preview_next_goal: habit.current_goal,
+    preview_next_goal: previewNextGoal,
   };
 }
 
@@ -904,6 +940,7 @@ export function demoCreateCheckin(data: CreateCheckinRequest): CheckinResponse {
   );
 
   const { status: resolvedStatus, value: resolvedValue } = resolveDemoCheckinStatus(habit, data);
+  const previewNextGoal = demoPreviewNextGoal(habit, resolvedStatus);
 
   const checkin: CheckinResponse = {
     id: existingIndex >= 0 ? state.checkins[existingIndex]!.id : crypto.randomUUID(),
@@ -913,7 +950,7 @@ export function demoCreateCheckin(data: CreateCheckinRequest): CheckinResponse {
     value: resolvedValue,
     updated_at: nowIso(),
     current_goal: habit.current_goal,
-    preview_next_goal: habit.current_goal,
+    preview_next_goal: previewNextGoal,
   };
 
   if (existingIndex >= 0) {

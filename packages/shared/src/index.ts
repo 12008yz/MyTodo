@@ -43,6 +43,7 @@ export {
   PUSHUP_SECONDS_PER_REP,
   SOCIAL_MEDIA_MIN_GOAL,
   SOCIAL_MEDIA_STEP,
+  DARK_REDUCTION_INTERVAL_DAYS,
   type CustomHabitUnit,
   type HabitCategoryKey,
   type HabitPhase,

@@ -1,4 +1,4 @@
-import { computeNextGoal, type DayStatus, type HabitForProgression } from "./progression.js";
+import { applyDayProgression, type DayStatus, type HabitForProgression } from "./progression.js";
 
 export type HabitForDayClose = HabitForProgression & {
   phase: string;
@@ -23,6 +23,7 @@ export type DayCloseResult = {
   /** Worker should create or update the checkin row for this day. */
   upsertCheckin: boolean;
   nextGoal: number;
+  nextSuccessDaysAtGoal: number;
   nextPhase?: string;
   setLastRelapseAt?: boolean;
 };
@@ -114,7 +115,8 @@ export function closeDayForHabit(
 ): DayCloseResult {
   const status = resolveFinalStatus(habit, checkin ?? null, options);
   const value = resolveFinalValue(habit, checkin ?? null, status);
-  const nextGoal = computeNextGoal(habit, status);
+  const progression = applyDayProgression(habit, status);
+  const nextGoal = progression.nextGoal;
   const hadCheckin = checkin != null;
   const upsertCheckin =
     !hadCheckin || checkin!.status === "pending" || status !== checkin!.status;
@@ -124,6 +126,7 @@ export function closeDayForHabit(
     value,
     upsertCheckin,
     nextGoal,
+    nextSuccessDaysAtGoal: progression.nextSuccessDaysAtGoal,
     ...smokingPhaseUpdate(habit, status, nextGoal),
   };
 }

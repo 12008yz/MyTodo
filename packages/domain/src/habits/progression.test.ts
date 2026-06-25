@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeNextGoal, type HabitForProgression } from "./progression.js";
+import { computeNextGoal, applyDayProgression, type HabitForProgression } from "./progression.js";
 
 const lightTarget = (currentGoal: number, growthStep = 1): HabitForProgression => ({
   type: "target",
@@ -29,6 +29,31 @@ describe("computeNextGoal", () => {
 
   it("decreases dark limit goal after success", () => {
     expect(computeNextGoal(darkLimit(20), "success")).toBe(19);
+  });
+
+  it("decreases dark limit goal only after interval successful days", () => {
+    const habit: HabitForProgression = {
+      ...darkLimit(20),
+      progressionIntervalDays: 3,
+      successDaysAtGoal: 0,
+    };
+
+    expect(computeNextGoal({ ...habit, successDaysAtGoal: 0 }, "success")).toBe(20);
+    expect(computeNextGoal({ ...habit, successDaysAtGoal: 1 }, "success")).toBe(20);
+    expect(computeNextGoal({ ...habit, successDaysAtGoal: 2 }, "success")).toBe(19);
+  });
+
+  it("resets success streak on fail for interval habits", () => {
+    const habit: HabitForProgression = {
+      ...darkLimit(20),
+      progressionIntervalDays: 3,
+      successDaysAtGoal: 2,
+    };
+
+    expect(applyDayProgression(habit, "fail")).toEqual({
+      nextGoal: 20,
+      nextSuccessDaysAtGoal: 0,
+    });
   });
 
   it("does not go below zero for dark limit", () => {
