@@ -59,6 +59,6 @@ export function statusLabel(
     case "skipped":
       return "Пропуск";
     default:
-      return habitType === "abstinence" ? "Держишься" : "Можно начать";
+      return "В процессе";
   }
 }

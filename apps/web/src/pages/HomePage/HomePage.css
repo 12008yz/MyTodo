@@ -412,89 +412,6 @@
   opacity: 0.85;
 }
 
-.home__hero {
-  margin: 0 0 calc(18 * var(--s));
-  padding: calc(16 * var(--s));
-  border-radius: calc(20 * var(--s));
-  background: linear-gradient(145deg, rgba(95, 51, 225, 0.08) 0%, rgba(255, 255, 255, 0.92) 100%);
-  border: 1px solid rgba(95, 51, 225, 0.08);
-  box-shadow: 0 calc(8 * var(--s)) calc(28 * var(--s)) rgba(95, 51, 225, 0.08);
-}
-
-.home__hero-greeting {
-  display: flex;
-  align-items: flex-start;
-  gap: calc(12 * var(--s));
-  margin-bottom: calc(14 * var(--s));
-}
-
-.home__hero-emoji {
-  font-size: calc(28 * var(--s));
-  line-height: 1;
-}
-
-.home__hero-copy {
-  min-width: 0;
-}
-
-.home__hero-title {
-  margin: 0;
-  font-size: calc(19 * var(--s));
-  line-height: calc(24 * var(--s));
-  color: var(--color-black);
-}
-
-.home__hero-subtitle,
-.home__hero-note,
-.home__stats-summary {
-  margin: calc(4 * var(--s)) 0 0;
-  font-size: calc(12 * var(--s));
-  line-height: 1.45;
-  color: var(--color-secondary);
-}
-
-.home__hero-progress {
-  display: flex;
-  flex-direction: column;
-  gap: calc(6 * var(--s));
-}
-
-.home__hero-progress-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(10 * var(--s));
-}
-
-.home__hero-progress-label {
-  font-size: calc(11 * var(--s));
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-secondary);
-}
-
-.home__hero-progress-value {
-  font-size: calc(12 * var(--s));
-  font-weight: 600;
-  color: var(--color-black);
-}
-
-.home__hero-progress-bar {
-  height: calc(8 * var(--s));
-  overflow: hidden;
-  border-radius: calc(999 * var(--s));
-  background: rgba(95, 51, 225, 0.14);
-}
-
-.home__hero-progress-fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #5f33e1 0%, #ab94ff 100%);
-  transition: width var(--home-habit-crossfade-duration) var(--side-ease);
-}
-
 .home__notification {
   position: relative;
   flex-shrink: 0;
@@ -526,7 +443,6 @@
 /* --- Statistics (top 101) --- */
 
 .home__section--stats {
-  margin-top: calc(20 * var(--s));
   margin-bottom: calc(20 * var(--s));
   flex-shrink: 0;
 }
@@ -629,10 +545,6 @@
   font-size: calc(11 * var(--s));
   line-height: calc(14 * var(--s));
   color: var(--color-primary);
-}
-
-.home__stats-heading-copy {
-  min-width: 0;
 }
 
 .home__tasks-list {
@@ -1057,29 +969,6 @@
   color: var(--color-secondary);
 }
 
-.home__task-timer-hero {
-  display: flex;
-  flex-direction: column;
-  gap: calc(2 * var(--s));
-  padding: calc(10 * var(--s)) calc(12 * var(--s));
-  border-radius: calc(12 * var(--s));
-  background: rgba(95, 51, 225, 0.07);
-}
-
-.home__task-timer-label {
-  font-size: calc(10 * var(--s));
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-secondary);
-}
-
-.home__task-timer-value {
-  font-size: calc(18 * var(--s));
-  line-height: 1.2;
-  color: var(--color-black);
-}
-
 .home__task-progress {
   margin: 0;
   font-size: calc(12 * var(--s));
@@ -1451,8 +1340,6 @@
 
 .home[data-side="dark"] .home__hello,
 .home[data-side="dark"] .home__name,
-.home[data-side="dark"] .home__hero-title,
-.home[data-side="dark"] .home__hero-progress-value,
 .home[data-side="dark"] .home__section-title,
 .home[data-side="dark"] .home__stat-card--light .home__stat-label,
 .home[data-side="dark"] .home__stat-card--light .home__stat-value,
@@ -1463,12 +1350,6 @@
 .home[data-side="dark"] .home__task-card {
   background: #24252c;
   border-color: rgba(255, 255, 255, 0.08);
-}
-
-.home[data-side="dark"] .home__hero {
-  background: linear-gradient(145deg, rgba(95, 51, 225, 0.18) 0%, rgba(36, 37, 44, 0.92) 100%);
-  border-color: rgba(171, 148, 255, 0.14);
-  box-shadow: 0 calc(8 * var(--s)) calc(28 * var(--s)) rgba(0, 0, 0, 0.22);
 }
 
 .home[data-side="dark"] .home__stat-card--light {
@@ -1549,9 +1430,6 @@
 }
 
 .home[data-side="dark"] .home__plan-summary,
-.home[data-side="dark"] .home__hero-subtitle,
-.home[data-side="dark"] .home__hero-note,
-.home[data-side="dark"] .home__stats-summary,
 .home[data-side="dark"] .home__value-prompt-hint,
 .home[data-side="dark"] .home__value-prompt-label {
   color: rgba(245, 245, 247, 0.62);
@@ -1565,15 +1443,7 @@
   background: rgba(171, 148, 250, 0.16);
 }
 
-.home[data-side="dark"] .home__hero-progress-bar {
-  background: rgba(171, 148, 250, 0.16);
-}
-
 .home[data-side="dark"] .home__plan-progress-fill {
-  background: linear-gradient(90deg, #7c3aed 0%, #ff7d53 100%);
-}
-
-.home[data-side="dark"] .home__hero-progress-fill {
   background: linear-gradient(90deg, #7c3aed 0%, #ff7d53 100%);
 }
 
@@ -1595,18 +1465,9 @@
 .home__plan-list-layer[data-side="dark"] .home__task-timer,
 .home__plan-list-layer[data-side="dark"] .home__task-time,
 .home__plan-list-layer[data-side="dark"] .home__task-progress,
-.home__plan-list-layer[data-side="dark"] .home__task-timer-label,
 .home__plan-list-layer[data-side="dark"] .home__plan-item-meta,
 .home__plan-list-layer[data-side="dark"] .home__plan-item-result {
   color: rgba(245, 245, 247, 0.62);
-}
-
-.home__plan-list-layer[data-side="dark"] .home__task-timer-hero {
-  background: rgba(171, 148, 255, 0.1);
-}
-
-.home__plan-list-layer[data-side="dark"] .home__task-timer-value {
-  color: #f5f5f7;
 }
 
 .home__plan-list-layer[data-side="dark"] .home__plan-item--details-open {

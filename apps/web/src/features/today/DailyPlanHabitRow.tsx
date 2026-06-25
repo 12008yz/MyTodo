@@ -48,18 +48,6 @@ function hasTimerField(habit: TodayLightHabit | TodayDarkHabit): habit is TodayD
   return "timer" in habit;
 }
 
-function actionLabel(habit: TodayLightHabit | TodayDarkHabit, block: DailyPlanBlock | null): string {
-  if (block) {
-    return block.status === "active" ? "Идёт фокус" : "Начать";
-  }
-
-  if (habit.type === "limit") {
-    return "Внести";
-  }
-
-  return "Готово";
-}
-
 function resolveBadge(
   habit: TodayLightHabit | TodayDarkHabit,
   block: DailyPlanBlock | null,
@@ -130,71 +118,68 @@ export function DailyPlanHabitRow({
     >
       <div className="home__plan-item-top">
         <div className="home__plan-item-main">
-          <h3 className="home__plan-item-title">
-            <HabitIcon icon={habit.icon ?? block?.icon} side={side} />
-            <span>
-              {habit.name} — {formatGoalLabel(habit)}
-            </span>
-          </h3>
+        <h3 className="home__plan-item-title">
+          <HabitIcon icon={habit.icon ?? block?.icon} side={side} />
+          <span>
+            {habit.name} — {formatGoalLabel(habit)}
+          </span>
+        </h3>
 
-          {timer ? (
-            <div className="home__task-timer-hero">
-              <span className="home__task-timer-label">Чистое время</span>
-              <strong className="home__task-timer-value">{formatTimer(timer.elapsed)}</strong>
-            </div>
-          ) : null}
+        {timer ? (
+          <p className="home__task-timer">Чистое время: {formatTimer(timer.elapsed)}</p>
+        ) : null}
 
-          {!timer && habit.type !== "abstinence" ? (
-            <p className="home__task-progress">
-              Прогресс: {habit.checkin?.value ?? 0} / {habit.current_goal} {formatUnit(habit.unit)}
-            </p>
-          ) : null}
+        {!timer && habit.type !== "abstinence" ? (
+          <p className="home__task-progress">
+            Прогресс: {habit.checkin?.value ?? 0} / {habit.current_goal} {formatUnit(habit.unit)}
+          </p>
+        ) : null}
 
-          {block ? (
-            <p className="home__plan-item-meta">
-              {block.duration_min} мин · ожидание {block.expected_yield} {formatUnit(block.unit)}
-              {block.status === "completed" ? (
-                <>
-                  {" "}
-                  · факт: {block.actual_value ?? 0} {formatUnit(block.unit)}
-                </>
-              ) : null}
-            </p>
-          ) : null}
-
-          <div className="home__task-footer">
-            <span className="home__task-time">
-              {status === "success"
-                ? `Завтра: ${habit.preview_next_goal}`
-                : `Сегодня: ${habit.checkin?.value ?? 0} ${formatUnit(habit.unit)}`}
-            </span>
-          </div>
-
-          <div className="home__task-actions">
-            {canStartSession ? (
-              <button
-                type="button"
-                className="home__task-btn"
-                disabled={startDisabled}
-                onClick={onStart}
-              >
-                {hasActiveFocus ? "Идёт фокус" : actionLabel(habit, block)}
-              </button>
+        {block ? (
+          <p className="home__plan-item-meta">
+            {block.duration_min} мин · ожидание {block.expected_yield} {formatUnit(block.unit)}
+            {block.status === "completed" ? (
+              <>
+                {" "}
+                · факт: {block.actual_value ?? 0} {formatUnit(block.unit)}
+              </>
             ) : null}
+          </p>
+        ) : null}
 
-            {habit.type === "abstinence" ? (
-              <button
-                type="button"
-                className="home__task-btn home__task-btn--danger"
-                disabled={isPending || status === "fail"}
-                onClick={() => void runCheckin({ habit_id: habit.id, status: "fail" })}
-              >
-                Я сорвался
-              </button>
-            ) : null}
-          </div>
+        <div className="home__task-footer">
+          <span className="home__task-time">
+            {status === "success"
+              ? `Завтра: ${habit.preview_next_goal}`
+              : `Сегодня: ${habit.checkin?.value ?? 0} ${formatUnit(habit.unit)}`}
+          </span>
+        </div>
 
-          {actionError ? <p className="home__task-error">{actionError}</p> : null}
+        <div className="home__task-actions">
+          {canStartSession ? (
+            <button
+              type="button"
+              className="home__task-btn"
+              disabled={startDisabled}
+              onClick={onStart}
+            >
+              {hasActiveFocus ? "Идёт фокус" : "Начать"}
+            </button>
+          ) : null}
+
+          {habit.type === "abstinence" ? (
+            <button
+              type="button"
+              className="home__task-btn home__task-btn--danger"
+              disabled={isPending || status === "fail"}
+              onClick={() => void runCheckin({ habit_id: habit.id, status: "fail" })}
+            >
+              Сорвался
+            </button>
+          ) : null}
+        </div>
+
+        {actionError ? <p className="home__task-error">{actionError}</p> : null}
         </div>
 
         <div className="home__plan-item-aside">

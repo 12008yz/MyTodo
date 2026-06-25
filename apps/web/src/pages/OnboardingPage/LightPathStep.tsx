@@ -558,12 +558,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
         <h1 className="onboarding__title">Выбери свой путь</h1>
         <p className="onboarding__subtitle">Отметь привычки, которые возьмёшь в эту главу.</p>
 
-        <p className="onboarding__time-limit-hint" role="status">
-          При {freeTimeMin} мин в день нагрузку распределим между всеми выбранными привычками.
-          {atLightHabitLimit
-            ? ` Достигнут лимит — не больше ${maxLightHabits} полезных привычек.`
-            : null}
-        </p>
+       
 
         <div className="onboarding__step-hero" aria-hidden="true">
           <img
