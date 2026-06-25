@@ -275,6 +275,14 @@ export function recommendLightGoal(
     return Math.max(baselineValue, MEDITATION_DAILY_GOAL_MIN);
   }
 
+  if (activityId === "mindfulness-language") {
+    return Math.max(baselineValue, LANGUAGE_SESSION_TARGET_MIN);
+  }
+
+  if (isStrengthWorkoutCircuit(habit)) {
+    return Math.max(baselineValue, STRENGTH_WORKOUT_TARGET_MINUTES);
+  }
+
   if (activityId === "mindfulness-books") {
     return Math.max(baselineValue, BOOKS_START_PAGES);
   }

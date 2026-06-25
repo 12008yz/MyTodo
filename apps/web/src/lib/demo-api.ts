@@ -1,9 +1,12 @@
-import { buildDailyPlan } from "@mytodo/domain";
+import { buildDailyPlan, calibrateHabit, recalculateLightGoal, type CalibrationProfile } from "@mytodo/domain";
 import {
   AWARENESS_SESSION_MIN,
   SESSION_TARGET_MIN,
   computeDailyBudgetMin,
   HABIT_TEMPLATES,
+  type CustomHabitUnit,
+  type HabitCategoryKey,
+  type HabitTemplateId,
   todayDarkResponseSchema,
   todayLightResponseSchema,
   type DayColorValue,
@@ -112,16 +115,64 @@ function defaultEnglish(): EnglishSettingsResponse {
   };
 }
 
+function toCalibrationProfile(user: UserProfile): CalibrationProfile {
+  return {
+    dailyBudgetMin: user.daily_budget_min,
+    age: user.age ?? 30,
+    gender: user.gender ?? "male",
+    weightKg: user.weight_kg ?? 70,
+    heightCm: user.height_cm ?? 175,
+  };
+}
+
+function habitToIdentity(habit: HabitResponse) {
+  return {
+    name: habit.name,
+    unit: habit.unit as CustomHabitUnit | import("@mytodo/shared").HabitUnit,
+    templateId: habit.template_id,
+    categoryKey: habit.category_key,
+  };
+}
+
+function normalizeDemoHabitGoals(state: DemoState): DemoState {
+  const profile = toCalibrationProfile(state.user);
+  const activeLightCount = state.habits.filter((habit) => habit.side === "light" && habit.is_active).length;
+
+  const habits = state.habits.map((habit) => {
+    if (habit.side !== "light" || !habit.is_active) {
+      return habit;
+    }
+
+    const recommendedGoal = recalculateLightGoal(
+      habit.baseline_value,
+      habitToIdentity(habit),
+      profile,
+      Math.max(activeLightCount, 1),
+    );
+
+    if (habit.current_goal >= recommendedGoal) {
+      return habit;
+    }
+
+    return {
+      ...habit,
+      current_goal: recommendedGoal,
+    };
+  });
+
+  return { ...state, habits };
+}
+
 function loadState(): DemoState | null {
   try {
     const raw = localStorage.getItem(DEMO_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as DemoState;
-    return {
+    return normalizeDemoHabitGoals({
       ...parsed,
       checkins: parsed.checkins ?? [],
       sessions: parsed.sessions ?? [],
-    };
+    });
   } catch {
     return null;
   }
@@ -164,57 +215,75 @@ function createHabitResponse(
   user: UserProfile,
   data: CreateHabitRequest,
   createdAt = nowIso(),
+  activeLightHabitsIncludingNew = 1,
 ): HabitResponse {
+  const profile = toCalibrationProfile(user);
 
   if ("template_id" in data) {
     const template = HABIT_TEMPLATES[data.template_id];
-    const baseline = data.baseline_value ?? 0;
+    const calibrated = calibrateHabit({
+      kind: "template",
+      templateId: data.template_id,
+      template,
+      baselineValue: data.baseline_value ?? 0,
+      profile,
+      activeLightHabitsIncludingNew,
+    });
 
     return {
       id: crypto.randomUUID(),
       user_id: user.id,
-      name: template.name,
-      type: template.type,
-      side: template.side,
-      unit: template.unit,
-      baseline_value: baseline,
-      current_goal: Math.max(baseline, template.growthStep),
-      growth_step: template.growthStep,
-      progression_direction: template.progressionDirection,
-      phase: template.phase,
-      last_relapse_at: template.type === "abstinence" ? createdAt : null,
-      allows_weekly_skip: template.side === "light",
+      name: calibrated.name,
+      type: calibrated.type,
+      side: calibrated.side,
+      unit: calibrated.unit,
+      baseline_value: calibrated.baselineValue,
+      current_goal: calibrated.currentGoal,
+      growth_step: calibrated.growthStep,
+      progression_direction: calibrated.progressionDirection,
+      phase: calibrated.phase,
+      last_relapse_at: calibrated.lastRelapseAt?.toISOString() ?? null,
+      allows_weekly_skip: calibrated.allowsWeeklySkip,
       is_custom: false,
-      icon: resolveTemplateIcon(data.template_id),
+      icon: data.icon ?? resolveTemplateIcon(data.template_id),
       is_active: true,
       template_id: data.template_id,
-      category_key: null,
+      category_key: calibrated.categoryKey,
       harshness_level: user.harshness_level,
       created_at: createdAt,
     };
   }
 
-  const baseline = data.baseline_value;
+  const calibrated = calibrateHabit({
+    kind: "custom",
+    name: data.name,
+    unit: data.unit,
+    baselineValue: data.baseline_value,
+    categoryKey: data.category_key,
+    profile,
+    activeLightHabitsIncludingNew,
+    icon: data.icon,
+  });
 
   return {
     id: crypto.randomUUID(),
     user_id: user.id,
-    name: data.name,
-    type: "target",
-    side: "light",
-    unit: data.unit,
-    baseline_value: baseline,
-    current_goal: Math.max(baseline, 1),
-    growth_step: data.unit === "minutes" ? 5 : 1,
-    progression_direction: "increase",
-    phase: "reduction",
-    last_relapse_at: null,
-    allows_weekly_skip: true,
+    name: calibrated.name,
+    type: calibrated.type,
+    side: calibrated.side,
+    unit: calibrated.unit,
+    baseline_value: calibrated.baselineValue,
+    current_goal: calibrated.currentGoal,
+    growth_step: calibrated.growthStep,
+    progression_direction: calibrated.progressionDirection,
+    phase: calibrated.phase,
+    last_relapse_at: calibrated.lastRelapseAt?.toISOString() ?? null,
+    allows_weekly_skip: calibrated.allowsWeeklySkip,
     is_custom: true,
-    icon: data.icon ?? null,
+    icon: calibrated.icon,
     is_active: true,
-    template_id: null,
-    category_key: data.category_key ?? null,
+    template_id: calibrated.templateId,
+    category_key: calibrated.categoryKey,
     harshness_level: user.harshness_level,
     created_at: createdAt,
   };
@@ -304,7 +373,9 @@ export function demoCreateHabit(data: CreateHabitRequest): HabitResponse {
     throw new Error("Complete onboarding before creating habits");
   }
 
-  const habit = createHabitResponse(state.user, data);
+  const activeLightCount =
+    state.habits.filter((habit) => habit.side === "light" && habit.is_active).length + 1;
+  const habit = createHabitResponse(state.user, data, nowIso(), activeLightCount);
   state.habits.push(habit);
   saveState(state);
   return habit;
