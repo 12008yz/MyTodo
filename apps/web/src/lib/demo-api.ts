@@ -5,8 +5,6 @@ import {
   computeDailyBudgetMin,
   HABIT_TEMPLATES,
   type CustomHabitUnit,
-  type HabitCategoryKey,
-  type HabitTemplateId,
   todayDarkResponseSchema,
   todayLightResponseSchema,
   type DayColorValue,
