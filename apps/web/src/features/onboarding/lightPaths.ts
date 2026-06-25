@@ -1,8 +1,10 @@
 import { HABIT_TEMPLATES, type HabitCategoryKey, type HabitTemplateId } from "@mytodo/shared";
 import {
-  estimateHabitsComfortMinutes,
+  estimateHabitsComfortMinutesWithSetup,
   formatEarlyRiseTargetWakeTime,
   formatHabitComfortLabel,
+  formatHabitComfortLabelWithSetup,
+  type HabitComfortSetup,
   type HabitIdentity,
 } from "@mytodo/domain";
 import type { LightPathId, SelectedCustomHabit, SelectedHabit } from "./types";
@@ -415,12 +417,22 @@ export function selectedHabitToIdentity(habit: SelectedHabit): HabitIdentity {
   };
 }
 
+function selectedHabitToComfortSetup(habit: SelectedHabit): HabitComfortSetup {
+  return {
+    habit: selectedHabitToIdentity(habit),
+    practicesNow: habit.practicesNow,
+    baselineValue: isLightBaselineValid(habit.baseline)
+      ? Number(habit.baseline.replace(",", "."))
+      : undefined,
+  };
+}
+
 export function getHabitComfortLabel(habit: SelectedHabit): string {
-  return formatHabitComfortLabel(selectedHabitToIdentity(habit));
+  return formatHabitComfortLabelWithSetup(selectedHabitToComfortSetup(habit));
 }
 
 export function estimateLightHabitsComfortMinutes(habits: SelectedHabit[]): number {
-  return estimateHabitsComfortMinutes(habits.map(selectedHabitToIdentity));
+  return estimateHabitsComfortMinutesWithSetup(habits.map(selectedHabitToComfortSetup));
 }
 
 export function getEarlyRiseSummary(habit: SelectedHabit, wakeTime: string): string {

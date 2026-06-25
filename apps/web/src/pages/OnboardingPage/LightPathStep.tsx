@@ -30,7 +30,6 @@ import "../../components/ContentPanels/ContentPanels.css";
 
 type LightPathStepProps = {
   lightHabits: SelectedHabit[];
-  freeTimeMin: number;
   activePathId: LightPathId;
   onActivePathChange: (pathId: LightPathId) => void;
   onChange: (habits: SelectedHabit[]) => void;
@@ -180,7 +179,6 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
   function LightPathStep(
     {
       lightHabits,
-      freeTimeMin,
       activePathId,
       onActivePathChange,
       onChange,
@@ -617,18 +615,8 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
         </div>
 
         {lightHabits.length > 0 ? (
-          <p
-            className={[
-              "onboarding__setup-hint",
-              comfortMinutes > freeTimeMin ? "onboarding__slider-warning" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-          >
+          <p className="onboarding__setup-hint">
             Примерно {comfortMinutes} мин в день для выбранных привычек
-            {comfortMinutes > freeTimeMin
-              ? ` — это больше, чем ${freeTimeMin} мин свободного времени. Убери лишнее или увеличь время на шаге «Тело».`
-              : ""}
           </p>
         ) : null}
 

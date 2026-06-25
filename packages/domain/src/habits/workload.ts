@@ -7,6 +7,7 @@ import {
   FOREIGN_LANGUAGE_HABIT_NAME,
   GRATITUDE_DAILY_MIN,
   HOBBY_TARGET_MINUTES,
+  LESSON_MINUTES_ESTIMATE,
   LANGUAGE_SESSION_MAX,
   LANGUAGE_SESSION_MIN,
   LANGUAGE_SESSION_TARGET_MIN,
@@ -31,6 +32,12 @@ export type HabitIdentity = {
   unit: HabitUnit | CustomHabitUnit;
   templateId?: HabitTemplateId | null;
   categoryKey?: HabitCategoryKey | null;
+};
+
+export type HabitComfortSetup = {
+  habit: HabitIdentity;
+  practicesNow?: boolean;
+  baselineValue?: number;
 };
 
 export type LightActivityId =
@@ -341,6 +348,44 @@ export function estimateHabitComfortMinutes(
   return recommendDailyMinutes(activityId, profile);
 }
 
+export function habitGoalToComfortMinutes(
+  unit: HabitUnit | CustomHabitUnit,
+  goal: number,
+): number {
+  switch (unit) {
+    case "pages":
+      return booksSessionMinutesForPages(goal);
+    case "minutes":
+      return goal;
+    case "reps":
+      return (goal * PUSHUP_SECONDS_PER_REP) / 60;
+    case "seconds":
+      return goal / 60;
+    case "lessons":
+      return goal * LESSON_MINUTES_ESTIMATE;
+    default:
+      return goal;
+  }
+}
+
+export function estimateHabitComfortMinutesWithSetup(
+  input: HabitComfortSetup,
+  profile: CalibrationProfile = DEFAULT_COMFORT_PROFILE,
+): number {
+  const { habit, practicesNow, baselineValue } = input;
+
+  if (
+    practicesNow === true &&
+    baselineValue !== undefined &&
+    Number.isFinite(baselineValue) &&
+    baselineValue >= 0
+  ) {
+    return habitGoalToComfortMinutes(habit.unit, baselineValue);
+  }
+
+  return estimateHabitComfortMinutes(habit, profile);
+}
+
 /** Whole minutes shown to the user — always round up fractional totals. */
 export function roundComfortMinutesTotal(minutes: number): number {
   return Math.ceil(minutes);
@@ -352,6 +397,17 @@ export function estimateHabitsComfortMinutes(
 ): number {
   const total = habits.reduce(
     (sum, habit) => sum + estimateHabitComfortMinutes(habit, profile),
+    0,
+  );
+  return roundComfortMinutesTotal(total);
+}
+
+export function estimateHabitsComfortMinutesWithSetup(
+  habits: HabitComfortSetup[],
+  profile: CalibrationProfile = DEFAULT_COMFORT_PROFILE,
+): number {
+  const total = habits.reduce(
+    (sum, habit) => sum + estimateHabitComfortMinutesWithSetup(habit, profile),
     0,
   );
   return roundComfortMinutesTotal(total);
@@ -390,6 +446,37 @@ export function formatHabitComfortLabel(habit: HabitIdentity): string {
     default:
       return "~20 мин/день";
   }
+}
+
+export function formatHabitComfortLabelWithSetup(
+  input: HabitComfortSetup,
+  _profile: CalibrationProfile = DEFAULT_COMFORT_PROFILE,
+): string {
+  const { habit, practicesNow, baselineValue } = input;
+
+  if (
+    practicesNow === true &&
+    baselineValue !== undefined &&
+    Number.isFinite(baselineValue) &&
+    baselineValue >= 0
+  ) {
+    const minutes = habitGoalToComfortMinutes(habit.unit, baselineValue);
+
+    if (habit.unit === "pages") {
+      return `${baselineValue} стр. (~${Math.ceil(minutes)} мин)`;
+    }
+    if (habit.unit === "minutes" || habit.unit === "lessons") {
+      return `~${Math.ceil(minutes)} мин/день`;
+    }
+    if (habit.unit === "reps") {
+      return `${baselineValue} раз (~${Math.ceil(minutes)} мин)`;
+    }
+    if (habit.unit === "seconds") {
+      return `${baselineValue} сек (~${Math.ceil(minutes)} мин)`;
+    }
+  }
+
+  return formatHabitComfortLabel(habit);
 }
 
 export function formatEarlyRiseTargetWakeTime(wakeTime: string, shiftMinutes: number): string {

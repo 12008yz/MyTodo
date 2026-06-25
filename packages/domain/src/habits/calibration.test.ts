@@ -9,6 +9,7 @@ import {
   computeBmi,
   distributeGoalsAcrossBudget,
   estimateHabitsComfortMinutes,
+  estimateHabitsComfortMinutesWithSetup,
   roundComfortMinutesTotal,
   recommendDailyMinutes,
   recommendLightGoal,
@@ -87,6 +88,36 @@ describe("workload", () => {
     );
     expect(goal).toBeGreaterThanOrEqual(6);
     expect(goal).toBeLessThanOrEqual(20);
+  });
+
+  it("uses entered baseline for comfort minutes total", () => {
+    const beginner = estimateHabitsComfortMinutesWithSetup([
+      {
+        habit: { name: FOREIGN_LANGUAGE_HABIT_NAME, unit: "minutes", categoryKey: "language" },
+        practicesNow: false,
+      },
+      {
+        habit: { name: MEDITATION_HABIT_NAME, unit: "minutes", categoryKey: "meditation" },
+        practicesNow: true,
+        baselineValue: 1,
+      },
+    ]);
+
+    const withLanguageBaseline = estimateHabitsComfortMinutesWithSetup([
+      {
+        habit: { name: FOREIGN_LANGUAGE_HABIT_NAME, unit: "minutes", categoryKey: "language" },
+        practicesNow: true,
+        baselineValue: 35,
+      },
+      {
+        habit: { name: MEDITATION_HABIT_NAME, unit: "minutes", categoryKey: "meditation" },
+        practicesNow: true,
+        baselineValue: 1,
+      },
+    ]);
+
+    expect(withLanguageBaseline).toBeGreaterThan(beginner);
+    expect(withLanguageBaseline - beginner).toBe(10);
   });
 
   it("rounds total comfort minutes up to a whole number", () => {
