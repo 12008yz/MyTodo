@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   CUSTOM_HABIT_UNITS,
+  HABIT_CATEGORY_KEYS,
   HABIT_TEMPLATE_IDS,
   HABIT_UNITS,
 } from "../constants/habits.js";
@@ -19,6 +20,7 @@ export const createCustomHabitSchema = z.object({
   name: z.string().trim().min(1).max(255),
   unit: z.enum(CUSTOM_HABIT_UNITS),
   baseline_value: baselineSchema,
+  category_key: z.enum(HABIT_CATEGORY_KEYS).optional(),
   icon: z.string().max(32).optional(),
 });
 
@@ -66,6 +68,7 @@ export const habitResponseSchema = z.object({
   icon: z.string().nullable(),
   is_active: z.boolean(),
   template_id: z.enum(HABIT_TEMPLATE_IDS).nullable(),
+  category_key: z.enum(HABIT_CATEGORY_KEYS).nullable(),
   harshness_level: z.number().int().min(1).max(3),
   created_at: z.string().datetime(),
 });

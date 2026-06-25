@@ -1,5 +1,5 @@
 import type { Habit } from "../db/schema/index.js";
-import type { HabitResponse, HabitTemplateId, HabitUnit } from "@mytodo/shared";
+import type { HabitCategoryKey, HabitResponse, HabitTemplateId, HabitUnit } from "@mytodo/shared";
 
 function toNumber(value: string): number {
   return Number(value);
@@ -24,6 +24,7 @@ export function toHabitResponse(habit: Habit): HabitResponse {
     icon: habit.icon,
     is_active: habit.isActive,
     template_id: (habit.templateId as HabitTemplateId | null) ?? null,
+    category_key: (habit.categoryKey as HabitCategoryKey | null) ?? null,
     harshness_level: habit.harshnessLevel,
     created_at: habit.createdAt.toISOString(),
   };

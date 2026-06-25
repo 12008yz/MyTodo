@@ -1,6 +1,7 @@
 import {
   CUSTOM_MINUTES_STEP,
   type CustomHabitUnit,
+  type HabitCategoryKey,
   type HabitTemplate,
   type HabitTemplateId,
   type HabitUnit,
@@ -30,6 +31,7 @@ export type CalibrateHabitInput =
       name: string;
       unit: CustomHabitUnit;
       baselineValue: number;
+      categoryKey?: HabitCategoryKey;
       profile: CalibrationProfile;
       activeLightHabitsIncludingNew: number;
       icon?: string;
@@ -51,6 +53,7 @@ export type CalibratedHabit = {
   isCustom: boolean;
   icon: string | null;
   templateId: HabitTemplateId | null;
+  categoryKey: HabitCategoryKey | null;
 };
 
 function growthStepForCustomUnit(unit: CustomHabitUnit): number {
@@ -106,6 +109,7 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
         isCustom: false,
         icon: template.icon,
         templateId,
+        categoryKey: null,
       };
     }
 
@@ -125,6 +129,7 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
         isCustom: false,
         icon: template.icon,
         templateId,
+        categoryKey: null,
       };
     }
 
@@ -149,12 +154,13 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
       isCustom: false,
       icon: template.icon,
       templateId,
+      categoryKey: null,
     };
   }
 
-  const { name, unit, baselineValue, profile, icon } = input;
+  const { name, unit, baselineValue, categoryKey, profile, icon } = input;
   const currentGoal = goalFromHabitIdentity(
-    { name, unit, templateId: null },
+    { name, unit, templateId: null, categoryKey: categoryKey ?? null },
     profile,
     baselineValue,
   );
@@ -171,5 +177,6 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
     isCustom: true,
     icon: icon ?? null,
     templateId: null,
+    categoryKey: categoryKey ?? null,
   };
 }

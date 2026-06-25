@@ -11,6 +11,7 @@ import {
   MEDITATION_SESSION_MIN,
   PUSHUP_SECONDS_PER_REP,
   type CustomHabitUnit,
+  type HabitCategoryKey,
   type HabitTemplateId,
   type HabitUnit,
 } from "@mytodo/shared";
@@ -28,6 +29,7 @@ export type HabitIdentity = {
   name: string;
   unit: HabitUnit | CustomHabitUnit;
   templateId?: HabitTemplateId | null;
+  categoryKey?: HabitCategoryKey | null;
 };
 
 export type LightActivityId =
@@ -74,6 +76,19 @@ const TEMPLATE_TO_ACTIVITY: Partial<Record<HabitTemplateId, LightActivityId>> = 
   running: "strength-running",
   plank: "strength-plank",
   pushups: "strength-workout",
+};
+
+const CATEGORY_TO_ACTIVITY: Record<HabitCategoryKey, LightActivityId> = {
+  meditation: "mindfulness-meditation",
+  language: "mindfulness-language",
+  gratitude: "mindfulness-gratitude",
+  strength_workout: "strength-workout",
+  stretching: "strength-stretch",
+  programming: "creator-programming",
+  creative_project: "creator-creative",
+  walking: "energy-walk",
+  early_rise: "energy-early",
+  hobby: "energy-hobby",
 };
 
 /** ACSM-style conservative push-up test ceiling (sedentary / below-average). */
@@ -137,6 +152,10 @@ function cognitiveLoadFactor(profile: CalibrationProfile): number {
 }
 
 export function resolveLightActivityId(habit: HabitIdentity): LightActivityId {
+  if (habit.categoryKey) {
+    return CATEGORY_TO_ACTIVITY[habit.categoryKey];
+  }
+
   const byName = NAME_TO_ACTIVITY[habit.name.trim()];
   if (byName) {
     return byName;
@@ -192,8 +211,8 @@ function stretchingDailyMinutes(profile: CalibrationProfile): number {
   return clamp(Math.round(12 * physicalLoadFactor(profile)), 8, 20);
 }
 
-function gratitudeDailyMinutes(profile: CalibrationProfile): number {
-  return clamp(Math.round(7 * cognitiveLoadFactor(profile)), 5, 10);
+function gratitudeDailyMinutes(_profile: CalibrationProfile): number {
+  return 3;
 }
 
 function cognitiveDailyMinutes(profile: CalibrationProfile): number {

@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
 import { buildApp } from "../src/app.js";
 import { loadEnv } from "../src/config/env.js";
 import { authResponseSchema, habitResponseSchema } from "@mytodo/shared";
+import { habits } from "../src/db/schema/index.js";
 import { ensureMigrated, truncateAuthTables } from "./helpers/db.js";
 
 const env = loadEnv({
@@ -26,7 +28,7 @@ describe("Habits", () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    await app?.close();
   });
 
   async function createOnboardedUser(email = "habits@example.com", freeTimeMin = 60) {
@@ -59,6 +61,65 @@ describe("Habits", () => {
 
     return auth;
   }
+
+  it("stores category_key for custom habits", async () => {
+    const auth = await createOnboardedUser("custom-category@example.com");
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: {
+        name: "Медитация",
+        unit: "minutes",
+        baseline_value: 1,
+        category_key: "meditation",
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+
+    const habit = habitResponseSchema.parse(JSON.parse(response.body));
+    expect(habit.category_key).toBe("meditation");
+
+    const [storedHabit] = await db.select().from(habits).where(eq(habits.id, habit.id));
+    expect(storedHabit?.categoryKey).toBe("meditation");
+  });
+
+  it("uses category_key to personalize custom light goals", async () => {
+    const auth = await createOnboardedUser("custom-goals@example.com");
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+
+    const meditationResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers,
+      payload: {
+        name: "Короткая пауза",
+        unit: "minutes",
+        baseline_value: 0,
+        category_key: "meditation",
+      },
+    });
+    expect(meditationResponse.statusCode).toBe(201);
+    const meditation = habitResponseSchema.parse(JSON.parse(meditationResponse.body));
+    expect(meditation.current_goal).toBe(1);
+
+    const languageResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers,
+      payload: {
+        name: "Английский для работы",
+        unit: "minutes",
+        baseline_value: 0,
+        category_key: "language",
+      },
+    });
+    expect(languageResponse.statusCode).toBe(201);
+    const language = habitResponseSchema.parse(JSON.parse(languageResponse.body));
+    expect(language.current_goal).toBe(20);
+  });
 
   it("rejects habit creation before onboarding", async () => {
     const registerResponse = await app.inject({

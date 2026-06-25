@@ -42,8 +42,26 @@ describe("workload", () => {
     ).toBe("strength-running");
   });
 
-  it("recommends meditation as 1 min and language as 20 min", () => {
+  it("prefers categoryKey over habit name for custom habits", () => {
+    expect(
+      resolveLightActivityId({
+        name: "Любое название",
+        unit: "minutes",
+        categoryKey: "meditation",
+      }),
+    ).toBe("mindfulness-meditation");
+    expect(
+      resolveLightActivityId({
+        name: "Любое название",
+        unit: "reps",
+        categoryKey: "strength_workout",
+      }),
+    ).toBe("strength-workout");
+  });
+
+  it("recommends meditation as 1 min, gratitude as 3 min, and language as 20 min", () => {
     expect(recommendDailyMinutes("mindfulness-meditation", profile)).toBe(1);
+    expect(recommendDailyMinutes("mindfulness-gratitude", profile)).toBe(3);
     expect(recommendDailyMinutes("mindfulness-language", profile)).toBe(20);
   });
 
@@ -141,22 +159,25 @@ describe("calibrateHabit", () => {
   it("calibrates meditation to a gentle daily goal", () => {
     const result = calibrateHabit({
       kind: "custom",
-      name: MEDITATION_HABIT_NAME,
+      name: "Короткая пауза",
       unit: "minutes",
       baselineValue: 0,
+      categoryKey: "meditation",
       profile,
       activeLightHabitsIncludingNew: 1,
     });
 
     expect(result.currentGoal).toBe(1);
+    expect(result.categoryKey).toBe("meditation");
   });
 
   it("calibrates foreign language to 20 minutes", () => {
     const result = calibrateHabit({
       kind: "custom",
-      name: FOREIGN_LANGUAGE_HABIT_NAME,
+      name: "Английский для работы",
       unit: "minutes",
       baselineValue: 0,
+      categoryKey: "language",
       profile,
       activeLightHabitsIncludingNew: 1,
     });
