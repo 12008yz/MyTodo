@@ -12,10 +12,9 @@ import { validateDarkHabits } from "../../features/onboarding/darkPaths";
 import {
   LIGHT_PATHS,
   LIGHT_PATH_TAB_LABELS,
-  keepCompleteLightHabits,
+  estimateLightHabitsComfortMinutes,
   validateLightHabits,
 } from "../../features/onboarding/lightPaths";
-import { maxLightHabitsForBudget } from "@mytodo/shared";
 import type {
   BodyFormData,
   LightPathId,
@@ -126,12 +125,7 @@ function validateHabits(habits: SelectedHabit[], side: "light" | "dark"): string
   return validateDarkHabits(habits);
 }
 
-function validateLightHabitBudget(habits: SelectedHabit[], freeTimeMin: number): string | null {
-  const maxLight = maxLightHabitsForBudget(freeTimeMin);
-  if (keepCompleteLightHabits(habits).length > maxLight) {
-    return `Не больше ${maxLight} полезных привычек. Убери лишнее, чтобы продолжить.`;
-  }
-
+function validateLightHabitBudget(_habits: SelectedHabit[], _freeTimeMin: number): string | null {
   return null;
 }
 
@@ -177,7 +171,6 @@ export function OnboardingPage() {
   const activeLightPathId = LIGHT_PATHS[lightPathIndex]?.id ?? "mindfulness";
   const isLastLightPath = lightPathIndex >= LIGHT_PATHS.length - 1;
   const progress = Math.round((stepIndex / (ONBOARDING_STEPS.length - 1)) * 100);
-  const maxLightHabits = maxLightHabitsForBudget(body.freeTimeMin);
 
   const handleStepChange = useCallback((nextStep: OnboardingStepId) => {
     const nextIndex = ONBOARDING_STEPS.indexOf(nextStep);
@@ -491,7 +484,6 @@ export function OnboardingPage() {
           <LightPathStep
             ref={lightPathStepRef}
             lightHabits={lightHabits}
-            maxLightHabits={maxLightHabits}
             freeTimeMin={body.freeTimeMin}
             activePathId={activeLightPathId}
             onActivePathChange={handleActivePathChange}
@@ -703,6 +695,14 @@ export function OnboardingPage() {
                   {isFreeTimeTooLow ? (
                     <p className="onboarding__slider-warning" role="alert">
                       Минимум 15 минут — меньше выбрать нельзя
+                    </p>
+                  ) : null}
+                  {estimateLightHabitsComfortMinutes(lightHabits) > body.freeTimeMin &&
+                  !isFreeTimeTooLow ? (
+                    <p className="onboarding__slider-warning" role="alert">
+                      Для выбранных привычек нужно примерно{" "}
+                      {estimateLightHabitsComfortMinutes(lightHabits)} мин —
+                      увеличь время или убери лишнее на светлой стороне.
                     </p>
                   ) : null}
                   <div className="onboarding__slider-labels">

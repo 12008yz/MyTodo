@@ -33,10 +33,24 @@ describe("buildDailyPlan", () => {
     expect(plan.minutes_remaining).toBe(60);
   });
 
-  it("scales down when total needed exceeds budget", () => {
-    const plan = buildDailyPlan({ date: "2026-06-24", budgetMin: 10, habits });
+  it("respects running minimum when budget is tight", () => {
+    const plan = buildDailyPlan({
+      date: "2026-06-24",
+      budgetMin: 10,
+      habits: [
+        {
+          id: "h2",
+          name: "Бег",
+          icon: null,
+          unit: "minutes",
+          current_goal: 10,
+          checkin_value: 0,
+          template_id: "running",
+        },
+      ],
+    });
     const planned = plan.blocks.reduce((s, b) => s + b.duration_min, 0);
-    expect(planned).toBeLessThanOrEqual(10);
+    expect(planned).toBe(10);
   });
 
   it("creates one block per habit without duplicates", () => {
@@ -76,7 +90,7 @@ describe("buildDailyPlan", () => {
     expect(plan.blocks.filter((block) => block.habit_id === "med")).toHaveLength(1);
   });
 
-  it("allocates foreign language as a 20-minute block", () => {
+  it("allocates foreign language as a 25-minute block even when goal is lower", () => {
     const plan = buildDailyPlan({
       date: "2026-06-24",
       budgetMin: 60,
@@ -86,7 +100,77 @@ describe("buildDailyPlan", () => {
           name: FOREIGN_LANGUAGE_HABIT_NAME,
           icon: null,
           unit: "minutes",
-          current_goal: 20,
+          current_goal: 7,
+          checkin_value: 0,
+          category_key: "language",
+        },
+      ],
+    });
+
+    expect(plan.blocks).toHaveLength(1);
+    expect(plan.blocks[0]?.duration_min).toBe(25);
+  });
+
+  it("allocates running at least 10 minutes", () => {
+    const plan = buildDailyPlan({
+      date: "2026-06-24",
+      budgetMin: 60,
+      habits: [
+        {
+          id: "run",
+          name: "Бег",
+          icon: null,
+          unit: "minutes",
+          current_goal: 7,
+          checkin_value: 0,
+          template_id: "running",
+        },
+      ],
+    });
+
+    expect(plan.blocks[0]?.duration_min).toBe(10);
+  });
+
+  it("skips early rise habits in the daily plan", () => {
+    const plan = buildDailyPlan({
+      date: "2026-06-24",
+      budgetMin: 60,
+      habits: [
+        {
+          id: "early",
+          name: "Ранний подъём",
+          icon: null,
+          unit: "minutes",
+          current_goal: 5,
+          checkin_value: 0,
+          category_key: "early_rise",
+        },
+        {
+          id: "med",
+          name: MEDITATION_HABIT_NAME,
+          icon: null,
+          unit: "minutes",
+          current_goal: 1,
+          checkin_value: 0,
+        },
+      ],
+    });
+
+    expect(plan.blocks).toHaveLength(1);
+    expect(plan.blocks[0]?.habit_id).toBe("med");
+  });
+
+  it("allocates foreign language as a 25-minute block", () => {
+    const plan = buildDailyPlan({
+      date: "2026-06-24",
+      budgetMin: 60,
+      habits: [
+        {
+          id: "lang",
+          name: FOREIGN_LANGUAGE_HABIT_NAME,
+          icon: null,
+          unit: "minutes",
+          current_goal: 25,
           checkin_value: 0,
         },
         {
@@ -94,7 +178,7 @@ describe("buildDailyPlan", () => {
           name: MEDITATION_HABIT_NAME,
           icon: null,
           unit: "minutes",
-          current_goal: 20,
+          current_goal: 25,
           checkin_value: 0,
         },
         {
@@ -102,7 +186,7 @@ describe("buildDailyPlan", () => {
           name: "Бег",
           icon: null,
           unit: "minutes",
-          current_goal: 20,
+          current_goal: 10,
           checkin_value: 0,
           template_id: "running",
         },
@@ -110,12 +194,12 @@ describe("buildDailyPlan", () => {
     });
 
     const language = plan.blocks.find((block) => block.habit_id === "lang");
-    expect(language?.duration_min).toBe(20);
+    expect(language?.duration_min).toBe(25);
     expect(plan.blocks).toHaveLength(3);
     expect(new Set(plan.blocks.map((block) => block.habit_id)).size).toBe(3);
   });
 
-  it("allocates books as a single 10-minute block for beginner page goal", () => {
+  it("allocates books based on page goal", () => {
     const plan = buildDailyPlan({
       date: "2026-06-24",
       budgetMin: 60,
@@ -133,8 +217,8 @@ describe("buildDailyPlan", () => {
     });
 
     expect(plan.blocks).toHaveLength(1);
-    expect(plan.blocks[0]?.duration_min).toBe(10);
-    expect(plan.blocks[0]?.expected_yield).toBe(20);
+    expect(plan.blocks[0]?.duration_min).toBe(3);
+    expect(plan.blocks[0]?.expected_yield).toBe(6);
   });
 
   it("uses new block ids after partial progress so completed blocks are not reused", () => {

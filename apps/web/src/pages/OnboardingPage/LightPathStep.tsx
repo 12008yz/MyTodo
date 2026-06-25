@@ -1,14 +1,16 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import {
   addCreatorCustomHabit,
+  estimateLightHabitsComfortMinutes,
   findHabitByActivityId,
   getActivitiesForPath,
+  getActivityComfortLabel,
   getAmountQuestion,
+  getHabitComfortLabel,
   getHabitDisplayName,
   getLightHabitSummary,
   isLightBaselineValid,
   isLightSetupComplete,
-  keepCompleteLightHabits,
   LIGHT_PATH_STEP_HERO,
   LIGHT_PATHS,
   LIGHT_PATH_TAB_LABELS,
@@ -28,7 +30,6 @@ import "../../components/ContentPanels/ContentPanels.css";
 
 type LightPathStepProps = {
   lightHabits: SelectedHabit[];
-  maxLightHabits: number;
   freeTimeMin: number;
   activePathId: LightPathId;
   onActivePathChange: (pathId: LightPathId) => void;
@@ -179,8 +180,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
   function LightPathStep(
     {
       lightHabits,
-      maxLightHabits,
-      freeTimeMin: _freeTimeMin,
+      freeTimeMin,
       activePathId,
       onActivePathChange,
       onChange,
@@ -196,13 +196,10 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     const [customBaseline, setCustomBaseline] = useState("");
     const [localError, setLocalError] = useState<string | null>(null);
     const activeSetupRef = useRef<HTMLDivElement | null>(null);
-    const lightHabitsRef = useRef(lightHabits);
-    lightHabitsRef.current = lightHabits;
     const activeSetupHabit = setupActivityId
       ? findHabitByActivityId(lightHabits, setupActivityId)
       : undefined;
-    const completeLightCount = keepCompleteLightHabits(lightHabits).length;
-    const atLightHabitLimit = completeLightCount >= maxLightHabits;
+    const comfortMinutes = estimateLightHabitsComfortMinutes(lightHabits);
 
     useEffect(() => {
       if (!setupActivityId || !activeSetupHabit) return;
@@ -221,10 +218,9 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
         setCustomOpen(false);
         setSetupActivityId(null);
         setLocalError(null);
-        onChange(keepCompleteLightHabits(lightHabits));
         onActivePathChange(pathId);
       },
-      [lightHabits, onActivePathChange, onChange],
+      [onActivePathChange],
     );
 
     const {
@@ -256,24 +252,25 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
       const existing = findHabitByActivityId(lightHabits, activity.id);
 
       if (existing) {
+        if (!isLightSetupComplete(existing)) {
+          if (setupActivityId === activity.id) {
+            onChange(toggleLightActivity(lightHabits, activity));
+            setSetupActivityId(null);
+          } else {
+            setSetupActivityId(activity.id);
+          }
+          return;
+        }
+
         onChange(toggleLightActivity(lightHabits, activity));
-        setSetupActivityId(null);
+        if (setupActivityId === activity.id) {
+          setSetupActivityId(null);
+        }
         return;
       }
 
-      if (keepCompleteLightHabits(lightHabits).length >= maxLightHabits) {
-        return;
-      }
-
-      onChange(toggleLightActivity(keepCompleteLightHabits(lightHabits), activity));
+      onChange(toggleLightActivity(lightHabits, activity));
       setSetupActivityId(activity.id);
-    };
-
-    const discardIncompleteHabit = (activityId: string) => {
-      const habits = lightHabitsRef.current;
-      const habit = findHabitByActivityId(habits, activityId);
-      if (!habit || isLightSetupComplete(habit)) return;
-      onChange(habits.filter((item) => item.activityId !== activityId));
     };
 
     const handleRemoveCustom = (activityId: string) => {
@@ -284,10 +281,6 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     };
 
     const handleAddCustom = () => {
-      if (keepCompleteLightHabits(lightHabits).length >= maxLightHabits) {
-        return;
-      }
-
       if (customPracticesNow === null) {
         setLocalError("Ответь, занимаешься ли ты этим сейчас");
         return;
@@ -334,13 +327,18 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     const renderHabitItem = (activity: LightActivity, onClick: () => void) => {
       const selected = findHabitByActivityId(lightHabits, activity.id);
       const complete = selected ? isLightSetupComplete(selected) : false;
-      const isDisabled = atLightHabitLimit && !selected;
       const isSetupTarget = setupActivityId === activity.id && selected;
       const showPanel = isSetupTarget && !complete;
       const setupSettled = setupActivityId !== activity.id;
+      const comfortLabel =
+        activity.kind !== "custom_form"
+          ? selected
+            ? getHabitComfortLabel(selected)
+            : getActivityComfortLabel(activity)
+          : null;
       const hintVisible =
         activity.kind !== "custom_form" &&
-        Boolean(activity.description) &&
+        Boolean(activity.description || comfortLabel) &&
         !isSetupTarget &&
         !(complete && setupSettled);
       const metaVisible = Boolean(complete && selected && setupSettled);
@@ -356,7 +354,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
             type="button"
             className={[
               "onboarding__habit-row",
-              complete ? "onboarding__habit-row--selected" : "",
+              selected ? "onboarding__habit-row--selected" : "",
               setupActivityId === activity.id && selected
                 ? "onboarding__habit-row--active"
                 : "",
@@ -364,12 +362,14 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
             ]
               .filter(Boolean)
               .join(" ")}
-            disabled={isDisabled}
             onClick={onClick}
           >
-            <OptionRadio selected={complete} />
+            <OptionRadio selected={Boolean(selected)} />
             <span className="onboarding__habit-row-copy">
               <span className="onboarding__habit-row-label">{activity.label}</span>
+              {comfortLabel ? (
+                <HabitRowHint text={comfortLabel} visible={hintVisible && !activity.description} />
+              ) : null}
               {activity.kind !== "custom_form" && activity.description ? (
                 <HabitRowHint text={activity.description} visible={hintVisible} />
               ) : null}
@@ -383,7 +383,6 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
             scrollAnchorRef={activeSetupRef}
             onCollapsed={() => {
               setSetupActivityId((current) => (current === activity.id ? null : current));
-              discardIncompleteHabit(activity.id);
             }}
             contentClassName="onboarding__setup-panel onboarding__setup-panel--inline"
           >
@@ -445,9 +444,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
                 ]
                   .filter(Boolean)
                   .join(" ")}
-                disabled={atLightHabitLimit && !customOpen}
                 onClick={() => {
-                  if (atLightHabitLimit && !customOpen) return;
                   setCustomOpen((value) => !value);
                   setLocalError(null);
                 }}
@@ -618,6 +615,22 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
             );
           })}
         </div>
+
+        {lightHabits.length > 0 ? (
+          <p
+            className={[
+              "onboarding__setup-hint",
+              comfortMinutes > freeTimeMin ? "onboarding__slider-warning" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            Примерно {comfortMinutes} мин в день для выбранных привычек
+            {comfortMinutes > freeTimeMin
+              ? ` — это больше, чем ${freeTimeMin} мин свободного времени. Убери лишнее или увеличь время на шаге «Тело».`
+              : ""}
+          </p>
+        ) : null}
 
         {localError ? <p className="onboarding__error">{localError}</p> : null}
       </>

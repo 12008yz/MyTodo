@@ -1,12 +1,13 @@
 import {
   CUSTOM_MINUTES_STEP,
+  EARLY_RISE_SHIFT_MIN,
   type CustomHabitUnit,
   type HabitCategoryKey,
   type HabitTemplate,
   type HabitTemplateId,
   type HabitUnit,
 } from "@mytodo/shared";
-import { recommendLightGoal, type HabitIdentity } from "./workload.js";
+import { recommendLightGoal, resolveLightActivityId, type HabitIdentity } from "./workload.js";
 
 export type CalibrationProfile = {
   dailyBudgetMin: number;
@@ -165,13 +166,14 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
     baselineValue,
   );
   const meta = customHabitMeta(unit);
+  const isEarlyRise = categoryKey === "early_rise" || resolveLightActivityId({ name, unit }) === "energy-early";
 
   return {
     name,
     ...meta,
     baselineValue,
     currentGoal,
-    growthStep: growthStepForCustomUnit(unit),
+    growthStep: isEarlyRise ? EARLY_RISE_SHIFT_MIN : growthStepForCustomUnit(unit),
     lastRelapseAt: null,
     allowsWeeklySkip: true,
     isCustom: true,

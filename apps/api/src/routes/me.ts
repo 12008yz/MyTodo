@@ -3,10 +3,12 @@ import { patchMeRequestSchema, userProfileSchema } from "@mytodo/shared";
 import { authenticate } from "../plugins/authenticate.js";
 import { toUserProfile } from "../lib/user-mapper.js";
 import type { UserService } from "../services/auth.js";
+import type { HabitService } from "../services/habits.js";
 
 export async function registerMeRoutes(
   app: FastifyInstance,
   userService: UserService,
+  habitService: HabitService,
 ): Promise<void> {
   app.get(
     "/api/v1/me",
@@ -27,6 +29,9 @@ export async function registerMeRoutes(
     async (request) => {
       const body = patchMeRequestSchema.parse(request.body);
       const user = await userService.updateProfile(request.userId, body);
+      if (body.free_time_min !== undefined) {
+        await habitService.recalibrateLightGoals(user);
+      }
       return userProfileSchema.parse(toUserProfile(user));
     },
   );

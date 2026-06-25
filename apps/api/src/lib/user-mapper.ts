@@ -18,6 +18,18 @@ function toNumber(value: string | null): number | null {
   return Number(value);
 }
 
+function toDateString(value: string | Date | null): string | null {
+  if (value === null) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  return value;
+}
+
 export function toUserProfile(user: User, now: Date = new Date()): UserProfile {
   return {
     id: user.id,
@@ -47,7 +59,7 @@ export function toUserProfile(user: User, now: Date = new Date()): UserProfile {
       now,
     ),
     pending_timezone: user.pendingTimezone,
-    pending_timezone_from: user.pendingTimezoneFrom,
+    pending_timezone_from: toDateString(user.pendingTimezoneFrom),
     created_at: user.createdAt.toISOString(),
   };
 }

@@ -670,6 +670,7 @@ function buildDemoDailyPlan(
           current_goal: habit.current_goal,
           checkin_value: todayCheckins.get(habit.id)?.value ?? 0,
           template_id: habit.template_id,
+          category_key: habit.category_key,
         })),
       completedBlockIds,
       activeBlockId,

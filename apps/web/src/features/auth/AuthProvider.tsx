@@ -26,6 +26,29 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+const TRANSIENT_STATUS_CODES = new Set([500, 502, 503, 504]);
+
+function isTransientError(err: unknown): boolean {
+  return err instanceof ClientApiError && TRANSIENT_STATUS_CODES.has(err.status);
+}
+
+function shouldClearSession(err: unknown): boolean {
+  return err instanceof ClientApiError && (err.status === 401 || err.status === 404);
+}
+
+async function fetchMeWithRetry(): Promise<UserProfile> {
+  try {
+    return await getMe();
+  } catch (err) {
+    if (!isTransientError(err)) {
+      throw err;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    return getMe();
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,14 +60,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const profile = await getMe();
+      const profile = await fetchMeWithRetry();
       setUser(profile);
       return profile;
     } catch (err) {
-      if (
-        err instanceof ClientApiError &&
-        (err.status === 401 || err.status === 404 || err.status >= 500)
-      ) {
+      if (shouldClearSession(err)) {
         clearTokens();
       }
       setUser(null);

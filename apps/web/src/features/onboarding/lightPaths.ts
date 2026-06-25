@@ -1,4 +1,10 @@
 import { HABIT_TEMPLATES, type HabitCategoryKey, type HabitTemplateId } from "@mytodo/shared";
+import {
+  estimateHabitsComfortMinutes,
+  formatEarlyRiseTargetWakeTime,
+  formatHabitComfortLabel,
+  type HabitIdentity,
+} from "@mytodo/domain";
 import type { LightPathId, SelectedCustomHabit, SelectedHabit } from "./types";
 
 export type { LightPathId } from "./types";
@@ -201,7 +207,8 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "energy",
     kind: "custom",
     label: "Ранний подъём",
-    hint: "Минут утренней рутины",
+    hint: "Сдвиг подъёма",
+    description: "Если встаёшь в 7:00 — сначала цель 6:55",
     name: "Ранний подъём",
     unit: "minutes",
     categoryKey: "early_rise",
@@ -301,9 +308,10 @@ function createHabitFromActivity(
     name: activity.name,
     unit: activity.unit,
     categoryKey: activity.categoryKey,
-    baseline: "",
+    baseline: activity.categoryKey === "early_rise" ? "5" : "",
     pathId: activity.pathId,
     activityId: activity.id,
+    practicesNow: activity.categoryKey === "early_rise" ? false : undefined,
   };
 }
 
@@ -369,7 +377,66 @@ export function getDefaultLightBaseline(habit: SelectedHabit): string {
   return "0";
 }
 
-export function getLightHabitSummary(habit: SelectedHabit): string {
+export function getActivityComfortLabel(activity: LightActivity): string | null {
+  if (activity.kind === "custom_form") {
+    return null;
+  }
+
+  if (activity.kind === "template") {
+    const template = HABIT_TEMPLATES[activity.templateId];
+    return formatHabitComfortLabel({
+      name: template.name,
+      unit: template.unit,
+      templateId: activity.templateId,
+    });
+  }
+
+  return formatHabitComfortLabel({
+    name: activity.name,
+    unit: activity.unit,
+    categoryKey: activity.categoryKey,
+  });
+}
+
+export function selectedHabitToIdentity(habit: SelectedHabit): HabitIdentity {
+  if (habit.kind === "template") {
+    const template = HABIT_TEMPLATES[habit.templateId];
+    return {
+      name: template.name,
+      unit: template.unit,
+      templateId: habit.templateId,
+    };
+  }
+
+  return {
+    name: habit.name,
+    unit: habit.unit,
+    categoryKey: habit.categoryKey,
+  };
+}
+
+export function getHabitComfortLabel(habit: SelectedHabit): string {
+  return formatHabitComfortLabel(selectedHabitToIdentity(habit));
+}
+
+export function estimateLightHabitsComfortMinutes(habits: SelectedHabit[]): number {
+  return estimateHabitsComfortMinutes(habits.map(selectedHabitToIdentity));
+}
+
+export function getEarlyRiseSummary(habit: SelectedHabit, wakeTime: string): string {
+  if (habit.kind === "custom" && habit.categoryKey === "early_rise") {
+    const shift = habit.practicesNow === false ? 5 : Number(habit.baseline) || 5;
+    return `Цель: ${formatEarlyRiseTargetWakeTime(wakeTime, shift)}`;
+  }
+
+  return "Раньше на 5 мин";
+}
+
+export function getLightHabitSummary(habit: SelectedHabit, wakeTime?: string): string {
+  if (habit.kind === "custom" && habit.categoryKey === "early_rise" && wakeTime) {
+    return getEarlyRiseSummary(habit, wakeTime);
+  }
+
   if (habit.practicesNow === false) {
     if (habit.activityId === "mindfulness-meditation") {
       return "1 мин/день";
@@ -427,6 +494,10 @@ export function setLightPracticesNow(
 }
 
 export function isLightSetupComplete(habit: SelectedHabit): boolean {
+  if (habit.kind === "custom" && habit.categoryKey === "early_rise") {
+    return true;
+  }
+
   if (habit.practicesNow === undefined) return false;
   if (habit.practicesNow === false) return true;
   return isLightBaselineValid(habit.baseline);

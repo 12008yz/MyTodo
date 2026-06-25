@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { buildApp } from "../src/app.js";
 import { loadEnv } from "../src/config/env.js";
-import { authResponseSchema, habitResponseSchema } from "@mytodo/shared";
+import { authResponseSchema, habitResponseSchema, MAX_ACTIVE_HABITS, MAX_LIGHT_HABITS } from "@mytodo/shared";
 import { habits } from "../src/db/schema/index.js";
 import { ensureMigrated, truncateAuthTables } from "./helpers/db.js";
 
@@ -118,7 +118,7 @@ describe("Habits", () => {
     });
     expect(languageResponse.statusCode).toBe(201);
     const language = habitResponseSchema.parse(JSON.parse(languageResponse.body));
-    expect(language.current_goal).toBe(20);
+    expect(language.current_goal).toBe(25);
   });
 
   it("rejects habit creation before onboarding", async () => {
@@ -182,7 +182,7 @@ describe("Habits", () => {
     expect(customResponse.statusCode).toBe(201);
     const custom = habitResponseSchema.parse(JSON.parse(customResponse.body));
     expect(custom.is_custom).toBe(true);
-    expect(custom.current_goal).toBe(30);
+    expect(custom.current_goal).toBe(20);
     expect(custom.growth_step).toBe(5);
 
     const listResponse = await app.inject({
@@ -215,7 +215,7 @@ describe("Habits", () => {
     expect(habit.current_goal).toBe(0);
   });
 
-  it("allows multiple light habits even with minimal free time", async () => {
+  it("allows multiple light habits regardless of free time budget", async () => {
     const auth = await createOnboardedUser("light-limit@example.com", 15);
     const headers = { authorization: `Bearer ${auth.access_token}` };
 
@@ -248,13 +248,13 @@ describe("Habits", () => {
     const auth = await createOnboardedUser("limit@example.com");
     const headers = { authorization: `Bearer ${auth.access_token}` };
 
-    for (let i = 0; i < 20; i += 1) {
+    for (let i = 0; i < MAX_LIGHT_HABITS; i += 1) {
       const response = await app.inject({
         method: "POST",
         url: "/api/v1/habits",
         headers,
         payload: {
-          name: `Custom ${i}`,
+          name: `Custom light ${i}`,
           unit: "minutes",
           baseline_value: 10,
         },
@@ -262,18 +262,37 @@ describe("Habits", () => {
       expect(response.statusCode).toBe(201);
     }
 
-    const overLightLimit = await app.inject({
+    const darkTemplates = ["smoking", "sugar", "sweets", "social_media", "nail_biting"] as const;
+    const darkSlots = MAX_ACTIVE_HABITS - MAX_LIGHT_HABITS;
+    for (let i = 0; i < darkSlots; i += 1) {
+      const templateId = darkTemplates[i];
+      if (!templateId) {
+        throw new Error(`Expected dark template at index ${i}`);
+      }
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/v1/habits",
+        headers,
+        payload: {
+          template_id: templateId,
+          ...(templateId === "nail_biting" ? {} : { baseline_value: 5 + i }),
+        },
+      });
+      expect(response.statusCode).toBe(201);
+    }
+
+    const overLimit = await app.inject({
       method: "POST",
       url: "/api/v1/habits",
       headers,
       payload: {
-        name: "One too many light",
+        name: "One too many",
         unit: "minutes",
         baseline_value: 10,
       },
     });
 
-    expect(overLightLimit.statusCode).toBe(400);
+    expect(overLimit.statusCode).toBe(400);
   });
 
   it("snapshots harshness_level from profile at creation time", async () => {
@@ -342,7 +361,7 @@ describe("Habits", () => {
       },
     });
     const custom = habitResponseSchema.parse(JSON.parse(customResponse.body));
-    expect(custom.current_goal).toBe(30);
+    expect(custom.current_goal).toBe(20);
 
     const listBefore = await app.inject({
       method: "GET",

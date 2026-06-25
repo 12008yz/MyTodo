@@ -5,7 +5,7 @@ import {
   type HabitTemplateId,
   type HabitUnit,
 } from "@mytodo/shared";
-import { resolveSessionPlanProfile } from "./workload.js";
+import { isEarlyRiseActivity, resolveLightActivityId, resolveSessionPlanProfile } from "./workload.js";
 
 export type HabitPlanInput = {
   id: string;
@@ -15,6 +15,7 @@ export type HabitPlanInput = {
   current_goal: number;
   checkin_value: number;
   template_id?: string | null;
+  category_key?: string | null;
 };
 
 export type DailyPlanBlock = {
@@ -98,13 +99,14 @@ function resolveHabitPlanEntry(habit: HabitPlanInput, neededMin: number): HabitP
       name: habit.name,
       unit: habit.unit,
       templateId: (habit.template_id as HabitTemplateId | null) ?? null,
+      categoryKey: (habit.category_key as import("@mytodo/shared").HabitCategoryKey | null) ?? null,
     },
     neededMin,
   );
 
   return {
     habit,
-    neededMin,
+    neededMin: Math.max(neededMin, profile.preferredMin),
     tier: profile.tier,
     preferredMin: profile.preferredMin,
     minMin: profile.minMin,
@@ -129,11 +131,8 @@ function allocateBlockMinutes(entries: HabitPlanEntry[], budgetMin: number): Map
 
   const languageEntries = entries.filter((entry) => entry.tier === "language");
   for (const entry of languageEntries) {
-    const cappedPreferred = Math.min(entry.preferredMin, entry.neededMin, remaining);
     const allocated =
-      remaining >= entry.minMin
-        ? clamp(cappedPreferred, entry.minMin, Math.min(entry.maxMin, entry.neededMin, remaining))
-        : Math.max(0, Math.min(remaining, entry.neededMin));
+      remaining >= entry.minMin ? Math.min(entry.preferredMin, remaining) : 0;
     allocations.set(entry.habit.id, allocated);
     remaining -= allocated;
   }
@@ -220,6 +219,14 @@ export function buildDailyPlan(input: {
   const entries: HabitPlanEntry[] = [];
 
   for (const habit of habits) {
+    const activityId = resolveLightActivityId({
+      name: habit.name,
+      unit: habit.unit,
+      templateId: (habit.template_id as HabitTemplateId | null) ?? null,
+      categoryKey: (habit.category_key as import("@mytodo/shared").HabitCategoryKey | null) ?? null,
+    });
+    if (isEarlyRiseActivity(activityId)) continue;
+
     const remainingGoal = Math.max(0, habit.current_goal - habit.checkin_value);
     if (remainingGoal <= 0) continue;
 
@@ -241,8 +248,10 @@ export function buildDailyPlan(input: {
 
   for (const entry of entries) {
     const remainingGoal = Math.max(0, entry.habit.current_goal - entry.habit.checkin_value);
-    const durationMin = allocations.get(entry.habit.id) ?? 0;
-    if (durationMin <= 0) continue;
+    const allocated = allocations.get(entry.habit.id) ?? 0;
+    if (allocated <= 0) continue;
+
+    const durationMin = Math.max(1, Math.ceil(allocated));
 
     drafts.push({
       id: blockId(date, entry.habit.id, remainingGoal, 0),

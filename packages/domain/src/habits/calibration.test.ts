@@ -8,6 +8,8 @@ import { calibrateHabit, recalculateLightGoal } from "./calibration.js";
 import {
   computeBmi,
   distributeGoalsAcrossBudget,
+  estimateHabitsComfortMinutes,
+  roundComfortMinutesTotal,
   recommendDailyMinutes,
   recommendLightGoal,
   resolveLightActivityId,
@@ -59,13 +61,13 @@ describe("workload", () => {
     ).toBe("strength-workout");
   });
 
-  it("recommends meditation as 1 min, gratitude as 3 min, and language as 20 min", () => {
+  it("recommends meditation as 1 min, gratitude as 2 min, and language as 25 min", () => {
     expect(recommendDailyMinutes("mindfulness-meditation", profile)).toBe(1);
-    expect(recommendDailyMinutes("mindfulness-gratitude", profile)).toBe(3);
-    expect(recommendDailyMinutes("mindfulness-language", profile)).toBe(20);
+    expect(recommendDailyMinutes("mindfulness-gratitude", profile)).toBe(2);
+    expect(recommendDailyMinutes("mindfulness-language", profile)).toBe(25);
   });
 
-  it("reduces running for higher BMI and older age", () => {
+  it("keeps running at least 10 min regardless of age", () => {
     const young = recommendDailyMinutes("strength-running", profile);
     const senior = recommendDailyMinutes("strength-running", {
       ...profile,
@@ -73,7 +75,8 @@ describe("workload", () => {
       weightKg: 95,
       heightCm: 175,
     });
-    expect(senior).toBeLessThan(young);
+    expect(young).toBe(10);
+    expect(senior).toBe(10);
   });
 
   it("recommends beginner-friendly push-up volume", () => {
@@ -84,6 +87,24 @@ describe("workload", () => {
     );
     expect(goal).toBeGreaterThanOrEqual(6);
     expect(goal).toBeLessThanOrEqual(20);
+  });
+
+  it("rounds total comfort minutes up to a whole number", () => {
+    expect(roundComfortMinutesTotal(16)).toBe(16);
+    expect(roundComfortMinutesTotal(16.000001)).toBe(17);
+    expect(roundComfortMinutesTotal(16.333333333333332)).toBe(17);
+
+    const minutes = estimateHabitsComfortMinutes(
+      [
+        { name: HABIT_TEMPLATES.plank.name, unit: "seconds", templateId: "plank" },
+        { name: MEDITATION_HABIT_NAME, unit: "minutes", categoryKey: "meditation" },
+        { name: "Силовая тренировка", unit: "reps", categoryKey: "strength_workout" },
+      ],
+      profile,
+    );
+
+    expect(minutes).toBe(Math.ceil(minutes));
+    expect(minutes).toBeGreaterThan(0);
   });
 
   it("distributes goals across shared daily budget", () => {
@@ -111,7 +132,7 @@ describe("workload", () => {
     );
 
     expect(goals.get("books")).toBe(5);
-    expect(goals.get("custom")).toBe(30);
+    expect(goals.get("custom")).toBe(20);
   });
 });
 
@@ -153,7 +174,7 @@ describe("calibrateHabit", () => {
       activeLightHabitsIncludingNew: 3,
     });
 
-    expect(result.currentGoal).toBe(20);
+    expect(result.currentGoal).toBe(10);
   });
 
   it("calibrates meditation to a gentle daily goal", () => {
@@ -171,7 +192,7 @@ describe("calibrateHabit", () => {
     expect(result.categoryKey).toBe("meditation");
   });
 
-  it("calibrates foreign language to 20 minutes", () => {
+  it("calibrates foreign language to 25 minutes", () => {
     const result = calibrateHabit({
       kind: "custom",
       name: "Английский для работы",
@@ -182,7 +203,7 @@ describe("calibrateHabit", () => {
       activeLightHabitsIncludingNew: 1,
     });
 
-    expect(result.currentGoal).toBe(20);
+    expect(result.currentGoal).toBe(25);
   });
 
   it("calibrates dark limit habits from baseline", () => {
@@ -225,22 +246,22 @@ describe("calibrateHabit", () => {
       activeLightHabitsIncludingNew: 1,
     });
 
-    expect(result.currentGoal).toBe(30);
+    expect(result.currentGoal).toBe(20);
     expect(result.growthStep).toBe(5);
   });
 
-  it("calibrates plank in seconds based on age", () => {
+  it("calibrates plank starting at 20 seconds", () => {
     const result = calibrateHabit({
       kind: "template",
       templateId: "plank",
       template: HABIT_TEMPLATES.plank,
-      baselineValue: 30,
+      baselineValue: 0,
       profile: { ...profile, dailyBudgetMin: 30 },
       activeLightHabitsIncludingNew: 1,
     });
 
     expect(result.unit).toBe("seconds");
-    expect(result.currentGoal).toBe(40);
+    expect(result.currentGoal).toBe(20);
   });
 
   it("recalculateLightGoal matches personalized habit identity", () => {

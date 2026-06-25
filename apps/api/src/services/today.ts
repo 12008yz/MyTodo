@@ -183,6 +183,7 @@ export class TodayService {
           current_goal: Number(habit.currentGoal),
           checkin_value: checkin?.value == null ? 0 : Number(checkin.value),
           template_id: habit.templateId,
+          category_key: habit.categoryKey,
         };
       });
 

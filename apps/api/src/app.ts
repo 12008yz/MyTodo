@@ -101,7 +101,7 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
 
   await registerHealthRoutes(app, { dbClient, redis });
   await registerAuthRoutes(app, authService);
-  await registerMeRoutes(app, userService);
+  await registerMeRoutes(app, userService, habitService);
   await registerHabitRoutes(app, userService, habitService);
   await registerCheckinRoutes(app, userService, checkinService, requireAccess);
   await registerTodayRoutes(app, userService, todayService, requireAccess);

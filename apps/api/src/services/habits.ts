@@ -6,7 +6,7 @@ import {
   HABIT_TEMPLATES,
   HTTP_STATUS,
   MAX_ACTIVE_HABITS,
-  maxLightHabitsForBudget,
+  MAX_LIGHT_HABITS,
   type CreateHabitRequest,
   type HabitTemplateId,
   type HabitUnit,
@@ -81,7 +81,7 @@ export class HabitService {
     const activeLightCount = await this.countActiveLightHabits(user.id);
 
     if (willCreateLightHabit(body)) {
-      const maxLight = maxLightHabitsForBudget(user.freeTimeMin ?? 0);
+      const maxLight = MAX_LIGHT_HABITS;
       if (activeLightCount >= maxLight) {
         throw new ApiError(
           HTTP_STATUS.BAD_REQUEST,
@@ -166,6 +166,10 @@ export class HabitService {
     }
 
     return toHabitResponse(updated);
+  }
+
+  async recalibrateLightGoals(user: User): Promise<void> {
+    await this.recalibrateActiveLightGoals(user);
   }
 
   async deactivate(userId: string, habitId: string) {

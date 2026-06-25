@@ -1,29 +1,30 @@
 import {
   BOOKS_PAGES_PER_MIN,
-  BOOKS_SESSION_MIN,
   BOOKS_START_PAGES,
+  CREATIVE_PROJECT_TARGET_MINUTES,
+  EARLY_RISE_HABIT_NAME,
+  EARLY_RISE_SHIFT_MIN,
   FOREIGN_LANGUAGE_HABIT_NAME,
+  GRATITUDE_DAILY_MIN,
+  HOBBY_TARGET_MINUTES,
   LANGUAGE_SESSION_MAX,
   LANGUAGE_SESSION_MIN,
   LANGUAGE_SESSION_TARGET_MIN,
   MEDITATION_DAILY_GOAL_MIN,
   MEDITATION_HABIT_NAME,
   MEDITATION_SESSION_MIN,
+  PLANK_START_SECONDS,
+  PROGRAMMING_TARGET_MINUTES,
   PUSHUP_SECONDS_PER_REP,
+  RUNNING_MIN_MINUTES,
+  STRETCH_TARGET_MINUTES,
+  WALKING_MIN_MINUTES,
   type CustomHabitUnit,
   type HabitCategoryKey,
   type HabitTemplateId,
   type HabitUnit,
 } from "@mytodo/shared";
 import type { CalibrationProfile } from "./calibration.js";
-
-/**
- * Personalized workload recommendations.
- * Physical activity baselines align with WHO 2020 guidelines (150–300 min/week moderate
- * or 75–150 min/week vigorous for adults) and beginner programs such as NHS Couch to 5K.
- * Strength reps use conservative ACSM/ACE beginner tiers by age and sex.
- * Plank targets use beginner/intermediate hold standards by age (10–60 s per set).
- */
 
 export type HabitIdentity = {
   name: string;
@@ -67,7 +68,7 @@ const NAME_TO_ACTIVITY: Record<string, LightActivityId> = {
   "Программирование": "creator-programming",
   "Творческий проект": "creator-creative",
   "Ходьба на свежем воздухе": "energy-walk",
-  "Ранний подъём": "energy-early",
+  [EARLY_RISE_HABIT_NAME]: "energy-early",
   "Творчество / Хобби": "energy-hobby",
 };
 
@@ -95,6 +96,14 @@ const CATEGORY_TO_ACTIVITY: Record<HabitCategoryKey, LightActivityId> = {
 const BEGINNER_PUSHUP_POOR_MAX: Record<"male" | "female", Record<AgeBand, number>> = {
   male: { teen: 12, young: 16, adult: 11, mature: 9, senior: 4 },
   female: { teen: 6, young: 9, adult: 7, mature: 4, senior: 1 },
+};
+
+export const DEFAULT_COMFORT_PROFILE: CalibrationProfile = {
+  dailyBudgetMin: 60,
+  age: 30,
+  gender: "male",
+  weightKg: 70,
+  heightCm: 175,
 };
 
 function clamp(n: number, min: number, max: number): number {
@@ -126,29 +135,12 @@ function getGenderKey(gender: CalibrationProfile["gender"]): "male" | "female" {
   return gender === "female" ? "female" : "male";
 }
 
-/** Higher BMI and older age reduce high-impact cardio targets. */
-function physicalLoadFactor(profile: CalibrationProfile): number {
-  const bmi = computeBmi(profile.weightKg, profile.heightCm);
-  const ageBand = getAgeBand(profile.age);
-
-  let factor = 1;
-
-  if (bmi < 18.5) factor *= 0.9;
-  else if (bmi >= 30) factor *= 0.7;
-  else if (bmi >= 25) factor *= 0.85;
-
-  if (ageBand === "teen") factor *= 0.9;
-  if (ageBand === "mature") factor *= 0.85;
-  if (ageBand === "senior") factor *= 0.7;
-
-  return factor;
+export function booksSessionMinutesForPages(pages: number): number {
+  return Math.max(1, Math.ceil(pages / BOOKS_PAGES_PER_MIN));
 }
 
-function cognitiveLoadFactor(profile: CalibrationProfile): number {
-  const ageBand = getAgeBand(profile.age);
-  if (ageBand === "teen") return 0.85;
-  if (ageBand === "senior") return 0.8;
-  return 1;
+export function isEarlyRiseActivity(activityId: LightActivityId): boolean {
+  return activityId === "energy-early";
 }
 
 export function resolveLightActivityId(habit: HabitIdentity): LightActivityId {
@@ -183,52 +175,7 @@ function beginnerPushupDailyTarget(profile: CalibrationProfile): number {
   return clamp(roundTo(Math.max(scaled, 6), 2), 6, 30);
 }
 
-function plankDailySeconds(profile: CalibrationProfile): number {
-  const band = getAgeBand(profile.age);
-  const base =
-    band === "teen" || band === "young"
-      ? 45
-      : band === "adult"
-        ? 40
-        : band === "mature"
-          ? 30
-          : 20;
-
-  return clamp(Math.round(base * physicalLoadFactor(profile)), 15, 90);
-}
-
-function runningDailyMinutes(profile: CalibrationProfile): number {
-  const band = getAgeBand(profile.age);
-  const base = band === "senior" ? 12 : band === "teen" ? 15 : 20;
-  return clamp(Math.round(base * physicalLoadFactor(profile)), 10, 30);
-}
-
-function walkingDailyMinutes(profile: CalibrationProfile): number {
-  return clamp(Math.round(25 * physicalLoadFactor(profile)), 15, 35);
-}
-
-function stretchingDailyMinutes(profile: CalibrationProfile): number {
-  return clamp(Math.round(12 * physicalLoadFactor(profile)), 8, 20);
-}
-
-function gratitudeDailyMinutes(_profile: CalibrationProfile): number {
-  return 3;
-}
-
-function cognitiveDailyMinutes(profile: CalibrationProfile): number {
-  return clamp(Math.round(30 * cognitiveLoadFactor(profile)), 20, 45);
-}
-
-function morningRoutineMinutes(profile: CalibrationProfile): number {
-  return clamp(Math.round(15 * cognitiveLoadFactor(profile)), 10, 20);
-}
-
-/** Minutes reserved in the daily budget for one reading session. */
-function booksSessionMinutes(): number {
-  return BOOKS_SESSION_MIN;
-}
-
-/** Recommended daily target expressed in minutes of effort (for budget splitting). */
+/** Recommended daily target expressed in minutes of effort (for budget estimates). */
 export function recommendDailyMinutes(
   activityId: LightActivityId,
   profile: CalibrationProfile,
@@ -239,30 +186,31 @@ export function recommendDailyMinutes(
     case "mindfulness-language":
       return LANGUAGE_SESSION_TARGET_MIN;
     case "mindfulness-books":
-      return booksSessionMinutes();
+      return booksSessionMinutesForPages(BOOKS_START_PAGES);
     case "mindfulness-gratitude":
-      return gratitudeDailyMinutes(profile);
+      return GRATITUDE_DAILY_MIN;
     case "strength-workout":
       return (beginnerPushupDailyTarget(profile) * PUSHUP_SECONDS_PER_REP) / 60;
     case "strength-running":
-      return runningDailyMinutes(profile);
+      return RUNNING_MIN_MINUTES;
     case "strength-plank":
-      return plankDailySeconds(profile) / 60;
+      return PLANK_START_SECONDS / 60;
     case "strength-stretch":
-      return stretchingDailyMinutes(profile);
+      return STRETCH_TARGET_MINUTES;
     case "energy-walk":
-      return walkingDailyMinutes(profile);
+      return WALKING_MIN_MINUTES;
     case "energy-early":
-      return morningRoutineMinutes(profile);
+      return 0;
     case "creator-programming":
+      return PROGRAMMING_TARGET_MINUTES;
     case "creator-creative":
+      return CREATIVE_PROJECT_TARGET_MINUTES;
     case "creator-custom":
     case "energy-hobby":
-      return cognitiveDailyMinutes(profile);
     case "generic-light":
-      return cognitiveDailyMinutes(profile);
+      return HOBBY_TARGET_MINUTES;
     default:
-      return 20;
+      return HOBBY_TARGET_MINUTES;
   }
 }
 
@@ -275,7 +223,7 @@ export function minutesToGoal(unit: HabitUnit | CustomHabitUnit, minutes: number
     case "reps":
       return Math.max(1, Math.round((minutes * 60) / PUSHUP_SECONDS_PER_REP));
     case "seconds":
-      return Math.max(15, Math.round(minutes * 60));
+      return Math.max(PLANK_START_SECONDS, Math.round(minutes * 60));
     case "lessons":
       return Math.max(1, Math.round(minutes / LANGUAGE_SESSION_TARGET_MIN));
     default:
@@ -296,6 +244,10 @@ export function recommendLightGoal(
 
   if (activityId === "mindfulness-books") {
     return Math.max(baselineValue, BOOKS_START_PAGES);
+  }
+
+  if (activityId === "energy-early") {
+    return Math.max(baselineValue, EARLY_RISE_SHIFT_MIN);
   }
 
   const minutes = recommendDailyMinutes(activityId, profile);
@@ -319,24 +271,49 @@ export function resolveSessionPlanProfile(
   }
 
   if (activityId === "mindfulness-books") {
+    const booksMin = Math.max(1, Math.ceil(neededMin));
     return {
       tier: "books",
-      preferredMin: BOOKS_SESSION_MIN,
-      minMin: BOOKS_SESSION_MIN,
-      maxMin: BOOKS_SESSION_MIN,
+      preferredMin: booksMin,
+      minMin: booksMin,
+      maxMin: booksMin,
     };
   }
 
   if (activityId === "mindfulness-language" || habit.unit === "lessons") {
     return {
       tier: "language",
-      preferredMin: clamp(
-        LANGUAGE_SESSION_TARGET_MIN,
-        LANGUAGE_SESSION_MIN,
-        Math.min(LANGUAGE_SESSION_MAX, neededMin),
-      ),
+      preferredMin: LANGUAGE_SESSION_TARGET_MIN,
       minMin: LANGUAGE_SESSION_MIN,
       maxMin: LANGUAGE_SESSION_MAX,
+    };
+  }
+
+  if (activityId === "strength-running") {
+    const runningMin = Math.max(RUNNING_MIN_MINUTES, neededMin);
+    return {
+      tier: "flexible",
+      preferredMin: runningMin,
+      minMin: RUNNING_MIN_MINUTES,
+      maxMin: runningMin,
+    };
+  }
+
+  if (activityId === "strength-plank" || habit.unit === "seconds") {
+    return {
+      tier: "flexible",
+      preferredMin: 1,
+      minMin: 1,
+      maxMin: 1,
+    };
+  }
+
+  if (habit.unit === "reps") {
+    return {
+      tier: "flexible",
+      preferredMin: 1,
+      minMin: 1,
+      maxMin: Math.max(1, Math.ceil(neededMin)),
     };
   }
 
@@ -348,41 +325,103 @@ export function resolveSessionPlanProfile(
   };
 }
 
+export function estimateHabitComfortMinutes(
+  habit: HabitIdentity,
+  profile: CalibrationProfile = DEFAULT_COMFORT_PROFILE,
+): number {
+  const activityId = resolveLightActivityId(habit);
+  if (isEarlyRiseActivity(activityId)) {
+    return 0;
+  }
+
+  if (activityId === "mindfulness-books") {
+    return booksSessionMinutesForPages(BOOKS_START_PAGES);
+  }
+
+  return recommendDailyMinutes(activityId, profile);
+}
+
+/** Whole minutes shown to the user — always round up fractional totals. */
+export function roundComfortMinutesTotal(minutes: number): number {
+  return Math.ceil(minutes);
+}
+
+export function estimateHabitsComfortMinutes(
+  habits: HabitIdentity[],
+  profile: CalibrationProfile = DEFAULT_COMFORT_PROFILE,
+): number {
+  const total = habits.reduce(
+    (sum, habit) => sum + estimateHabitComfortMinutes(habit, profile),
+    0,
+  );
+  return roundComfortMinutesTotal(total);
+}
+
+export function formatHabitComfortLabel(habit: HabitIdentity): string {
+  const activityId = resolveLightActivityId(habit);
+
+  switch (activityId) {
+    case "mindfulness-meditation":
+      return "~1 мин/день";
+    case "mindfulness-language":
+      return "~25 мин/день";
+    case "mindfulness-books":
+      return `5 стр. (~${booksSessionMinutesForPages(BOOKS_START_PAGES)} мин)`;
+    case "mindfulness-gratitude":
+      return "~2 мин/день";
+    case "strength-running":
+      return "от 10 мин/день";
+    case "strength-plank":
+      return "от 20 сек/день";
+    case "strength-stretch":
+      return "1–2 мин/день";
+    case "energy-walk":
+      return "от 10 мин/день";
+    case "energy-early":
+      return "раньше на 5 мин";
+    case "creator-programming":
+    case "creator-creative":
+    case "creator-custom":
+    case "energy-hobby":
+    case "generic-light":
+      return "~20 мин/день";
+    case "strength-workout":
+      return "по силам";
+    default:
+      return "~20 мин/день";
+  }
+}
+
+export function formatEarlyRiseTargetWakeTime(wakeTime: string, shiftMinutes: number): string {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(wakeTime.trim());
+  if (!match) {
+    return wakeTime;
+  }
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const total = hours * 60 + minutes - shiftMinutes;
+  const normalized = ((total % (24 * 60)) + 24 * 60) % (24 * 60);
+  const nextHours = Math.floor(normalized / 60);
+  const nextMinutes = normalized % 60;
+  return `${String(nextHours).padStart(2, "0")}:${String(nextMinutes).padStart(2, "0")}`;
+}
+
 /**
- * When several light habits share a budget, scale minute targets proportionally.
+ * Sets personalized goals per habit. Fixed comfort targets are not scaled down
+ * when the user picks more habits than their budget — onboarding warns instead.
  */
 export function distributeGoalsAcrossBudget(
   habits: Array<{ id: string; habit: HabitIdentity; baselineValue: number }>,
   profile: CalibrationProfile,
 ): Map<string, number> {
-  const intrinsic = habits.map((entry) => ({
-    id: entry.id,
-    minutes: recommendDailyMinutes(resolveLightActivityId(entry.habit), profile),
-    habit: entry.habit,
-    baselineValue: entry.baselineValue,
-  }));
-
-  const totalIntrinsic = intrinsic.reduce((sum, row) => sum + row.minutes, 0);
-  const scale =
-    totalIntrinsic > 0 ? Math.min(1, profile.dailyBudgetMin / totalIntrinsic) : 1;
-
   const result = new Map<string, number>();
-  for (const row of intrinsic) {
-    const activityId = resolveLightActivityId(row.habit);
 
-    if (activityId === "mindfulness-meditation") {
-      result.set(row.id, Math.max(row.baselineValue, MEDITATION_DAILY_GOAL_MIN));
-      continue;
-    }
-
-    if (activityId === "mindfulness-books") {
-      result.set(row.id, Math.max(row.baselineValue, BOOKS_START_PAGES));
-      continue;
-    }
-
-    const scaledMinutes = Math.max(1, row.minutes * scale);
-    const goal = minutesToGoal(row.habit.unit, scaledMinutes);
-    result.set(row.id, Math.max(row.baselineValue, goal));
+  for (const row of habits) {
+    result.set(
+      row.id,
+      recommendLightGoal(row.habit, profile, row.baselineValue),
+    );
   }
 
   return result;
