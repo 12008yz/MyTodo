@@ -211,7 +211,7 @@ export function recommendDailyMinutesForHabit(
 /** Recommended daily target expressed in minutes of effort (for budget estimates). */
 export function recommendDailyMinutes(
   activityId: LightActivityId,
-  profile: CalibrationProfile,
+  _profile: CalibrationProfile,
 ): number {
   switch (activityId) {
     case "mindfulness-meditation":
