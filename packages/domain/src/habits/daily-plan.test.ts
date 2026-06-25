@@ -6,8 +6,8 @@ import {
 import { buildDailyPlan, goalToMinutes } from "./daily-plan.js";
 
 describe("goalToMinutes", () => {
-  it("converts pages at 2 pages per minute", () => {
-    expect(goalToMinutes("pages", 10)).toBe(5);
+  it("converts pages at 2 minutes per page", () => {
+    expect(goalToMinutes("pages", 10)).toBe(20);
   });
 
   it("converts reps at 2 seconds each", () => {
@@ -217,8 +217,8 @@ describe("buildDailyPlan", () => {
     });
 
     expect(plan.blocks).toHaveLength(1);
-    expect(plan.blocks[0]?.duration_min).toBe(3);
-    expect(plan.blocks[0]?.expected_yield).toBe(6);
+    expect(plan.blocks[0]?.duration_min).toBe(10);
+    expect(plan.blocks[0]?.expected_yield).toBe(5);
   });
 
   it("uses new block ids after partial progress so completed blocks are not reused", () => {
