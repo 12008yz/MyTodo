@@ -42,10 +42,13 @@ export const WALKING_MIN_MINUTES = 10;
 /** Gratitude journal — fixed 2 min. */
 export const GRATITUDE_DAILY_MIN = 2;
 
-/** Creative / hobby habits — about 20 min per day. */
-export const HOBBY_TARGET_MINUTES = 20;
+/** Custom creator / generic light habits — about 20 min per day. */
+export const CUSTOM_LIGHT_TARGET_MINUTES = 20;
 export const CREATIVE_PROJECT_TARGET_MINUTES = 20;
 export const PROGRAMMING_TARGET_MINUTES = 20;
+
+/** Meal planning from what's in the fridge — no timed session until recipe flow ships. */
+export const NUTRITION_HABIT_NAME = "Правильное питание";
 
 /** Early rise — shift wake time earlier, not a timed session. */
 export const EARLY_RISE_SHIFT_MIN = 5;

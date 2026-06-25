@@ -50,7 +50,7 @@ export const HABIT_CATEGORY_KEYS = [
   "creative_project",
   "walking",
   "early_rise",
-  "hobby",
+  "healthy_nutrition",
 ] as const;
 export type HabitCategoryKey = (typeof HABIT_CATEGORY_KEYS)[number];
 

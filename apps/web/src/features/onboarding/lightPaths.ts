@@ -214,6 +214,16 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     unit: "minutes",
     categoryKey: "early_rise",
   },
+  {
+    id: "energy-nutrition",
+    pathId: "energy",
+    kind: "custom",
+    label: "Правильное питание",
+    description: "Составим рецепт питания из вашего холодильника",
+    name: "Правильное питание",
+    unit: "minutes",
+    categoryKey: "healthy_nutrition",
+  },
 ];
 
 const ACTIVITY_BY_ID = new Map(LIGHT_ACTIVITIES.map((activity) => [activity.id, activity]));
@@ -281,6 +291,16 @@ export function getAmountQuestion(habit: SelectedHabit, practicesNow: boolean): 
   return "Сколько минут хочешь заниматься в день?";
 }
 
+function isInstantCompleteCategory(categoryKey?: HabitCategoryKey): boolean {
+  return categoryKey === "early_rise" || categoryKey === "healthy_nutrition";
+}
+
+function instantCompleteBaseline(categoryKey?: HabitCategoryKey): string {
+  if (categoryKey === "early_rise") return "5";
+  if (categoryKey === "healthy_nutrition") return "0";
+  return "";
+}
+
 function createHabitFromActivity(
   activity: LightActivityTemplate | LightActivityCustom,
 ): SelectedHabit {
@@ -299,10 +319,10 @@ function createHabitFromActivity(
     name: activity.name,
     unit: activity.unit,
     categoryKey: activity.categoryKey,
-    baseline: activity.categoryKey === "early_rise" ? "5" : "",
+    baseline: instantCompleteBaseline(activity.categoryKey),
     pathId: activity.pathId,
     activityId: activity.id,
-    practicesNow: activity.categoryKey === "early_rise" ? false : undefined,
+    practicesNow: isInstantCompleteCategory(activity.categoryKey) ? false : undefined,
   };
 }
 
@@ -376,6 +396,7 @@ const ACTIVITIES_WITHOUT_COMFORT_HINT = new Set([
   "mindfulness-books",
   "energy-walk",
   "energy-early",
+  "energy-nutrition",
 ]);
 
 export function getActivityComfortLabel(activity: LightActivity): string | null {
@@ -454,11 +475,18 @@ export function getEarlyRiseSummary(habit: SelectedHabit, wakeTime: string): str
 }
 
 export function getLightHabitSummary(habit: SelectedHabit, wakeTime?: string): string {
+  if (habit.kind === "custom" && habit.categoryKey === "healthy_nutrition") {
+    return "";
+  }
+
   if (habit.kind === "custom" && habit.categoryKey === "early_rise" && wakeTime) {
     return getEarlyRiseSummary(habit, wakeTime);
   }
 
   if (habit.practicesNow === false) {
+    if (habit.kind === "custom" && habit.categoryKey === "healthy_nutrition") {
+      return "";
+    }
     if (habit.activityId === "mindfulness-meditation") {
       return "1 мин/день";
     }
@@ -518,7 +546,7 @@ export function setLightPracticesNow(
 }
 
 export function isLightSetupComplete(habit: SelectedHabit): boolean {
-  if (habit.kind === "custom" && habit.categoryKey === "early_rise") {
+  if (habit.kind === "custom" && isInstantCompleteCategory(habit.categoryKey)) {
     return true;
   }
 

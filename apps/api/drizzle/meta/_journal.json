@@ -120,6 +120,13 @@
       "when": 1782739200000,
       "tag": "0016_habit_progression_interval",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1782742800000,
+      "tag": "0017_healthy_nutrition_category",
+      "breakpoints": true
     }
   ]
 }

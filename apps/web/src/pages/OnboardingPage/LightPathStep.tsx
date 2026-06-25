@@ -280,8 +280,10 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
         return;
       }
 
-      onChange(toggleLightActivity(keepCompleteLightHabits(lightHabits), activity));
-      setSetupActivityId(activity.id);
+      const nextHabits = toggleLightActivity(keepCompleteLightHabits(lightHabits), activity);
+      const added = findHabitByActivityId(nextHabits, activity.id);
+      onChange(nextHabits);
+      setSetupActivityId(added && isLightSetupComplete(added) ? null : activity.id);
     };
 
     const handleRemoveCustom = (activityId: string) => {

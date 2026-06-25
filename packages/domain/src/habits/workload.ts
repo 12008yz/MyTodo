@@ -2,11 +2,11 @@ import {
   BOOKS_PAGES_PER_MIN,
   BOOKS_START_PAGES,
   CREATIVE_PROJECT_TARGET_MINUTES,
+  CUSTOM_LIGHT_TARGET_MINUTES,
   EARLY_RISE_HABIT_NAME,
   EARLY_RISE_SHIFT_MIN,
   FOREIGN_LANGUAGE_HABIT_NAME,
   GRATITUDE_DAILY_MIN,
-  HOBBY_TARGET_MINUTES,
   LESSON_MINUTES_ESTIMATE,
   LANGUAGE_SESSION_MAX,
   LANGUAGE_SESSION_MIN,
@@ -14,6 +14,7 @@ import {
   MEDITATION_DAILY_GOAL_MIN,
   MEDITATION_HABIT_NAME,
   MEDITATION_SESSION_MIN,
+  NUTRITION_HABIT_NAME,
   PLANK_START_SECONDS,
   PROGRAMMING_TARGET_MINUTES,
   PUSHUP_SECONDS_PER_REP,
@@ -55,6 +56,7 @@ export type LightActivityId =
   | "creator-custom"
   | "energy-walk"
   | "energy-early"
+  | "energy-nutrition"
   | "generic-light";
 
 export type SessionPlanProfile = {
@@ -76,6 +78,7 @@ const NAME_TO_ACTIVITY: Record<string, LightActivityId> = {
   "Творческий проект": "creator-creative",
   "Ходьба на свежем воздухе": "energy-walk",
   [EARLY_RISE_HABIT_NAME]: "energy-early",
+  [NUTRITION_HABIT_NAME]: "energy-nutrition",
 };
 
 const TEMPLATE_TO_ACTIVITY: Partial<Record<HabitTemplateId, LightActivityId>> = {
@@ -95,7 +98,7 @@ const CATEGORY_TO_ACTIVITY: Record<HabitCategoryKey, LightActivityId> = {
   creative_project: "creator-creative",
   walking: "energy-walk",
   early_rise: "energy-early",
-  hobby: "creator-creative",
+  healthy_nutrition: "energy-nutrition",
 };
 
 /** ACSM-style conservative push-up test ceiling (sedentary / below-average). */
@@ -147,6 +150,10 @@ export function booksSessionMinutesForPages(pages: number): number {
 
 export function isEarlyRiseActivity(activityId: LightActivityId): boolean {
   return activityId === "energy-early";
+}
+
+export function isNutritionActivity(activityId: LightActivityId): boolean {
+  return activityId === "energy-nutrition";
 }
 
 export function resolveLightActivityId(habit: HabitIdentity): LightActivityId {
@@ -232,15 +239,17 @@ export function recommendDailyMinutes(
       return WALKING_MIN_MINUTES;
     case "energy-early":
       return 0;
+    case "energy-nutrition":
+      return 0;
     case "creator-programming":
       return PROGRAMMING_TARGET_MINUTES;
     case "creator-creative":
       return CREATIVE_PROJECT_TARGET_MINUTES;
     case "creator-custom":
     case "generic-light":
-      return HOBBY_TARGET_MINUTES;
+      return CUSTOM_LIGHT_TARGET_MINUTES;
     default:
-      return HOBBY_TARGET_MINUTES;
+      return CUSTOM_LIGHT_TARGET_MINUTES;
   }
 }
 
@@ -286,6 +295,10 @@ export function recommendLightGoal(
 
   if (activityId === "energy-early") {
     return Math.max(baselineValue, EARLY_RISE_SHIFT_MIN);
+  }
+
+  if (activityId === "energy-nutrition") {
+    return 0;
   }
 
   const minutes = recommendDailyMinutesForHabit(habit, profile);
@@ -378,7 +391,7 @@ export function estimateHabitComfortMinutes(
   profile: CalibrationProfile = DEFAULT_COMFORT_PROFILE,
 ): number {
   const activityId = resolveLightActivityId(habit);
-  if (isEarlyRiseActivity(activityId)) {
+  if (isEarlyRiseActivity(activityId) || isNutritionActivity(activityId)) {
     return 0;
   }
 
@@ -476,6 +489,8 @@ export function formatHabitComfortLabel(habit: HabitIdentity): string {
       return "от 10 мин/день";
     case "energy-early":
       return "раньше на 5 мин";
+    case "energy-nutrition":
+      return "";
     case "creator-programming":
     case "creator-creative":
     case "creator-custom":
