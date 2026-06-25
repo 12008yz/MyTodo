@@ -180,7 +180,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     {
       lightHabits,
       maxLightHabits,
-      freeTimeMin,
+      freeTimeMin: _freeTimeMin,
       activePathId,
       onActivePathChange,
       onChange,
