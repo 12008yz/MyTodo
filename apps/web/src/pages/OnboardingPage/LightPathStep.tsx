@@ -11,6 +11,7 @@ import {
   getLightHabitSummary,
   isLightBaselineValid,
   isLightSetupComplete,
+  keepCompleteLightHabits,
   LIGHT_PATH_STEP_HERO,
   LIGHT_PATHS,
   LIGHT_PATH_TAB_LABELS,
@@ -194,10 +195,13 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     const [customBaseline, setCustomBaseline] = useState("");
     const [localError, setLocalError] = useState<string | null>(null);
     const activeSetupRef = useRef<HTMLDivElement | null>(null);
+    const lightHabitsRef = useRef(lightHabits);
+    lightHabitsRef.current = lightHabits;
     const activeSetupHabit = setupActivityId
       ? findHabitByActivityId(lightHabits, setupActivityId)
       : undefined;
     const comfortMinutes = estimateLightHabitsComfortMinutes(lightHabits);
+    const completeLightHabits = keepCompleteLightHabits(lightHabits);
 
     useEffect(() => {
       if (!setupActivityId || !activeSetupHabit) return;
@@ -216,9 +220,10 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
         setCustomOpen(false);
         setSetupActivityId(null);
         setLocalError(null);
+        onChange(keepCompleteLightHabits(lightHabitsRef.current));
         onActivePathChange(pathId);
       },
-      [onActivePathChange],
+      [onActivePathChange, onChange],
     );
 
     const {
@@ -245,8 +250,16 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
       [switchPath],
     );
 
+    const discardIncomplete = (activityId: string) => {
+      const habits = lightHabitsRef.current;
+      const habit = findHabitByActivityId(habits, activityId);
+      if (!habit || isLightSetupComplete(habit)) return;
+      onChange(habits.filter((item) => item.activityId !== activityId));
+    };
+
     const handleSelectHabit = (activity: LightActivity) => {
       setLocalError(null);
+      setCustomOpen(false);
       const existing = findHabitByActivityId(lightHabits, activity.id);
 
       if (existing) {
@@ -260,14 +273,14 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
           return;
         }
 
-        onChange(toggleLightActivity(lightHabits, activity));
+        onChange(toggleLightActivity(keepCompleteLightHabits(lightHabits), activity));
         if (setupActivityId === activity.id) {
           setSetupActivityId(null);
         }
         return;
       }
 
-      onChange(toggleLightActivity(lightHabits, activity));
+      onChange(toggleLightActivity(keepCompleteLightHabits(lightHabits), activity));
       setSetupActivityId(activity.id);
     };
 
@@ -325,7 +338,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     const renderHabitItem = (activity: LightActivity, onClick: () => void) => {
       const selected = findHabitByActivityId(lightHabits, activity.id);
       const complete = selected ? isLightSetupComplete(selected) : false;
-      const isSetupTarget = setupActivityId === activity.id && selected;
+      const isSetupTarget = setupActivityId === activity.id && Boolean(selected);
       const showPanel = isSetupTarget && !complete;
       const setupSettled = setupActivityId !== activity.id;
       const comfortLabel =
@@ -352,17 +365,15 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
             type="button"
             className={[
               "onboarding__habit-row",
-              selected ? "onboarding__habit-row--selected" : "",
-              setupActivityId === activity.id && selected
-                ? "onboarding__habit-row--active"
-                : "",
+              complete ? "onboarding__habit-row--selected" : "",
+              isSetupTarget ? "onboarding__habit-row--active" : "",
               hintVisible ? "onboarding__habit-row--subline-open" : "",
             ]
               .filter(Boolean)
               .join(" ")}
             onClick={onClick}
           >
-            <OptionRadio selected={Boolean(selected)} />
+            <OptionRadio selected={complete} />
             <span className="onboarding__habit-row-copy">
               <span className="onboarding__habit-row-label">{activity.label}</span>
               {comfortLabel ? (
@@ -381,6 +392,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
             scrollAnchorRef={activeSetupRef}
             onCollapsed={() => {
               setSetupActivityId((current) => (current === activity.id ? null : current));
+              discardIncomplete(activity.id);
             }}
             contentClassName="onboarding__setup-panel onboarding__setup-panel--inline"
           >
@@ -443,6 +455,8 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
                   .filter(Boolean)
                   .join(" ")}
                 onClick={() => {
+                  onChange(keepCompleteLightHabits(lightHabits));
+                  setSetupActivityId(null);
                   setCustomOpen((value) => !value);
                   setLocalError(null);
                 }}
@@ -584,6 +598,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
                 setCustomOpen(false);
                 setSetupActivityId(null);
                 setLocalError(null);
+                onChange(keepCompleteLightHabits(lightHabits));
                 switchPath(path.id);
               }}
             >
@@ -614,7 +629,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
           })}
         </div>
 
-        {lightHabits.length > 0 ? (
+        {completeLightHabits.length > 0 ? (
           <p className="onboarding__setup-hint">
             Примерно {comfortMinutes} мин в день для выбранных привычек
           </p>

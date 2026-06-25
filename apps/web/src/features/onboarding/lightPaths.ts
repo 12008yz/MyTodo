@@ -210,7 +210,6 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     kind: "custom",
     label: "Ранний подъём",
     hint: "Сдвиг подъёма",
-    description: "Если встаёшь в 7:00 — сначала цель 6:55",
     name: "Ранний подъём",
     unit: "minutes",
     categoryKey: "early_rise",
@@ -379,8 +378,19 @@ export function getDefaultLightBaseline(habit: SelectedHabit): string {
   return "0";
 }
 
+const ACTIVITIES_WITHOUT_COMFORT_HINT = new Set([
+  "mindfulness-meditation",
+  "mindfulness-books",
+  "energy-walk",
+  "energy-early",
+]);
+
 export function getActivityComfortLabel(activity: LightActivity): string | null {
   if (activity.kind === "custom_form") {
+    return null;
+  }
+
+  if (ACTIVITIES_WITHOUT_COMFORT_HINT.has(activity.id)) {
     return null;
   }
 
@@ -428,11 +438,17 @@ function selectedHabitToComfortSetup(habit: SelectedHabit): HabitComfortSetup {
 }
 
 export function getHabitComfortLabel(habit: SelectedHabit): string {
+  if (habit.activityId && ACTIVITIES_WITHOUT_COMFORT_HINT.has(habit.activityId)) {
+    return "";
+  }
+
   return formatHabitComfortLabelWithSetup(selectedHabitToComfortSetup(habit));
 }
 
 export function estimateLightHabitsComfortMinutes(habits: SelectedHabit[]): number {
-  return estimateHabitsComfortMinutesWithSetup(habits.map(selectedHabitToComfortSetup));
+  return estimateHabitsComfortMinutesWithSetup(
+    habits.filter(isLightSetupComplete).map(selectedHabitToComfortSetup),
+  );
 }
 
 export function getEarlyRiseSummary(habit: SelectedHabit, wakeTime: string): string {
