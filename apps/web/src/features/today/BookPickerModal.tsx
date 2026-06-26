@@ -46,7 +46,7 @@ export function BookPickerModal({
           Выбрать книгу
         </h3>
         <p className="home__value-prompt-hint">
-          Рекомендации для чтения. Электронную версию можно скачать, если ссылка уже добавлена.
+          Бесплатные книги из общественного достояния — можно скачать и читать офлайн.
         </p>
 
         <ul className="home__book-picker-list">
@@ -56,23 +56,29 @@ export function BookPickerModal({
 
             return (
               <li key={book.id} className="home__book-picker-item">
+                <img
+                  className="home__book-picker-cover"
+                  src={book.coverUrl}
+                  alt={book.title}
+                  loading="lazy"
+                  width={72}
+                  height={108}
+                />
                 <div className="home__book-picker-item-main">
                   <p className="home__book-picker-title">{book.title}</p>
                   <p className="home__book-picker-author">{book.author}</p>
                   <p className="home__book-picker-desc">{book.description}</p>
                 </div>
                 <div className="home__book-picker-actions">
-                  {book.ebookUrl ? (
-                    <a
-                      className="home__book-picker-link"
-                      href={book.ebookUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      Скачать
-                    </a>
-                  ) : null}
+                  <a
+                    className="home__book-picker-link"
+                    href={book.ebookUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    {book.ebookLabel ?? "Скачать"}
+                  </a>
                   <button
                     type="button"
                     className={[

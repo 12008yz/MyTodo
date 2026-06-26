@@ -1410,13 +1410,27 @@
 }
 
 .home__book-picker-item {
-  display: flex;
-  flex-direction: column;
-  gap: calc(10 * var(--s));
+  display: grid;
+  grid-template-columns: calc(72 * var(--s)) minmax(0, 1fr);
+  gap: calc(12 * var(--s));
   padding: calc(12 * var(--s));
   border: calc(1.5 * var(--s)) solid rgba(95, 51, 225, 0.14);
   border-radius: calc(12 * var(--s));
   background: rgba(95, 51, 225, 0.04);
+}
+
+.home__book-picker-cover {
+  width: calc(72 * var(--s));
+  height: calc(108 * var(--s));
+  object-fit: cover;
+  border-radius: calc(8 * var(--s));
+  border: calc(1 * var(--s)) solid rgba(95, 51, 225, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+  grid-row: 1 / span 2;
+}
+
+.home__book-picker-item-main {
+  min-width: 0;
 }
 
 .home__book-picker-title {
@@ -1444,6 +1458,7 @@
   flex-wrap: wrap;
   gap: calc(8 * var(--s));
   align-items: center;
+  grid-column: 2;
 }
 
 .home__book-picker-link {
