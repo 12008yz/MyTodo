@@ -13,7 +13,7 @@ export type BookRecommendation = {
   ebookLabel?: string;
 };
 
-/** Бесплатные книги из общественного достояния для привычки «Читать книги». */
+/** Бесплатные книги из общественного достояния для привычки «Чтение книг». */
 export const BOOK_RECOMMENDATIONS: BookRecommendation[] = [
   {
     id: "kak-zakalyalas-stal",

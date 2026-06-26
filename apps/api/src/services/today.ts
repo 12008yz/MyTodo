@@ -10,7 +10,7 @@ import {
   isDateInRange,
   type DayCheckin,
 } from "@mytodo/domain";
-import { AWARENESS_SESSION_MIN, type HabitUnit } from "@mytodo/shared";
+import { AWARENESS_SESSION_MIN, resolveHabitDisplayName, type HabitTemplateId, type HabitUnit } from "@mytodo/shared";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Database } from "../db/index.js";
 import { checkins, habits, type Habit, type User } from "../db/schema/index.js";
@@ -22,6 +22,14 @@ import type { ReadingProgressService } from "./reading-progress.js";
 import type { PomodoroService } from "./pomodoro.js";
 
 type Side = "light" | "dark";
+
+function habitPlanName(habit: Habit): string {
+  return resolveHabitDisplayName({
+    name: habit.name,
+    template_id: (habit.templateId as HabitTemplateId | null) ?? null,
+    is_custom: habit.isCustom,
+  });
+}
 
 type CheckinRow = typeof checkins.$inferSelect;
 
@@ -153,7 +161,7 @@ export class TodayService {
         const checkin = todayCheckins.get(habit.id);
         return {
           id: habit.id,
-          name: habit.name,
+          name: habitPlanName(habit),
           icon: habit.icon,
           unit: (habit.unit ?? "minutes") as HabitUnit,
           current_goal: Number(habit.currentGoal),
@@ -190,7 +198,7 @@ export class TodayService {
       budgetMin: darkAwarenessHabits.length * AWARENESS_SESSION_MIN,
       habits: darkAwarenessHabits.map((habit) => ({
         id: habit.id,
-        name: habit.name,
+        name: habitPlanName(habit),
         icon: habit.icon,
         unit: (habit.unit ?? "minutes") as HabitUnit,
         current_goal: AWARENESS_SESSION_MIN,

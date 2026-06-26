@@ -8,6 +8,7 @@ import {
   computeDailyBudgetMin,
   HABIT_TEMPLATE_IDS,
   HABIT_TEMPLATES,
+  resolveHabitDisplayName,
   resolveHabitIcon,
   type CustomHabitUnit,
   type HabitCategoryKey,
@@ -181,6 +182,24 @@ function normalizeDemoHabitGoals(state: DemoState): DemoState {
   return { ...state, habits };
 }
 
+function syncTemplateHabitNames(state: DemoState): DemoState {
+  const habits = state.habits.map((habit) => {
+    const name = demoHabitDisplayName(habit);
+
+    return name === habit.name ? habit : { ...habit, name };
+  });
+
+  return habits === state.habits ? state : { ...state, habits };
+}
+
+function demoHabitDisplayName(habit: HabitResponse): string {
+  return resolveHabitDisplayName({
+    name: habit.name,
+    template_id: habit.template_id,
+    is_custom: habit.is_custom,
+  });
+}
+
 function loadState(): DemoState | null {
   try {
     const raw = localStorage.getItem(DEMO_STORAGE_KEY);
@@ -189,12 +208,14 @@ function loadState(): DemoState | null {
     if ((parsed.version ?? 1) < DEMO_STATE_VERSION) {
       return null;
     }
-    return normalizeDemoHabitGoals({
-      ...parsed,
-      checkins: parsed.checkins ?? [],
-      sessions: parsed.sessions ?? [],
-      readingByHabitId: parsed.readingByHabitId ?? {},
-    });
+    return syncTemplateHabitNames(
+      normalizeDemoHabitGoals({
+        ...parsed,
+        checkins: parsed.checkins ?? [],
+        sessions: parsed.sessions ?? [],
+        readingByHabitId: parsed.readingByHabitId ?? {},
+      }),
+    );
   } catch {
     return null;
   }
@@ -887,13 +908,15 @@ function mapHabitToTodayLight(
   reading: DemoReadingProgress | null = null,
 ): TodayLightHabit {
   const previewNextGoal = demoPreviewNextGoal(habit, checkin?.status);
+  const displayName = demoHabitDisplayName(habit);
   return {
     ...habit,
+    name: displayName,
     icon: resolveHabitIcon({
       icon: habit.icon,
       template_id: habit.template_id,
       category_key: habit.category_key,
-      name: habit.name,
+      name: displayName,
       side: habit.side,
     }),
     checkin: checkin
@@ -1038,22 +1061,25 @@ function buildDemoDailyPlan(
       budgetMin: state.user.daily_budget_min,
       habits: state.habits
         .filter((habit) => habit.side === "light" && habit.is_active)
-        .map((habit) => ({
-          id: habit.id,
-          name: habit.name,
-          icon: resolveHabitIcon({
-            icon: habit.icon,
+        .map((habit) => {
+          const displayName = demoHabitDisplayName(habit);
+          return {
+            id: habit.id,
+            name: displayName,
+            icon: resolveHabitIcon({
+              icon: habit.icon,
+              template_id: habit.template_id,
+              category_key: habit.category_key,
+              name: displayName,
+              side: habit.side,
+            }),
+            unit: habit.unit,
+            current_goal: habit.current_goal,
+            checkin_value: todayCheckins.get(habit.id)?.value ?? 0,
             template_id: habit.template_id,
             category_key: habit.category_key,
-            name: habit.name,
-            side: habit.side,
-          }),
-          unit: habit.unit,
-          current_goal: habit.current_goal,
-          checkin_value: todayCheckins.get(habit.id)?.value ?? 0,
-          template_id: habit.template_id,
-          category_key: habit.category_key,
-        })),
+          };
+        }),
       completedBlockIds,
       activeBlockId,
       completedBlockMeta,
@@ -1079,7 +1105,7 @@ function buildDemoDailyPlan(
     budgetMin: darkAwarenessHabits.length * AWARENESS_SESSION_MIN,
     habits: darkAwarenessHabits.map((habit) => ({
       id: habit.id,
-      name: habit.name,
+      name: demoHabitDisplayName(habit),
       icon: habit.icon,
       unit: habit.unit,
       current_goal: AWARENESS_SESSION_MIN,

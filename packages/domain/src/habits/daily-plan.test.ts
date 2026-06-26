@@ -206,7 +206,7 @@ describe("buildDailyPlan", () => {
       habits: [
         {
           id: "books",
-          name: "Читать книги",
+          name: "Чтение книг",
           icon: null,
           unit: "pages",
           current_goal: 5,

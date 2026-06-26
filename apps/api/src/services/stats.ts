@@ -10,6 +10,7 @@ import {
   type DayColor,
   type HabitDayStatus,
 } from "@mytodo/domain";
+import { resolveHabitDisplayName, type HabitTemplateId } from "@mytodo/shared";
 import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
 import type { Database } from "../db/index.js";
 import {
@@ -275,7 +276,11 @@ export class StatsService {
 
         rows.push({
           habitId: scope.habit.id,
-          name: scope.habit.name,
+          name: resolveHabitDisplayName({
+            name: scope.habit.name,
+            template_id: (scope.habit.templateId as HabitTemplateId | null) ?? null,
+            is_custom: scope.habit.isCustom,
+          }),
           side: scope.habit.side as Side,
           status,
           value: stat?.value != null ? Number(stat.value) : checkin?.value != null ? Number(checkin.value) : null,

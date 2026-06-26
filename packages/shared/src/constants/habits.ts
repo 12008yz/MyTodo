@@ -82,7 +82,7 @@ export type HabitTemplate = {
 export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
   books: {
     id: "books",
-    name: "Читать книги",
+    name: "Чтение книг",
     side: "light",
     type: "target",
     progressionDirection: "increase",

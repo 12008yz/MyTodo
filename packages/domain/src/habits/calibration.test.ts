@@ -174,7 +174,7 @@ describe("workload", () => {
       [
         {
           id: "books",
-          habit: { name: "Читать книги", unit: "pages", templateId: "books" },
+          habit: { name: "Чтение книг", unit: "pages", templateId: "books" },
           baselineValue: 5,
         },
         {
