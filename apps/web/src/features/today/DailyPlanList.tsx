@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DailyPlan, DailyPlanBlock, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
-import { isNonSessionLightCategory, PLANK_PREP_SECONDS, SESSION_TARGET_MIN, sessionBudgetMinutes } from "@mytodo/shared";
+import { isNonSessionLightCategory, PLANK_PREP_SECONDS } from "@mytodo/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClientApiError } from "../../lib/api";
 import { FocusScreen } from "../sessions/FocusScreen";
@@ -17,6 +17,11 @@ import { pauseSession, resumeSession, stopSession } from "../sessions/session-ap
 import { useCompleteHabitSession, useStartHabitSession } from "../sessions/useHabitSession";
 import { useSessionTimer } from "../sessions/useSessionTimer";
 import { resolveEarlyCompletionValue, needsCompletionValuePrompt } from "../sessions/sessionCompletion";
+import {
+  createFocusBlock,
+  resolveSessionPlan,
+  type StartSessionOverrides,
+} from "../sessions/sessionPlan";
 import { useFocusSession } from "../shell/FocusSessionContext";
 import { DailyPlanHabitRow } from "./DailyPlanHabitRow";
 import type { TodaySide } from "./useTodayData";
@@ -71,54 +76,6 @@ type FocusState = {
 
 function isPlankSession(habit: TodayLightHabit | TodayDarkHabit, block: DailyPlanBlock): boolean {
   return block.unit === "seconds" || habit.unit === "seconds";
-}
-
-function resolveSessionPlan(
-  habit: TodayLightHabit | TodayDarkHabit,
-  block: DailyPlanBlock | null,
-  fallbackMin = SESSION_TARGET_MIN,
-): { plannedMin: number; plannedSeconds: number | null } {
-  if (block?.unit === "seconds" && block.expected_yield > 0) {
-    const plannedSeconds = Math.max(1, Math.round(block.expected_yield));
-    return {
-      plannedSeconds,
-      plannedMin: sessionBudgetMinutes(plannedSeconds),
-    };
-  }
-
-  if (habit.unit === "seconds") {
-    const remaining = Math.max(0, habit.current_goal - (habit.checkin?.value ?? 0));
-    const plannedSeconds = Math.max(1, Math.round(remaining > 0 ? remaining : habit.current_goal));
-    return {
-      plannedSeconds,
-      plannedMin: sessionBudgetMinutes(plannedSeconds),
-    };
-  }
-
-  return {
-    plannedMin: block?.duration_min ?? fallbackMin,
-    plannedSeconds: null,
-  };
-}
-
-function createFocusBlock(
-  habit: TodayLightHabit | TodayDarkHabit,
-  plannedMin: number,
-  plannedSeconds: number | null = null,
-): DailyPlanBlock {
-  return {
-    id: `bonus-${habit.id}`,
-    habit_id: habit.id,
-    habit_name: habit.name,
-    icon: habit.icon ?? null,
-    unit: habit.unit,
-    duration_min: plannedMin,
-    expected_yield: plannedSeconds ?? 0,
-    order: 0,
-    status: "pending",
-    actual_value: null,
-    actual_minutes: null,
-  };
 }
 
 function toErrorText(error: unknown): string {
@@ -204,7 +161,11 @@ type HabitListLayerProps = {
   focusElapsedByHabitId: Map<string, number>;
   isRecoveringSessions: boolean;
   wakeTime?: string | null;
-  onStart: (habit: TodayLightHabit | TodayDarkHabit, block: DailyPlanBlock | null) => void;
+  onStart: (
+    habit: TodayLightHabit | TodayDarkHabit,
+    block: DailyPlanBlock | null,
+    overrides?: StartSessionOverrides,
+  ) => void;
   onAbortSessionForBookChange: (habitId: string) => Promise<void>;
 };
 
@@ -287,7 +248,7 @@ function HabitListLayer({
               wakeTime={wakeTime}
               onStart={
                 habit.type !== "abstinence" && !isNonSessionLightCategory(habit.category_key)
-                  ? () => onStart(habit, block)
+                  ? (overrides) => onStart(habit, block, overrides)
                   : undefined
               }
               onAbortSessionForBookChange={onAbortSessionForBookChange}
@@ -440,21 +401,30 @@ export function DailyPlanList({
   );
 
   const handleStart = useCallback(
-    async (habit: TodayLightHabit | TodayDarkHabit, block: DailyPlanBlock | null) => {
+    async (
+      habit: TodayLightHabit | TodayDarkHabit,
+      block: DailyPlanBlock | null,
+      overrides?: StartSessionOverrides,
+    ) => {
       if (focusState || startSession.isPending || isEnding || isRecovering) {
         return;
       }
 
       setActionError(null);
-      const { plannedMin, plannedSeconds } = resolveSessionPlan(habit, block);
-      const isPlanBlock = Boolean(block && planBlockIds.has(block.id));
+      const plan = resolveSessionPlan(habit, block);
+      const plannedMin = overrides?.plannedMin ?? plan.plannedMin;
+      const plannedSeconds =
+        overrides?.plannedSeconds !== undefined ? overrides.plannedSeconds : plan.plannedSeconds;
+      const isPlanBlock = Boolean(block && planBlockIds.has(block.id) && !overrides);
 
       try {
         if (await openFocusFromSession(habit, block, true)) {
           return;
         }
 
-        const resolvedBlock = block ?? createFocusBlock(habit, plannedMin, plannedSeconds);
+        const resolvedBlock = overrides
+          ? createFocusBlock(habit, plannedMin, plannedSeconds)
+          : block ?? createFocusBlock(habit, plannedMin, plannedSeconds);
         setFocusState({
           habit,
           block: resolvedBlock,
@@ -863,7 +833,7 @@ export function DailyPlanList({
           focusElapsedByHabitId={focusElapsedByHabitId}
           isRecoveringSessions={isRecovering}
           wakeTime={wakeTime}
-          onStart={(habit, block) => void handleStart(habit, block)}
+          onStart={(habit, block, overrides) => void handleStart(habit, block, overrides)}
           onAbortSessionForBookChange={abortSessionForBookChange}
         />
         <HabitListLayer
@@ -876,7 +846,7 @@ export function DailyPlanList({
           focusElapsedByHabitId={focusElapsedByHabitId}
           isRecoveringSessions={isRecovering}
           wakeTime={wakeTime}
-          onStart={(habit, block) => void handleStart(habit, block)}
+          onStart={(habit, block, overrides) => void handleStart(habit, block, overrides)}
           onAbortSessionForBookChange={abortSessionForBookChange}
         />
       </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import type { DailyPlanBlock, HabitReadingProgress, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
 import { isEarlyRiseCategoryKey, isNonSessionLightCategory } from "@mytodo/shared";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,7 +32,12 @@ import {
   getLiveSessionProgress,
   getLiveSessionProgressLabel,
 } from "../sessions/sessionProgress";
+import { ExtraSessionModal } from "../sessions/ExtraSessionModal";
 import { getSessionRemainingSeconds } from "../sessions/sessionRecovery";
+import {
+  resolveSessionPlan,
+  type StartSessionOverrides,
+} from "../sessions/sessionPlan";
 import { isBooksHabit } from "./isBooksHabit";
 
 function PlanInfoIcon({ className }: { className?: string }) {
@@ -91,7 +96,7 @@ type DailyPlanHabitRowProps = {
   sessionBusy: boolean;
   focusLocked: boolean;
   wakeTime?: string | null;
-  onStart?: () => void;
+  onStart?: (overrides?: StartSessionOverrides) => void;
   onAbortSessionForBookChange?: (habitId: string) => Promise<void>;
 };
 
@@ -204,6 +209,13 @@ export function DailyPlanHabitRow({
   const goalReached = status === "success";
   const canStartSession =
     !isNonSessionHabit && habit.type !== "abstinence" && Boolean(onStart);
+  const isExtraSessionMode =
+    goalReached && canStartSession && !hasActiveFocus && !resumeSession && !isRecoveringSessions && block?.status !== "active";
+  const defaultExtraSessionPlan = useMemo(
+    () => resolveSessionPlan(habit, block),
+    [habit, block],
+  );
+  const [extraSessionOpen, setExtraSessionOpen] = useState(false);
   const startDisabled =
     sessionBusy || focusLocked || hasActiveFocus || !canStartSession;
   const canQuickAdd =
@@ -415,6 +427,10 @@ export function DailyPlanHabitRow({
               disabled={startDisabled}
               onClick={(event) => {
                 event.stopPropagation();
+                if (isExtraSessionMode) {
+                  setExtraSessionOpen(true);
+                  return;
+                }
                 onStart?.();
               }}
             >
@@ -564,6 +580,20 @@ export function DailyPlanHabitRow({
         selectedBookId={selectedBook?.id ?? null}
         onClose={() => setBookPickerOpen(false)}
         onSelect={handleBookSelect}
+      />
+
+      <ExtraSessionModal
+        isOpen={extraSessionOpen}
+        habitName={habit.name}
+        unit={habit.unit}
+        goal={habit.current_goal}
+        defaultPlan={defaultExtraSessionPlan}
+        isStarting={sessionBusy}
+        onClose={() => setExtraSessionOpen(false)}
+        onConfirm={(plan) => {
+          setExtraSessionOpen(false);
+          onStart?.(plan);
+        }}
       />
     </>
   );
