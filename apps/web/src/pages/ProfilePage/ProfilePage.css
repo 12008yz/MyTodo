@@ -32,7 +32,7 @@
   width: calc(85 * var(--s, 1px));
   height: calc(85 * var(--s, 1px));
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--color-light-surface);
   box-shadow: 0 calc(4 * var(--s, 1px)) calc(24 * var(--s, 1px)) rgba(95, 51, 225, 0.12);
   font-size: calc(32 * var(--s, 1px));
   font-weight: 600;
@@ -61,7 +61,7 @@
   min-height: calc(58 * var(--s, 1px));
   padding: calc(14 * var(--s, 1px)) calc(12 * var(--s, 1px));
   border-radius: calc(12 * var(--s, 1px));
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--color-light-surface-muted);
   box-shadow: 0 calc(4 * var(--s, 1px)) calc(24 * var(--s, 1px)) rgba(0, 0, 0, 0.04);
   font-size: calc(16 * var(--s, 1px));
   line-height: 1.5;
@@ -96,7 +96,7 @@
   padding: calc(10 * var(--s, 1px)) calc(12 * var(--s, 1px));
   border: none;
   border-radius: calc(12 * var(--s, 1px));
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--color-light-surface-muted);
   box-shadow: 0 calc(4 * var(--s, 1px)) calc(20 * var(--s, 1px)) rgba(0, 0, 0, 0.03);
   font: inherit;
   text-align: left;

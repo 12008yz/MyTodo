@@ -143,3 +143,6 @@ Protected routes require valid JWT + active trial/subscription (`402` when expir
 Exceptions: `/auth/*`, `/health`, `/billing/webhook`.
 
 Admin routes require `role = admin` (`403` otherwise).
+
+Проверь всё за собой ещё раз. Что бы не было ошибок или несостыковок
+
