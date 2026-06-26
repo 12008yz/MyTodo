@@ -13,9 +13,13 @@ type FocusScreenProps = {
   isOpen: boolean;
   habitName: string;
   plannedMin: number;
+  plannedSeconds?: number | null;
   remainingSeconds: number;
   isPaused: boolean;
   skipPrep: boolean;
+  autoPrepSeconds?: number | null;
+  prepLabel?: string;
+  sessionActive?: boolean;
   canStopEarly: boolean;
   onBeginSession: () => void;
   onTogglePause: () => void;
@@ -33,9 +37,13 @@ export function FocusScreen({
   isOpen,
   habitName,
   plannedMin,
+  plannedSeconds = null,
   remainingSeconds,
   isPaused,
   skipPrep,
+  autoPrepSeconds = null,
+  prepLabel = "Соберитесь — скоро начнём упражнение",
+  sessionActive = false,
   canStopEarly,
   onBeginSession,
   onTogglePause,
@@ -56,10 +64,24 @@ export function FocusScreen({
       return;
     }
 
-    setPrepPhase(skipPrep ? "done" : "idle");
+    if (skipPrep) {
+      setPrepPhase("done");
+      setPrepTotalSeconds(0);
+      setPrepRemainingSeconds(0);
+      return;
+    }
+
+    if (autoPrepSeconds != null && autoPrepSeconds > 0) {
+      setPrepTotalSeconds(autoPrepSeconds);
+      setPrepRemainingSeconds(autoPrepSeconds);
+      setPrepPhase("running");
+      return;
+    }
+
+    setPrepPhase("idle");
     setPrepTotalSeconds(0);
     setPrepRemainingSeconds(0);
-  }, [isOpen, skipPrep]);
+  }, [autoPrepSeconds, isOpen, skipPrep]);
 
   useEffect(() => {
     if (prepPhase !== "running" || prepRemainingSeconds <= 0) {
@@ -103,7 +125,10 @@ export function FocusScreen({
     return null;
   }
 
-  const sessionTotalSeconds = Math.max(1, Math.round(plannedMin * 60));
+  const sessionTotalSeconds =
+    plannedSeconds != null && plannedSeconds > 0
+      ? plannedSeconds
+      : Math.max(1, Math.round(plannedMin * 60));
   const safeRemaining = Math.max(0, remainingSeconds);
 
   const isPrepActive = prepPhase === "running";
@@ -190,7 +215,7 @@ export function FocusScreen({
 
         {!showSessionControls ? (
           isPrepActive ? (
-            <p className="focus-screen__meta">Соберитесь — скоро начнём упражнение</p>
+            <p className="focus-screen__meta">{prepLabel}</p>
           ) : (
             <p className="focus-screen__meta">Можно взять время на подготовку или начать сразу</p>
           )
@@ -242,7 +267,7 @@ export function FocusScreen({
           </div>
         ) : null}
 
-        {showSessionControls ? (
+        {showSessionControls && sessionActive ? (
           <div className="focus-screen__actions">
             <button
               type="button"

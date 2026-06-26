@@ -2,6 +2,7 @@ import {
   BOOKS_PAGES_PER_MIN,
   LESSON_MINUTES_ESTIMATE,
   PUSHUP_SECONDS_PER_REP,
+  sessionBudgetMinutes,
   type HabitTemplateId,
   type HabitUnit,
 } from "@mytodo/shared";
@@ -250,6 +251,20 @@ export function buildDailyPlan(input: {
     const remainingGoal = Math.max(0, entry.habit.current_goal - entry.habit.checkin_value);
     const allocated = allocations.get(entry.habit.id) ?? 0;
     if (allocated <= 0) continue;
+
+    if (entry.habit.unit === "seconds") {
+      const durationSeconds = Math.max(1, Math.round(remainingGoal));
+      drafts.push({
+        id: blockId(date, entry.habit.id, remainingGoal, 0),
+        habit_id: entry.habit.id,
+        habit_name: entry.habit.name,
+        icon: entry.habit.icon,
+        unit: entry.habit.unit,
+        duration_min: sessionBudgetMinutes(durationSeconds),
+        expected_yield: durationSeconds,
+      });
+      continue;
+    }
 
     const durationMin = Math.max(1, Math.ceil(allocated));
 

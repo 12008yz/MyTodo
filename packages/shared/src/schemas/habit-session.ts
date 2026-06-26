@@ -7,6 +7,7 @@ export const habitSessionSchema = z.object({
   started_at: z.string().datetime(),
   ended_at: z.string().datetime().nullable(),
   planned_min: z.number().int().positive(),
+  planned_seconds: z.number().int().positive().nullable().optional(),
   actual_min: z.number().int().nullable(),
   value_added: z.number().nullable(),
   completed: z.boolean(),
@@ -19,6 +20,7 @@ export type HabitSessionResponse = z.infer<typeof habitSessionSchema>;
 export const startHabitSessionRequestSchema = z.object({
   block_id: z.string().optional(),
   planned_min: z.number().int().positive().optional(),
+  planned_seconds: z.number().int().positive().optional(),
 });
 
 export type StartHabitSessionRequest = z.infer<typeof startHabitSessionRequestSchema>;

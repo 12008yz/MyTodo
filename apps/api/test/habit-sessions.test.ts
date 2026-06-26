@@ -95,6 +95,20 @@ describe("Habit sessions", () => {
     return habitResponseSchema.parse(JSON.parse(response.body));
   }
 
+  async function createPlankHabit(token: string) {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        template_id: "plank",
+        baseline_value: 35,
+      },
+    });
+
+    return habitResponseSchema.parse(JSON.parse(response.body));
+  }
+
   it("starts and completes books session with manual value accumulation", async () => {
     const { user, auth } = await createOnboardedUser("sessions-books@example.com");
     const habit = await createBooksHabit(auth.access_token);
@@ -118,6 +132,32 @@ describe("Habit sessions", () => {
     });
     expect(complete.checkin.value).toBe(8);
     expect(complete.value_added).toBe(8);
+  });
+
+  it("starts plank session with planned_seconds timer", async () => {
+    const { user, auth } = await createOnboardedUser("sessions-plank@example.com");
+    const habit = await createPlankHabit(auth.access_token);
+    const service = new HabitSessionService(app.db);
+
+    const start = await service.start(user, habit.id, {
+      plannedSeconds: 35,
+      blockId: "2026-06-24:plank:35:0",
+    });
+    expect(start.planned_seconds).toBe(35);
+    expect(start.planned_min).toBe(1);
+    expect(start.remaining_seconds).toBeLessThanOrEqual(35);
+
+    const startedAt = new Date(Date.now() - 6_000);
+    await app.db
+      .update(habitSessions)
+      .set({ startedAt })
+      .where(and(eq(habitSessions.id, start.id), eq(habitSessions.habitId, habit.id)));
+
+    const complete = await service.complete(user, habit.id, {
+      actualValue: 35,
+    });
+    expect(complete.checkin.value).toBe(35);
+    expect(complete.value_added).toBe(35);
   });
 
   it("completes running session and accumulates elapsed minutes", async () => {

@@ -11,7 +11,7 @@ export function needsCompletionValuePrompt(
   block: DailyPlanBlock,
   endedEarly: boolean,
 ): boolean {
-  if (block.unit === "minutes") {
+  if (block.unit === "minutes" || block.unit === "seconds") {
     return false;
   }
 
@@ -28,6 +28,10 @@ export function resolveEarlyCompletionValue(
 ): number {
   if (block.unit === "minutes") {
     return plannedMin;
+  }
+
+  if (block.unit === "seconds" && block.expected_yield > 0) {
+    return block.expected_yield;
   }
 
   if (block.expected_yield > 0) {

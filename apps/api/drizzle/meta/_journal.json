@@ -141,6 +141,13 @@
       "when": 1782753600000,
       "tag": "0020_early_rise_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1782757200000,
+      "tag": "0021_habit_session_planned_seconds",
+      "breakpoints": true
     }
   ]
 }

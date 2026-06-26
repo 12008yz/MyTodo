@@ -15,6 +15,10 @@ export function getLiveSessionProgress(unit: HabitUnit, elapsedSeconds: number):
     return elapsedSeconds / BOOKS_SECONDS_PER_PAGE;
   }
 
+  if (unit === "seconds") {
+    return elapsedSeconds;
+  }
+
   return 0;
 }
 
@@ -26,6 +30,10 @@ export function getLiveSessionProgressLabel(unit: HabitUnit, elapsedSeconds: num
 
   if (unit === "minutes") {
     return progress;
+  }
+
+  if (unit === "seconds") {
+    return Math.floor(progress);
   }
 
   return Math.floor(progress);

@@ -18,6 +18,14 @@ export function formatUnit(unit: HabitUnit | null): string {
   return UNIT_LABELS[unit] ?? unit;
 }
 
+export function formatSessionDuration(block: DailyPlanBlock): string {
+  if (block.unit === "seconds" && block.expected_yield > 0) {
+    return `${block.expected_yield} сек`;
+  }
+
+  return `${block.duration_min} мин`;
+}
+
 export function formatGoalLabel(
   habit: TodayLightHabit | TodayDarkHabit,
   wakeTime?: string | null,
@@ -151,8 +159,9 @@ export function formatCardHint(params: {
   }
 
   if (block && block.unit !== "minutes" && block.expected_yield > 0) {
+    const prefix = block.unit === "seconds" ? "" : "~";
     return {
-      text: `Сессия: ~${block.expected_yield} ${formatUnit(block.unit)}`,
+      text: `Сессия: ${prefix}${block.expected_yield} ${formatUnit(block.unit)}`,
       variant: "hint",
     };
   }

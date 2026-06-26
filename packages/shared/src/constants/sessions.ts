@@ -29,6 +29,9 @@ export const RUNNING_MIN_MINUTES = 10;
 /** Plank — starts at 20 seconds. */
 export const PLANK_START_SECONDS = 20;
 
+/** Countdown before plank timer starts — time to get into position. */
+export const PLANK_PREP_SECONDS = 2;
+
 /** Stretching — 1–2 min per day (target 2). */
 export const STRETCH_MIN_MINUTES = 1;
 export const STRETCH_TARGET_MINUTES = 2;
@@ -57,4 +60,19 @@ export const EARLY_RISE_HABIT_NAME = "Ранний подъём";
 export function maxLightHabitsForBudget(freeTimeMin: number): number {
   if (freeTimeMin < MIN_MINUTES_PER_LIGHT_HABIT) return 0;
   return Math.min(MAX_LIGHT_HABITS, MAX_ACTIVE_HABITS);
+}
+
+export function sessionBudgetMinutes(seconds: number): number {
+  return Math.max(1, Math.ceil(seconds / 60));
+}
+
+export function sessionTotalSeconds(session: {
+  planned_min: number;
+  planned_seconds?: number | null;
+}): number {
+  if (session.planned_seconds != null && session.planned_seconds > 0) {
+    return session.planned_seconds;
+  }
+
+  return Math.max(1, session.planned_min * 60);
 }

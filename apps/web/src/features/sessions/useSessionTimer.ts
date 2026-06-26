@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { sessionTotalSeconds } from "@mytodo/shared";
 import { getRemainingSecondsFromStart } from "./sessionRecovery";
 
 type UseSessionTimerOptions = {
   sessionKey: string | null;
   plannedMin: number;
+  plannedSeconds?: number | null;
   startedAt?: string | null;
   autoStart?: boolean;
 };
@@ -11,10 +13,14 @@ type UseSessionTimerOptions = {
 export function useSessionTimer({
   sessionKey,
   plannedMin,
+  plannedSeconds = null,
   startedAt,
   autoStart = true,
 }: UseSessionTimerOptions) {
-  const totalSeconds = Math.max(1, Math.round(plannedMin * 60));
+  const totalSeconds = sessionTotalSeconds({
+    planned_min: plannedMin,
+    planned_seconds: plannedSeconds,
+  });
   const isActive = Boolean(sessionKey && startedAt);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [isPaused, setIsPaused] = useState(true);
@@ -24,8 +30,8 @@ export function useSessionTimer({
     if (!startedAt) {
       return 0;
     }
-    return getRemainingSecondsFromStart(startedAt, plannedMin);
-  }, [plannedMin, startedAt]);
+    return getRemainingSecondsFromStart(startedAt, plannedMin, plannedSeconds);
+  }, [plannedMin, plannedSeconds, startedAt]);
 
   useLayoutEffect(() => {
     if (!sessionKey || !startedAt) {

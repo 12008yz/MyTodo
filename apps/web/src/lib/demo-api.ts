@@ -2,6 +2,8 @@ import { buildDailyPlan, calibrateHabit, computeNextGoal, recalculateLightGoal, 
 import {
   AWARENESS_SESSION_MIN,
   SESSION_TARGET_MIN,
+  sessionBudgetMinutes,
+  sessionTotalSeconds,
   SOCIAL_MEDIA_MIN_GOAL,
   computeDailyBudgetMin,
   HABIT_TEMPLATE_IDS,
@@ -1014,7 +1016,7 @@ function getSupportedSessionHabit(state: DemoState, habitId: string): HabitRespo
 
 function getDemoExerciseElapsedMs(session: DemoHabitSession): number {
   if (session.paused_at && session.paused_remaining_seconds != null) {
-    const totalMs = session.planned_min * 60_000;
+    const totalMs = sessionTotalSeconds(session) * 1000;
     return Math.max(0, totalMs - session.paused_remaining_seconds * 1000);
   }
 
@@ -1023,6 +1025,7 @@ function getDemoExerciseElapsedMs(session: DemoHabitSession): number {
 
 function toDemoSessionResponse(session: DemoHabitSession): HabitSessionResponse {
   const isPaused = Boolean(session.paused_at && !session.completed && !session.ended_at);
+  const totalMs = sessionTotalSeconds(session) * 1000;
   const remainingSeconds =
     session.completed || session.ended_at
       ? 0
@@ -1030,10 +1033,7 @@ function toDemoSessionResponse(session: DemoHabitSession): HabitSessionResponse 
         ? session.paused_remaining_seconds
         : Math.max(
             0,
-            Math.ceil(
-              (new Date(session.started_at).getTime() + session.planned_min * 60_000 - Date.now()) /
-                1000,
-            ),
+            Math.ceil((new Date(session.started_at).getTime() + totalMs - Date.now()) / 1000),
           );
   return {
     id: session.id,
@@ -1042,6 +1042,7 @@ function toDemoSessionResponse(session: DemoHabitSession): HabitSessionResponse 
     started_at: session.started_at,
     ended_at: session.ended_at,
     planned_min: session.planned_min,
+    planned_seconds: session.planned_seconds ?? null,
     actual_min: session.actual_min,
     value_added: session.value_added,
     completed: session.completed,
@@ -1165,13 +1166,20 @@ export function demoStartHabitSession(
     throw new Error("Habit session already active for this habit");
   }
 
+  const plannedSeconds =
+    data.planned_seconds != null && data.planned_seconds > 0 ? data.planned_seconds : null;
+  const plannedMin =
+    data.planned_min ??
+    (plannedSeconds != null ? sessionBudgetMinutes(plannedSeconds) : SESSION_TARGET_MIN);
+
   const session: DemoHabitSession = {
     id: crypto.randomUUID(),
     habit_id: habitId,
     block_id: data.block_id ?? null,
     started_at: nowIso(),
     ended_at: null,
-    planned_min: data.planned_min ?? SESSION_TARGET_MIN,
+    planned_min: plannedMin,
+    planned_seconds: plannedSeconds,
     actual_min: null,
     value_added: null,
     completed: false,
@@ -1304,7 +1312,8 @@ export function demoPauseHabitSession(habitId: string): HabitSessionResponse {
   const remainingSeconds = Math.max(
     0,
     Math.ceil(
-      (new Date(session.started_at).getTime() + session.planned_min * 60_000 - Date.now()) / 1000,
+      (new Date(session.started_at).getTime() + sessionTotalSeconds(session) * 1000 - Date.now()) /
+        1000,
     ),
   );
   const updatedSession: DemoHabitSession = {
@@ -1335,7 +1344,7 @@ export function demoResumeHabitSession(habitId: string): HabitSessionResponse {
     return toDemoSessionResponse(session);
   }
 
-  const totalSeconds = session.planned_min * 60;
+  const totalSeconds = sessionTotalSeconds(session);
   const elapsedSeconds = Math.max(0, totalSeconds - session.paused_remaining_seconds);
   const newStartedAt = new Date(Date.now() - elapsedSeconds * 1000).toISOString();
   const updatedSession: DemoHabitSession = {

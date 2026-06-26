@@ -1,4 +1,5 @@
 import type { HabitSessionResponse } from "@mytodo/shared";
+import { sessionTotalSeconds } from "@mytodo/shared";
 import { ClientApiError } from "../../lib/api";
 import { getActiveSession, pauseSession, resumeSession, stopSession } from "./session-api";
 
@@ -8,8 +9,12 @@ export function getElapsedSecondsFromStart(startedAt: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000));
 }
 
-export function getRemainingSecondsFromStart(startedAt: string, plannedMin: number): number {
-  const totalSeconds = Math.max(1, Math.round(plannedMin * 60));
+export function getRemainingSecondsFromStart(
+  startedAt: string,
+  plannedMin: number,
+  plannedSeconds?: number | null,
+): number {
+  const totalSeconds = sessionTotalSeconds({ planned_min: plannedMin, planned_seconds: plannedSeconds });
   const endsAt = new Date(startedAt).getTime() + totalSeconds * 1000;
   return Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
 }
@@ -19,11 +24,15 @@ export function getSessionRemainingSeconds(session: HabitSessionResponse): numbe
     return session.remaining_seconds;
   }
 
-  return getRemainingSecondsFromStart(session.started_at, session.planned_min);
+  return getRemainingSecondsFromStart(
+    session.started_at,
+    session.planned_min,
+    session.planned_seconds,
+  );
 }
 
 export function getSessionElapsedSeconds(session: HabitSessionResponse): number {
-  const totalSeconds = Math.max(1, Math.round(session.planned_min * 60));
+  const totalSeconds = sessionTotalSeconds(session);
   return Math.max(0, totalSeconds - getSessionRemainingSeconds(session));
 }
 

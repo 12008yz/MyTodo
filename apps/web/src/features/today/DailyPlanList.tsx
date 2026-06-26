@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DailyPlan, DailyPlanBlock, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
-import { isNonSessionLightCategory, SESSION_TARGET_MIN } from "@mytodo/shared";
+import { isNonSessionLightCategory, PLANK_PREP_SECONDS, SESSION_TARGET_MIN, sessionBudgetMinutes } from "@mytodo/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClientApiError } from "../../lib/api";
 import { FocusScreen } from "../sessions/FocusScreen";
@@ -62,15 +62,49 @@ type FocusState = {
   sessionId: string | null;
   sessionBlockId: string | null;
   plannedMin: number;
+  plannedSeconds: number | null;
   startedAt: string | null;
   isPlanBlock: boolean;
   skipPrep: boolean;
   isPaused: boolean;
 } | null;
 
+function isPlankSession(habit: TodayLightHabit | TodayDarkHabit, block: DailyPlanBlock): boolean {
+  return block.unit === "seconds" || habit.unit === "seconds";
+}
+
+function resolveSessionPlan(
+  habit: TodayLightHabit | TodayDarkHabit,
+  block: DailyPlanBlock | null,
+  fallbackMin = SESSION_TARGET_MIN,
+): { plannedMin: number; plannedSeconds: number | null } {
+  if (block?.unit === "seconds" && block.expected_yield > 0) {
+    const plannedSeconds = Math.max(1, Math.round(block.expected_yield));
+    return {
+      plannedSeconds,
+      plannedMin: sessionBudgetMinutes(plannedSeconds),
+    };
+  }
+
+  if (habit.unit === "seconds") {
+    const remaining = Math.max(0, habit.current_goal - (habit.checkin?.value ?? 0));
+    const plannedSeconds = Math.max(1, Math.round(remaining > 0 ? remaining : habit.current_goal));
+    return {
+      plannedSeconds,
+      plannedMin: sessionBudgetMinutes(plannedSeconds),
+    };
+  }
+
+  return {
+    plannedMin: block?.duration_min ?? fallbackMin,
+    plannedSeconds: null,
+  };
+}
+
 function createFocusBlock(
   habit: TodayLightHabit | TodayDarkHabit,
   plannedMin: number,
+  plannedSeconds: number | null = null,
 ): DailyPlanBlock {
   return {
     id: `bonus-${habit.id}`,
@@ -79,7 +113,7 @@ function createFocusBlock(
     icon: habit.icon ?? null,
     unit: habit.unit,
     duration_min: plannedMin,
-    expected_yield: 0,
+    expected_yield: plannedSeconds ?? 0,
     order: 0,
     status: "pending",
     actual_value: null,
@@ -146,10 +180,13 @@ function buildFocusState(
 
   return {
     habit,
-    block: block ?? createFocusBlock(habit, session.planned_min),
+    block:
+      block ??
+      createFocusBlock(habit, session.planned_min, session.planned_seconds ?? null),
     sessionId: session.id,
     sessionBlockId: session.block_id,
     plannedMin: session.planned_min,
+    plannedSeconds: session.planned_seconds ?? null,
     startedAt: session.started_at,
     isPlanBlock,
     skipPrep,
@@ -311,6 +348,7 @@ export function DailyPlanList({
   const timer = useSessionTimer({
     sessionKey: focusState?.sessionId ?? null,
     plannedMin: focusState?.plannedMin ?? 0,
+    plannedSeconds: focusState?.plannedSeconds ?? null,
     startedAt: focusState?.startedAt ?? null,
     autoStart: Boolean(focusState?.sessionId && focusState.skipPrep && !focusState.isPaused),
   });
@@ -408,7 +446,7 @@ export function DailyPlanList({
       }
 
       setActionError(null);
-      const plannedMin = block?.duration_min ?? SESSION_TARGET_MIN;
+      const { plannedMin, plannedSeconds } = resolveSessionPlan(habit, block);
       const isPlanBlock = Boolean(block && planBlockIds.has(block.id));
 
       try {
@@ -416,13 +454,14 @@ export function DailyPlanList({
           return;
         }
 
-        const resolvedBlock = block ?? createFocusBlock(habit, plannedMin);
+        const resolvedBlock = block ?? createFocusBlock(habit, plannedMin, plannedSeconds);
         setFocusState({
           habit,
           block: resolvedBlock,
           sessionId: null,
           sessionBlockId: isPlanBlock && block ? block.id : null,
           plannedMin,
+          plannedSeconds,
           startedAt: null,
           isPlanBlock,
           skipPrep: false,
@@ -484,6 +523,9 @@ export function DailyPlanList({
             ? { block_id: focusState.sessionBlockId }
             : {}),
           planned_min: focusState.plannedMin,
+          ...(focusState.plannedSeconds != null
+            ? { planned_seconds: focusState.plannedSeconds }
+            : {}),
         },
       });
       const sideData = getSidePlanData(focusState.habit.id, light, dark);
@@ -597,12 +639,25 @@ export function DailyPlanList({
           return;
         }
 
+        const earlyValue =
+          currentFocus.block.unit === "seconds"
+            ? Math.max(
+                1,
+                Math.min(
+                  timer.elapsedSeconds,
+                  currentFocus.block.expected_yield > 0
+                    ? currentFocus.block.expected_yield
+                    : timer.elapsedSeconds,
+                ),
+              )
+            : resolveEarlyCompletionValue(currentFocus.block, currentFocus.plannedMin);
+
         await submitCompletion(
           currentFocus.habit.id,
           currentFocus.sessionBlockId,
           currentFocus.isPlanBlock,
           {
-            value: resolveEarlyCompletionValue(currentFocus.block, currentFocus.plannedMin),
+            value: earlyValue,
             endedEarly: true,
           },
         );
@@ -616,6 +671,24 @@ export function DailyPlanList({
           currentFocus.sessionBlockId,
           currentFocus.isPlanBlock,
           { value: elapsedValue, endedEarly },
+        );
+        setIsEnding(false);
+        return;
+      }
+
+      if (currentFocus.block.unit === "seconds") {
+        const fallbackSeconds = currentFocus.plannedSeconds ?? timer.elapsedSeconds;
+        await submitCompletion(
+          currentFocus.habit.id,
+          currentFocus.sessionBlockId,
+          currentFocus.isPlanBlock,
+          {
+            value:
+              currentFocus.block.expected_yield > 0
+                ? currentFocus.block.expected_yield
+                : Math.max(1, fallbackSeconds),
+            endedEarly,
+          },
         );
         setIsEnding(false);
         return;
@@ -826,13 +899,21 @@ export function DailyPlanList({
         isOpen={Boolean(focusState)}
         habitName={focusState?.habit.name ?? ""}
         plannedMin={focusState?.plannedMin ?? 0}
+        plannedSeconds={focusState?.plannedSeconds ?? null}
         remainingSeconds={
           focusState?.sessionId
             ? timer.remainingSeconds
-            : Math.round((focusState?.plannedMin ?? 0) * 60)
+            : focusState?.plannedSeconds ?? Math.round((focusState?.plannedMin ?? 0) * 60)
         }
         isPaused={timer.isPaused}
         skipPrep={focusState?.skipPrep ?? false}
+        autoPrepSeconds={
+          focusState && !focusState.skipPrep && isPlankSession(focusState.habit, focusState.block)
+            ? PLANK_PREP_SECONDS
+            : null
+        }
+        prepLabel="Встаньте в планку — скоро начнём"
+        sessionActive={Boolean(focusState?.sessionId)}
         canStopEarly={timer.elapsedSeconds >= MIN_STALE_SESSION_SECONDS}
         onBeginSession={() => void handleBeginExercise()}
         onTogglePause={() => void handleTogglePause()}

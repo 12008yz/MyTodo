@@ -20,6 +20,7 @@ import {
 import {
   formatCardHint,
   formatGoalLabel,
+  formatSessionDuration,
   formatTimer,
   formatUnit,
   statusLabel,
@@ -316,11 +317,11 @@ export function DailyPlanHabitRow({
       : isRecoveringSessions && block?.status === "active"
         ? "Продолжить..."
       : block?.status === "active"
-      ? `Продолжить · ${block.duration_min} мин`
+      ? `Продолжить · ${formatSessionDuration(block)}`
       : goalReached
       ? "Ещё сессия"
       : block
-        ? `Начать · ${block.duration_min} мин`
+        ? `Начать · ${formatSessionDuration(block)}`
         : "Начать";
 
   const quickAddChips = habit.unit === "minutes" ? [5, 10, 15] : [];
@@ -498,7 +499,9 @@ export function DailyPlanHabitRow({
                       : `Читаешь «${selectedBook.title}». Ниже — сколько дней осталось по нашей системе.`
                     : "Выбери книгу из рекомендаций — покажем срок чтения и остаток по мере прогресса."
                 : block
-                ? `Следующая сессия: ${block.duration_min} мин. Ожидаемый результат — ~${block.expected_yield} ${formatUnit(block.unit)}.`
+                ? block.unit === "seconds"
+                  ? `Следующая сессия: ${block.expected_yield} ${formatUnit(block.unit)}.`
+                  : `Следующая сессия: ${block.duration_min} мин. Ожидаемый результат — ~${block.expected_yield} ${formatUnit(block.unit)}.`
                 : goalReached
                   ? "Цель на сегодня выполнена. Можно добавить сверх плана или начать ещё одну сессию."
                   : "Нажмите «Начать», чтобы запустить таймер фокуса."}

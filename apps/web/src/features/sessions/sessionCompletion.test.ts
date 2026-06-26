@@ -58,6 +58,21 @@ describe("needsCompletionValuePrompt", () => {
     ).toBe(false);
   });
 
+  it("never prompts for second-based habits", () => {
+    expect(
+      needsCompletionValuePrompt(
+        lightTargetHabit,
+        {
+          ...baseBlock,
+          unit: "seconds",
+          duration_min: 1,
+          expected_yield: 35,
+        },
+        false,
+      ),
+    ).toBe(false);
+  });
+
   it("still prompts for dark limit habits when ended early", () => {
     expect(
       needsCompletionValuePrompt(

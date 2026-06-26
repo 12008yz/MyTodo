@@ -18,6 +18,7 @@ import {
   PROGRAMMING_TARGET_MINUTES,
   PUSHUP_SECONDS_PER_REP,
   RUNNING_MIN_MINUTES,
+  sessionBudgetMinutes,
   STRETCH_TARGET_MINUTES,
   STRENGTH_WORKOUT_TARGET_MINUTES,
   WALKING_MIN_MINUTES,
@@ -350,11 +351,13 @@ export function resolveSessionPlanProfile(
   }
 
   if (activityId === "strength-plank" || habit.unit === "seconds") {
+    const secondsNeeded = Math.max(1, Math.round(neededMin * 60));
+    const budgetMin = sessionBudgetMinutes(secondsNeeded);
     return {
       tier: "flexible",
-      preferredMin: 1,
-      minMin: 1,
-      maxMin: 1,
+      preferredMin: budgetMin,
+      minMin: budgetMin,
+      maxMin: budgetMin,
     };
   }
 

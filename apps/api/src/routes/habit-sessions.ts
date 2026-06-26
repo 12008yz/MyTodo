@@ -29,6 +29,7 @@ export async function registerHabitSessionRoutes(
       const session = await habitSessionService.start(user, params.id, {
         blockId: body.block_id,
         plannedMin: body.planned_min,
+        plannedSeconds: body.planned_seconds,
       });
       return reply.status(201).send(habitSessionSchema.parse(session));
     },

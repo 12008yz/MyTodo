@@ -5,6 +5,8 @@ import {
   ERROR_CODES,
   HTTP_STATUS,
   SESSION_TARGET_MIN,
+  sessionBudgetMinutes,
+  sessionTotalSeconds,
   type HabitSessionCompleteResponse,
   type HabitSessionResponse,
 } from "@mytodo/shared";
@@ -17,6 +19,7 @@ import type { PledgeService } from "./pledges.js";
 type StartHabitSessionOptions = {
   blockId?: string;
   plannedMin?: number;
+  plannedSeconds?: number;
 };
 
 type CompleteHabitSessionOptions = {
@@ -53,7 +56,11 @@ export class HabitSessionService {
     }
 
     const now = new Date();
-    const plannedMin = opts.plannedMin ?? SESSION_TARGET_MIN;
+    const plannedSeconds =
+      opts.plannedSeconds != null && opts.plannedSeconds > 0 ? opts.plannedSeconds : null;
+    const plannedMin =
+      opts.plannedMin ??
+      (plannedSeconds != null ? sessionBudgetMinutes(plannedSeconds) : SESSION_TARGET_MIN);
     const [session] = await this.db
       .insert(habitSessions)
       .values({
@@ -62,6 +69,7 @@ export class HabitSessionService {
         blockId: opts.blockId ?? null,
         startedAt: now,
         plannedMin,
+        plannedSeconds,
       })
       .returning();
 
@@ -269,7 +277,9 @@ export class HabitSessionService {
       return this.toResponse(session, now);
     }
 
-    const endsAt = new Date(session.startedAt.getTime() + session.plannedMin * 60_000);
+    const endsAt = new Date(
+      session.startedAt.getTime() + sessionTotalSeconds(session) * 1000,
+    );
     const remaining = computeRemainingSeconds(now, endsAt);
     const [updated] = await this.db
       .update(habitSessions)
@@ -308,7 +318,7 @@ export class HabitSessionService {
       return this.toResponse(session, now);
     }
 
-    const totalSeconds = session.plannedMin * 60;
+    const totalSeconds = sessionTotalSeconds(session);
     const elapsedSeconds = Math.max(0, totalSeconds - session.pausedRemainingSeconds);
     const newStartedAt = new Date(now.getTime() - elapsedSeconds * 1000);
     const [updated] = await this.db
@@ -383,7 +393,9 @@ export class HabitSessionService {
   }
 
   toResponse(session: typeof habitSessions.$inferSelect, now: Date): HabitSessionResponse {
-    const endsAt = new Date(session.startedAt.getTime() + session.plannedMin * 60_000);
+    const endsAt = new Date(
+      session.startedAt.getTime() + sessionTotalSeconds(session) * 1000,
+    );
     const isPaused = Boolean(
       session.pausedAt && !session.completed && !session.endedAt,
     );
@@ -395,6 +407,7 @@ export class HabitSessionService {
       started_at: session.startedAt.toISOString(),
       ended_at: session.endedAt?.toISOString() ?? null,
       planned_min: session.plannedMin,
+      planned_seconds: session.plannedSeconds,
       actual_min: session.actualMin,
       value_added: session.valueAdded == null ? null : Number(session.valueAdded),
       completed: session.completed,
@@ -413,7 +426,7 @@ export class HabitSessionService {
     now: Date,
   ): number {
     if (session.pausedAt && session.pausedRemainingSeconds != null) {
-      const totalMs = session.plannedMin * 60_000;
+      const totalMs = sessionTotalSeconds(session) * 1000;
       return Math.max(0, totalMs - session.pausedRemainingSeconds * 1000);
     }
 

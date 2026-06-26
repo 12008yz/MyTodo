@@ -221,6 +221,28 @@ describe("buildDailyPlan", () => {
     expect(plan.blocks[0]?.expected_yield).toBe(5);
   });
 
+  it("allocates plank for the exact remaining seconds in the daily goal", () => {
+    const plan = buildDailyPlan({
+      date: "2026-06-24",
+      budgetMin: 60,
+      habits: [
+        {
+          id: "plank",
+          name: "Планка",
+          icon: null,
+          unit: "seconds",
+          current_goal: 35,
+          checkin_value: 0,
+          template_id: "plank",
+        },
+      ],
+    });
+
+    expect(plan.blocks).toHaveLength(1);
+    expect(plan.blocks[0]?.duration_min).toBe(1);
+    expect(plan.blocks[0]?.expected_yield).toBe(35);
+  });
+
   it("uses new block ids after partial progress so completed blocks are not reused", () => {
     const before = buildDailyPlan({
       date: "2026-06-24",
