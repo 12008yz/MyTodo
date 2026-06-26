@@ -4,9 +4,12 @@ import {
   SESSION_TARGET_MIN,
   SOCIAL_MEDIA_MIN_GOAL,
   computeDailyBudgetMin,
+  HABIT_TEMPLATE_IDS,
   HABIT_TEMPLATES,
   resolveHabitIcon,
   type CustomHabitUnit,
+  type HabitCategoryKey,
+  type HabitTemplateId,
   todayDarkResponseSchema,
   todayLightResponseSchema,
   type DayColorValue,
@@ -45,8 +48,11 @@ import { DEMO_EMAIL, DEMO_PASSWORD } from "./demo-mode";
 const DEMO_STORAGE_KEY = "mytodo_demo_state";
 const DEMO_ACCESS_TOKEN = "demo-access-token";
 const DEMO_REFRESH_TOKEN = "demo-refresh-token";
+/** Bump when showcase seed changes — existing localStorage is refreshed on login. */
+const DEMO_STATE_VERSION = 2;
 
 type DemoState = {
+  version: number;
   user: UserProfile;
   habits: HabitResponse[];
   english: EnglishSettingsResponse;
@@ -171,6 +177,9 @@ function loadState(): DemoState | null {
     const raw = localStorage.getItem(DEMO_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as DemoState;
+    if ((parsed.version ?? 1) < DEMO_STATE_VERSION) {
+      return null;
+    }
     return normalizeDemoHabitGoals({
       ...parsed,
       checkins: parsed.checkins ?? [],
@@ -190,6 +199,7 @@ function ensureState(): DemoState {
   if (existing) return existing;
 
   const state: DemoState = {
+    version: DEMO_STATE_VERSION,
     user: buildUser({ email: DEMO_EMAIL, name: "Демо-воин" }),
     habits: [],
     english: defaultEnglish(),
@@ -327,7 +337,7 @@ function applyPatchMe(user: UserProfile, patch: PatchMeRequest): UserProfile {
 
 export function demoLogin(_data: LoginRequest): AuthResponse {
   const state = loadState();
-  if (!state?.user.onboarding_completed) {
+  if (!state?.user.onboarding_completed || (state.version ?? 1) < DEMO_STATE_VERSION) {
     saveState(buildShowcaseState());
   }
   return toAuthResponse(ensureState().user);
@@ -348,6 +358,7 @@ export function demoRegister(data: RegisterRequest): AuthResponse {
   });
 
   saveState({
+    version: DEMO_STATE_VERSION,
     user,
     habits: [],
     english: defaultEnglish(),
@@ -480,6 +491,198 @@ function makeCheckin(
   };
 }
 
+const SHOWCASE_TEMPLATE_BASELINES: Record<HabitTemplateId, number> = {
+  books: 5,
+  pushups: 10,
+  running: 20,
+  plank: 30,
+  smoking: 15,
+  sugar: 5,
+  sweets: 3,
+  social_media: 45,
+  nail_biting: 0,
+};
+
+const SHOWCASE_CUSTOM_LIGHT: ReadonlyArray<{
+  name: string;
+  unit: CustomHabitUnit;
+  baseline: number;
+  categoryKey: HabitCategoryKey;
+}> = [
+  { name: "Медитация", unit: "minutes", baseline: 10, categoryKey: "meditation" },
+  { name: "Иностранный язык", unit: "minutes", baseline: 15, categoryKey: "language" },
+  { name: "Дневник благодарности", unit: "minutes", baseline: 5, categoryKey: "gratitude" },
+  { name: "Силовая тренировка", unit: "minutes", baseline: 20, categoryKey: "strength_workout" },
+  { name: "Растяжка", unit: "minutes", baseline: 10, categoryKey: "stretching" },
+  { name: "Программирование", unit: "minutes", baseline: 30, categoryKey: "programming" },
+  { name: "Творческий проект", unit: "minutes", baseline: 20, categoryKey: "creative_project" },
+  { name: "Ходьба на свежем воздухе", unit: "minutes", baseline: 20, categoryKey: "walking" },
+  { name: "Ранний подъём", unit: "minutes", baseline: 0, categoryKey: "early_rise" },
+  { name: "Правильное питание", unit: "minutes", baseline: 0, categoryKey: "healthy_nutrition" },
+];
+
+function countActiveLightHabits(habits: HabitResponse[]): number {
+  return habits.filter((habit) => habit.side === "light" && habit.is_active).length;
+}
+
+function addShowcaseTemplateHabit(
+  user: UserProfile,
+  habits: HabitResponse[],
+  templateId: HabitTemplateId,
+  createdAt: string,
+): HabitResponse {
+  const isLight = HABIT_TEMPLATES[templateId].side === "light";
+  const habit = createHabitResponse(
+    user,
+    { template_id: templateId, baseline_value: SHOWCASE_TEMPLATE_BASELINES[templateId] },
+    createdAt,
+    countActiveLightHabits(habits) + (isLight ? 1 : 0),
+  );
+  habits.push(habit);
+  return habit;
+}
+
+function addShowcaseCustomLightHabit(
+  user: UserProfile,
+  habits: HabitResponse[],
+  input: (typeof SHOWCASE_CUSTOM_LIGHT)[number],
+  createdAt: string,
+): HabitResponse {
+  const habit = createHabitResponse(
+    user,
+    {
+      name: input.name,
+      unit: input.unit,
+      baseline_value: input.baseline,
+      category_key: input.categoryKey,
+    },
+    createdAt,
+    countActiveLightHabits(habits) + 1,
+  );
+  habits.push(habit);
+  return habit;
+}
+
+function buildShowcaseHabits(user: UserProfile, createdAt: string): HabitResponse[] {
+  const habits: HabitResponse[] = [];
+
+  for (const templateId of HABIT_TEMPLATE_IDS) {
+    if (HABIT_TEMPLATES[templateId].side === "light") {
+      addShowcaseTemplateHabit(user, habits, templateId, createdAt);
+    }
+  }
+
+  for (const custom of SHOWCASE_CUSTOM_LIGHT) {
+    addShowcaseCustomLightHabit(user, habits, custom, createdAt);
+  }
+
+  for (const templateId of HABIT_TEMPLATE_IDS) {
+    if (HABIT_TEMPLATES[templateId].side === "dark") {
+      addShowcaseTemplateHabit(user, habits, templateId, createdAt);
+    }
+  }
+
+  const byTemplate = (templateId: HabitTemplateId) =>
+    habits.find((habit) => habit.template_id === templateId);
+
+  byTemplate("books")!.current_goal = 5;
+  byTemplate("running")!.current_goal = 30;
+  byTemplate("pushups")!.current_goal = 15;
+  byTemplate("smoking")!.current_goal = 12;
+  byTemplate("social_media")!.current_goal = 30;
+
+  const earlyRise = habits.find((habit) => habit.category_key === "early_rise");
+  if (earlyRise) {
+    earlyRise.current_goal = 5;
+    earlyRise.success_days_at_goal = 2;
+  }
+
+  return habits;
+}
+
+function buildShowcaseCheckins(habits: HabitResponse[], today: string, weekStart: string): CheckinResponse[] {
+  const checkins: CheckinResponse[] = [];
+
+  habits.forEach((habit, index) => {
+    let status: CheckinResponse["status"];
+    let value: number | null;
+
+    if (habit.type === "abstinence") {
+      status = index % 2 === 0 ? "success" : "pending";
+      value = null;
+    } else if (habit.category_key === "early_rise" || habit.category_key === "healthy_nutrition") {
+      status = index % 3 === 0 ? "success" : "pending";
+      value = status === "success" ? habit.current_goal : null;
+    } else if (habit.type === "target") {
+      if (index % 5 === 0) {
+        status = "success";
+        value = habit.current_goal;
+      } else if (index % 5 === 1) {
+        status = "pending";
+        value = Math.max(0, Math.floor(habit.current_goal * 0.55));
+      } else {
+        return;
+      }
+    } else {
+      if (index % 4 === 0) {
+        status = "success";
+        value = Math.max(0, habit.current_goal - 1);
+      } else if (index % 4 === 1) {
+        status = "pending";
+        value = Math.min(habit.current_goal + 2, habit.current_goal + 5);
+      } else {
+        return;
+      }
+    }
+
+    checkins.push(makeCheckin(habit, today, status, value));
+  });
+
+  for (let offset = 0; offset < 7; offset += 1) {
+    const date = addDaysLocal(weekStart, offset);
+    if (date >= today) continue;
+
+    for (const habit of habits) {
+      const failDay = offset === 1 && habit.side === "dark" && habit.type === "limit";
+
+      if (habit.type === "abstinence") {
+        checkins.push(makeCheckin(habit, date, failDay ? "fail" : "success", null));
+        continue;
+      }
+
+      if (habit.category_key === "early_rise" || habit.category_key === "healthy_nutrition") {
+        checkins.push(
+          makeCheckin(habit, date, offset % 3 === 0 ? "skipped" : "success", habit.current_goal),
+        );
+        continue;
+      }
+
+      if (habit.type === "target") {
+        checkins.push(
+          makeCheckin(
+            habit,
+            date,
+            offset % 4 === 0 ? "skipped" : "success",
+            offset % 4 === 0 ? null : habit.current_goal,
+          ),
+        );
+        continue;
+      }
+
+      checkins.push(
+        makeCheckin(
+          habit,
+          date,
+          failDay ? "fail" : "success",
+          failDay ? habit.current_goal + 2 : Math.max(0, habit.current_goal - 1),
+        ),
+      );
+    }
+  }
+
+  return checkins;
+}
+
 function buildShowcaseState(): DemoState {
   const user = buildUser({
     email: DEMO_EMAIL,
@@ -491,66 +694,21 @@ function buildShowcaseState(): DemoState {
 
   user.weight_kg = 78;
   user.height_cm = 180;
-  user.free_time_min = 60;
-  user.daily_budget_min = computeDailyBudgetMin(60);
+  user.free_time_min = 90;
+  user.daily_budget_min = computeDailyBudgetMin(90);
   user.wake_time = "07:00";
   user.sleep_time = "23:00";
   user.harshness_level = 2;
   user.effective_harshness_level = 2;
 
   const createdAt = addDaysLocal(todayDate(), -21) + "T10:00:00.000Z";
-
-  const running = createHabitResponse(
-    user,
-    { template_id: "running", baseline_value: 20 },
-    createdAt,
-  );
-  running.current_goal = 30;
-
-  const pushups = createHabitResponse(
-    user,
-    { template_id: "pushups", baseline_value: 10 },
-    createdAt,
-  );
-  pushups.current_goal = 15;
-
-  const smoking = createHabitResponse(
-    user,
-    { template_id: "smoking", baseline_value: 15 },
-    createdAt,
-  );
-  smoking.current_goal = 12;
-
-  const social = createHabitResponse(
-    user,
-    { template_id: "social_media", baseline_value: 45 },
-    createdAt,
-  );
-  social.current_goal = 30;
-
-  const habits = [running, pushups, smoking, social];
+  const habits = buildShowcaseHabits(user, createdAt);
   const today = todayDate();
   const weekStart = weekStartMonday(today);
-  const checkins: CheckinResponse[] = [
-    makeCheckin(running, today, "pending", 18),
-    makeCheckin(pushups, today, "success", 15),
-    makeCheckin(smoking, today, "pending", 8),
-    makeCheckin(social, today, "pending", 22),
-  ];
-
-  for (let offset = 0; offset < 7; offset += 1) {
-    const date = addDaysLocal(weekStart, offset);
-    if (date >= today) continue;
-
-    checkins.push(
-      makeCheckin(running, date, offset % 2 === 0 ? "success" : "skipped", offset % 2 === 0 ? 30 : null),
-      makeCheckin(pushups, date, "success", 15),
-      makeCheckin(smoking, date, offset === 1 ? "fail" : "success", offset === 1 ? 14 : 10),
-      makeCheckin(social, date, "success", 25),
-    );
-  }
+  const checkins = buildShowcaseCheckins(habits, today, weekStart);
 
   return {
+    version: DEMO_STATE_VERSION,
     user,
     habits,
     english: defaultEnglish(),

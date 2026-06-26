@@ -1,8 +1,14 @@
-import { useState, type MouseEvent } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import type { DailyPlanBlock, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
 import { isEarlyRiseCategoryKey, isNonSessionLightCategory } from "@mytodo/shared";
 import { ClientApiError } from "../../lib/api";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
+import { BookPickerModal } from "./BookPickerModal";
+import {
+  readSelectedBook,
+  writeSelectedBook,
+  type SelectedBook,
+} from "./bookSelection";
 import {
   formatCardHint,
   formatGoalLabel,
@@ -19,6 +25,7 @@ import {
   getLiveSessionProgressLabel,
 } from "../sessions/sessionProgress";
 import { getSessionRemainingSeconds } from "../sessions/sessionRecovery";
+import { isBooksHabit } from "./isBooksHabit";
 
 function PlanInfoIcon({ className }: { className?: string }) {
   return (
@@ -130,9 +137,20 @@ export function DailyPlanHabitRow({
   const [actionError, setActionError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [bookPickerOpen, setBookPickerOpen] = useState(false);
+  const [selectedBook, setSelectedBook] = useState<SelectedBook | null>(null);
   const status = habit.checkin?.status;
+  const isBooks = isBooksHabit(habit);
   const isEarlyRise = isEarlyRiseCategoryKey(habit.category_key);
   const isNonSessionHabit = isNonSessionLightCategory(habit.category_key);
+
+  useEffect(() => {
+    if (!isBooks) {
+      setSelectedBook(null);
+      return;
+    }
+    setSelectedBook(readSelectedBook(habit.id));
+  }, [habit.id, isBooks]);
 
   const isPending = checkinMutation.isPending;
   const timer = hasTimerField(habit) ? habit.timer : null;
@@ -271,6 +289,10 @@ export function DailyPlanHabitRow({
 
         <p className="home__plan-item-goal">{formatGoalLabel(habit, wakeTime)}</p>
 
+        {isBooks && selectedBook ? (
+          <p className="home__plan-item-book">Сейчас: {selectedBook.title}</p>
+        ) : null}
+
         {timer ? (
           <p className="home__task-timer">Чистое время: {formatTimer(timer.elapsed)}</p>
         ) : null}
@@ -332,7 +354,7 @@ export function DailyPlanHabitRow({
                 event.stopPropagation();
                 void runCheckin({
                   habit_id: habit.id,
-                  value: habit.current_goal > 0 ? habit.current_goal : 1,
+                  value: habit.current_goal,
                 });
               }}
             >
@@ -398,12 +420,28 @@ export function DailyPlanHabitRow({
             <p className="home__plan-item-drawer-text">
               {isEarlyRise
                 ? "Цель — проснуться не позже указанного времени. После 3 успешных дней подъём сдвинется на 5 минут раньше."
+                : isBooks
+                  ? selectedBook
+                    ? `Читаешь «${selectedBook.title}». Можно сменить книгу или начать сессию чтения.`
+                    : "Выбери книгу из рекомендаций или начни сессию чтения по плану."
                 : block
                 ? `Следующая сессия: ${block.duration_min} мин. Ожидаемый результат — ~${block.expected_yield} ${formatUnit(block.unit)}.`
                 : goalReached
                   ? "Цель на сегодня выполнена. Можно добавить сверх плана или начать ещё одну сессию."
                   : "Нажмите «Начать», чтобы запустить таймер фокуса."}
             </p>
+            {isBooks ? (
+              <button
+                type="button"
+                className="home__plan-drawer-btn home__plan-drawer-btn--primary"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setBookPickerOpen(true);
+                }}
+              >
+                Выбрать книгу
+              </button>
+            ) : null}
             {side === "light" && status !== "success" && status !== "fail" ? (
               <button
                 type="button"
@@ -429,6 +467,16 @@ export function DailyPlanHabitRow({
         isSubmitting={checkinMutation.isPending}
         onCancel={() => setQuickAddOpen(false)}
         onAdd={(amount) => void handleQuickAdd(amount)}
+      />
+
+      <BookPickerModal
+        isOpen={bookPickerOpen}
+        selectedBookId={selectedBook?.id ?? null}
+        onClose={() => setBookPickerOpen(false)}
+        onSelect={(book) => {
+          writeSelectedBook(habit.id, book);
+          setSelectedBook(book);
+        }}
       />
     </>
   );
