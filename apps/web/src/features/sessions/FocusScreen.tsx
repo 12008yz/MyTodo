@@ -17,6 +17,7 @@ type FocusScreenProps = {
   remainingSeconds: number;
   isPaused: boolean;
   skipPrep: boolean;
+  /** Fixed prep countdown (e.g. plank): user taps Start, then this many seconds, then the session. */
   autoPrepSeconds?: number | null;
   prepLabel?: string;
   sessionActive?: boolean;
@@ -31,6 +32,18 @@ function formatCountdown(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatPrepDuration(seconds: number): string {
+  if (seconds === 1) {
+    return "1 секунду";
+  }
+
+  if (seconds >= 2 && seconds <= 4) {
+    return `${seconds} секунды`;
+  }
+
+  return `${seconds} секунд`;
 }
 
 export function FocusScreen({
@@ -71,35 +84,22 @@ export function FocusScreen({
       return;
     }
 
-    if (autoPrepSeconds != null && autoPrepSeconds > 0) {
-      setPrepTotalSeconds(autoPrepSeconds);
-      setPrepRemainingSeconds(autoPrepSeconds);
-      setPrepPhase("running");
-      return;
-    }
-
     setPrepPhase("idle");
     setPrepTotalSeconds(0);
     setPrepRemainingSeconds(0);
-  }, [autoPrepSeconds, isOpen, skipPrep]);
+  }, [isOpen, skipPrep]);
 
   useEffect(() => {
-    if (prepPhase !== "running" || prepRemainingSeconds <= 0) {
+    if (prepPhase !== "running") {
       return;
     }
 
     const timerId = window.setInterval(() => {
-      setPrepRemainingSeconds((prev) => {
-        if (prev <= 1) {
-          window.clearInterval(timerId);
-          return 0;
-        }
-        return prev - 1;
-      });
+      setPrepRemainingSeconds((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
 
     return () => window.clearInterval(timerId);
-  }, [prepPhase, prepRemainingSeconds]);
+  }, [prepPhase]);
 
   useEffect(() => {
     if (prepPhase === "running" && prepRemainingSeconds === 0 && prepTotalSeconds > 0) {
@@ -129,17 +129,28 @@ export function FocusScreen({
     plannedSeconds != null && plannedSeconds > 0
       ? plannedSeconds
       : Math.max(1, Math.round(plannedMin * 60));
+  const fixedPrepSeconds =
+    !skipPrep && autoPrepSeconds != null && autoPrepSeconds > 0 ? autoPrepSeconds : null;
   const safeRemaining = Math.max(0, remainingSeconds);
 
   const isPrepActive = prepPhase === "running";
-  const showPrepSetup = !skipPrep && prepPhase !== "done" && !isPrepActive;
+  const showFixedPrepReady = fixedPrepSeconds != null && prepPhase === "idle";
+  const showPrepSetup = !skipPrep && prepPhase !== "done" && !isPrepActive && !showFixedPrepReady;
   const showSessionControls = prepPhase === "done";
 
-  const displaySeconds = isPrepActive ? prepRemainingSeconds : safeRemaining;
+  const displaySeconds = isPrepActive
+    ? prepRemainingSeconds
+    : showFixedPrepReady
+      ? sessionTotalSeconds
+      : safeRemaining;
   const displayTotal = isPrepActive ? prepTotalSeconds : sessionTotalSeconds;
   const remainingRatio =
     displayTotal > 0 ? Math.max(0, Math.min(1, displaySeconds / displayTotal)) : 0;
-  const progress = isPrepActive ? remainingRatio : 1 - remainingRatio;
+  const progress = isPrepActive
+    ? remainingRatio
+    : showFixedPrepReady
+      ? 1
+      : 1 - remainingRatio;
 
   const radius = 88;
   const circumference = 2 * Math.PI * radius;
@@ -168,7 +179,11 @@ export function FocusScreen({
           ×
         </button>
         <p className="focus-screen__eyebrow">
-          {isPrepActive ? "Время на подготовку" : "Сессия фокуса"}
+          {isPrepActive
+            ? "Время на подготовку"
+            : showFixedPrepReady
+              ? "Готовы к старту"
+              : "Сессия фокуса"}
         </p>
         <p id="focus-screen-title" className="focus-screen__habit">
           {habitName}
@@ -213,12 +228,30 @@ export function FocusScreen({
           </p>
         </div>
 
-        {!showSessionControls ? (
+        {!showSessionControls && !showFixedPrepReady ? (
           isPrepActive ? (
             <p className="focus-screen__meta">{prepLabel}</p>
           ) : (
             <p className="focus-screen__meta">Можно взять время на подготовку или начать сразу</p>
           )
+        ) : null}
+
+        {showFixedPrepReady ? (
+          <>
+            <p className="focus-screen__meta focus-screen__meta--ready">
+              Нажмите «Начать» — вам дадут {formatPrepDuration(fixedPrepSeconds)} на принятие
+              позиции, затем начнётся планка на {formatCountdown(sessionTotalSeconds)}.
+            </p>
+            <div className="focus-screen__actions">
+              <button
+                type="button"
+                className="focus-screen__btn focus-screen__btn--primary"
+                onClick={() => startPrep(fixedPrepSeconds)}
+              >
+                Начать
+              </button>
+            </div>
+          </>
         ) : null}
 
         {showPrepSetup ? (

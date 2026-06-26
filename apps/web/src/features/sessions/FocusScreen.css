@@ -139,6 +139,12 @@
   color: rgba(245, 245, 247, 0.62);
 }
 
+.focus-screen__meta--ready {
+  margin-top: 4px;
+  line-height: 1.45;
+  color: rgba(245, 245, 247, 0.78);
+}
+
 .focus-screen__actions {
   margin-top: 22px;
   display: flex;

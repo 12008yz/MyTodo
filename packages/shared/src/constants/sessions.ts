@@ -30,7 +30,7 @@ export const RUNNING_MIN_MINUTES = 10;
 export const PLANK_START_SECONDS = 20;
 
 /** Countdown before plank timer starts — time to get into position. */
-export const PLANK_PREP_SECONDS = 2;
+export const PLANK_PREP_SECONDS = 3;
 
 /** Stretching — 1–2 min per day (target 2). */
 export const STRETCH_MIN_MINUTES = 1;

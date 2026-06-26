@@ -912,7 +912,7 @@ export function DailyPlanList({
             ? PLANK_PREP_SECONDS
             : null
         }
-        prepLabel="Встаньте в планку — скоро начнём"
+        prepLabel="Встаньте в планку"
         sessionActive={Boolean(focusState?.sessionId)}
         canStopEarly={timer.elapsedSeconds >= MIN_STALE_SESSION_SECONDS}
         onBeginSession={() => void handleBeginExercise()}

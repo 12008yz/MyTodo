@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { maxLightHabitsForBudget, sessionTotalSeconds } from "./sessions.js";
+import { maxLightHabitsForBudget, PLANK_PREP_SECONDS, sessionTotalSeconds } from "./sessions.js";
 
 describe("maxLightHabitsForBudget", () => {
   it("allows all light habit slots when free time meets minimum", () => {
@@ -24,5 +24,11 @@ describe("sessionTotalSeconds", () => {
 
   it("falls back to planned minutes", () => {
     expect(sessionTotalSeconds({ planned_min: 12 })).toBe(720);
+  });
+});
+
+describe("PLANK_PREP_SECONDS", () => {
+  it("gives a short fixed countdown before the exercise timer", () => {
+    expect(PLANK_PREP_SECONDS).toBe(3);
   });
 });
