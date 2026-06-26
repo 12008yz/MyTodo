@@ -193,6 +193,54 @@ describe("Checkins", () => {
     expect(response.statusCode).toBe(400);
   });
 
+  it("records light habit success with unchanged preview_next_goal until interval met", async () => {
+    const auth = await createOnboardedUser("light-interval@example.com");
+    const habit = await createLightHabit(auth.access_token);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: {
+        habit_id: habit.id,
+        date: "2026-06-18",
+        value: habit.current_goal,
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
+    expect(checkin.status).toBe("success");
+    expect(checkin.preview_next_goal).toBe(habit.current_goal);
+    expect(habit.progression_interval_days).toBe(3);
+  });
+
+  it("increases light preview_next_goal after third successful day", async () => {
+    const auth = await createOnboardedUser("light-third@example.com");
+    const habit = await createLightHabit(auth.access_token);
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+
+    await db
+      .update(habits)
+      .set({ successDaysAtGoal: 2 })
+      .where(eq(habits.id, habit.id));
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins",
+      headers,
+      payload: {
+        habit_id: habit.id,
+        date: "2026-06-20",
+        value: habit.current_goal,
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
+    expect(checkin.preview_next_goal).toBe(habit.current_goal + habit.growth_step);
+  });
+
   it("records light habit success without changing current_goal", async () => {
     const auth = await createOnboardedUser();
     const habit = await createLightHabit(auth.access_token);
@@ -213,7 +261,7 @@ describe("Checkins", () => {
     const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
     expect(checkin.status).toBe("success");
     expect(checkin.current_goal).toBe(5);
-    expect(checkin.preview_next_goal).toBe(6);
+    expect(checkin.preview_next_goal).toBe(5);
 
     const [storedHabit] = await db.select().from(habits).where(eq(habits.id, habit.id));
     expect(Number(storedHabit?.currentGoal)).toBe(5);

@@ -140,6 +140,8 @@ describe("Today dashboards", () => {
           currentGoal: habit.current_goal,
           growthStep: habit.growth_step,
           progressionDirection: "increase",
+          progressionIntervalDays: habit.progression_interval_days,
+          successDaysAtGoal: habit.success_days_at_goal,
         },
         "success",
       ),

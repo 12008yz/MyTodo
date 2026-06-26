@@ -34,16 +34,23 @@ export function applyDayProgression(
     return { nextGoal: habit.currentGoal, nextSuccessDaysAtGoal: successDays };
   }
 
-  if (habit.type === "target" || habit.progressionDirection === "increase") {
-    return {
-      nextGoal: habit.currentGoal + habit.growthStep,
-      nextSuccessDaysAtGoal: 0,
-    };
+  if (habit.type === "abstinence" || habit.progressionDirection === "abstain") {
+    return { nextGoal: habit.currentGoal, nextSuccessDaysAtGoal: successDays };
   }
 
-  if (habit.type === "limit" || habit.progressionDirection === "decrease") {
+  const isIncrease = habit.type === "target" || habit.progressionDirection === "increase";
+  const isDecrease = habit.type === "limit" || habit.progressionDirection === "decrease";
+
+  if (isIncrease || isDecrease) {
     const nextSuccessDays = successDays + 1;
     if (nextSuccessDays >= interval) {
+      if (isIncrease) {
+        return {
+          nextGoal: habit.currentGoal + habit.growthStep,
+          nextSuccessDaysAtGoal: 0,
+        };
+      }
+
       const floor = habit.minGoal ?? 0;
       return {
         nextGoal: Math.max(floor, habit.currentGoal - habit.growthStep),

@@ -18,8 +18,33 @@ const darkLimit = (currentGoal: number, growthStep = 1): HabitForProgression => 
 });
 
 describe("computeNextGoal", () => {
-  it("increases light habit goal after success", () => {
+  it("increases light habit goal only after interval successful days", () => {
+    const habit: HabitForProgression = {
+      ...lightTarget(10),
+      progressionIntervalDays: 3,
+      successDaysAtGoal: 0,
+    };
+
+    expect(computeNextGoal({ ...habit, successDaysAtGoal: 0 }, "success")).toBe(10);
+    expect(computeNextGoal({ ...habit, successDaysAtGoal: 1 }, "success")).toBe(10);
+    expect(computeNextGoal({ ...habit, successDaysAtGoal: 2 }, "success")).toBe(11);
+  });
+
+  it("increases light habit goal after success when interval is 1", () => {
     expect(computeNextGoal(lightTarget(10), "success")).toBe(11);
+  });
+
+  it("resets light success streak on fail", () => {
+    const habit: HabitForProgression = {
+      ...lightTarget(10),
+      progressionIntervalDays: 3,
+      successDaysAtGoal: 2,
+    };
+
+    expect(applyDayProgression(habit, "fail")).toEqual({
+      nextGoal: 10,
+      nextSuccessDaysAtGoal: 0,
+    });
   });
 
   it("keeps light habit goal after fail or skipped", () => {

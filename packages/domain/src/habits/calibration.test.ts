@@ -293,6 +293,7 @@ describe("calibrateHabit", () => {
 
     expect(result.currentGoal).toBe(20);
     expect(result.growthStep).toBe(5);
+    expect(result.progressionIntervalDays).toBe(3);
   });
 
   it("calibrates plank starting at 20 seconds", () => {
@@ -307,6 +308,7 @@ describe("calibrateHabit", () => {
 
     expect(result.unit).toBe("seconds");
     expect(result.currentGoal).toBe(20);
+    expect(result.progressionIntervalDays).toBe(3);
   });
 
   it("recalculateLightGoal matches personalized habit identity", () => {

@@ -61,9 +61,15 @@ describe("closeDayForHabit", () => {
     });
   });
 
-  it("keeps existing success checkin and advances goal for light habit", () => {
+  it("keeps existing success checkin and advances goal for light habit after interval", () => {
+    const habit: HabitForDayClose = {
+      ...lightTarget(10),
+      progressionIntervalDays: 3,
+      successDaysAtGoal: 2,
+    };
+
     expect(
-      closeDayForHabit(lightTarget(10), { status: "success", value: 12 }),
+      closeDayForHabit(habit, { status: "success", value: 12 }),
     ).toEqual({
       status: "success",
       value: 12,

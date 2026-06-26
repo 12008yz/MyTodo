@@ -160,7 +160,7 @@ describe("Day close worker", () => {
       },
     });
     const checkin = checkinResponseSchema.parse(JSON.parse(checkinResponse.body));
-    expect(checkin.preview_next_goal).toBe(habit.current_goal + habit.growth_step);
+    expect(checkin.preview_next_goal).toBe(habit.current_goal);
 
     await dayCloseService.closeDayForUser(user, CLOSE_DATE);
 
@@ -171,7 +171,43 @@ describe("Day close worker", () => {
       .where(eq(goalSnapshots.habitId, habit.id));
 
     expect(Number(updatedHabit?.currentGoal)).toBe(checkin.preview_next_goal);
+    expect(updatedHabit?.successDaysAtGoal).toBe(1);
     expect(Number(snapshot?.goalValue)).toBe(habit.current_goal);
+  });
+
+  it("increases light habit goal after third successful day close", async () => {
+    const { auth, user } = await createOnboardedUser("light-third-close@example.com");
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+
+    const habitResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers,
+      payload: { template_id: "books", baseline_value: 5 },
+    });
+    const habit = habitResponseSchema.parse(JSON.parse(habitResponse.body));
+
+    await db
+      .update(habits)
+      .set({ successDaysAtGoal: 2 })
+      .where(eq(habits.id, habit.id));
+
+    await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins",
+      headers,
+      payload: {
+        habit_id: habit.id,
+        date: CLOSE_DATE,
+        value: habit.current_goal,
+      },
+    });
+
+    await dayCloseService.closeDayForUser(user, CLOSE_DATE);
+
+    const [updatedHabit] = await db.select().from(habits).where(eq(habits.id, habit.id));
+    expect(Number(updatedHabit?.currentGoal)).toBe(habit.current_goal + habit.growth_step);
+    expect(updatedHabit?.successDaysAtGoal).toBe(0);
   });
 
   it("advances english current_day only after day close with success", async () => {

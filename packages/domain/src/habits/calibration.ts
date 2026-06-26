@@ -1,6 +1,7 @@
 import {
   CUSTOM_MINUTES_STEP,
   EARLY_RISE_SHIFT_MIN,
+  LIGHT_GROWTH_INTERVAL_DAYS,
   resolveHabitIcon,
   type CustomHabitUnit,
   type HabitCategoryKey,
@@ -183,7 +184,7 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
     baselineValue,
     currentGoal,
     growthStep: isEarlyRise ? EARLY_RISE_SHIFT_MIN : growthStepForCustomUnit(unit),
-    progressionIntervalDays: 1,
+    progressionIntervalDays: LIGHT_GROWTH_INTERVAL_DAYS,
     successDaysAtGoal: 0,
     lastRelapseAt: null,
     allowsWeeklySkip: true,

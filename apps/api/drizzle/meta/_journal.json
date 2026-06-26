@@ -127,6 +127,13 @@
       "when": 1782746400000,
       "tag": "0018_habit_session_pause",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1782750000000,
+      "tag": "0019_light_growth_interval",
+      "breakpoints": true
     }
   ]
 }

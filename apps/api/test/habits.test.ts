@@ -166,6 +166,7 @@ describe("Habits", () => {
     const books = habitResponseSchema.parse(JSON.parse(booksResponse.body));
     expect(books.current_goal).toBe(5);
     expect(books.template_id).toBe("books");
+    expect(books.progression_interval_days).toBe(3);
     expect(books.allows_weekly_skip).toBe(true);
 
     const customResponse = await app.inject({
@@ -184,6 +185,7 @@ describe("Habits", () => {
     expect(custom.is_custom).toBe(true);
     expect(custom.current_goal).toBe(20);
     expect(custom.growth_step).toBe(5);
+    expect(custom.progression_interval_days).toBe(3);
 
     const listResponse = await app.inject({
       method: "GET",

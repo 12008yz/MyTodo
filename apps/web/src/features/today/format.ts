@@ -89,8 +89,27 @@ export function formatCardHint(params: {
   const { habit, block, goalReached, resumeSession, hasActiveFocus } = params;
 
   if (goalReached) {
+    const unit = formatUnit(habit.unit);
+    if (habit.preview_next_goal > habit.current_goal) {
+      return {
+        text: `Цель выполнена · завтра: ${habit.preview_next_goal} ${unit}`,
+        variant: "success",
+      };
+    }
+
+    if (
+      habit.side === "light" &&
+      habit.progression_interval_days > 1
+    ) {
+      const daysAtGoal = habit.success_days_at_goal + 1;
+      return {
+        text: `Цель выполнена · ${daysAtGoal} из ${habit.progression_interval_days} дней до роста`,
+        variant: "success",
+      };
+    }
+
     return {
-      text: `Цель выполнена · завтра: ${habit.preview_next_goal} ${formatUnit(habit.unit)}`,
+      text: `Цель выполнена · завтра: ${habit.preview_next_goal} ${unit}`,
       variant: "success",
     };
   }

@@ -58,6 +58,8 @@ export const SOCIAL_MEDIA_MIN_GOAL = 15;
 export const SOCIAL_MEDIA_STEP = 5;
 /** Dark limit habits (smoking, sugar, sweets): reduce goal by 1 every N successful days. */
 export const DARK_REDUCTION_INTERVAL_DAYS = 3;
+/** Light target habits: increase goal by growthStep every N successful days at current goal. */
+export const LIGHT_GROWTH_INTERVAL_DAYS = 3;
 export const CUSTOM_MINUTES_STEP = 5;
 /** Habit planning: ~2 min per page (0.5 pages/min). */
 export const BOOKS_PAGES_PER_MIN = 0.5;
@@ -86,7 +88,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "increase",
     unit: "pages",
     growthStep: 1,
-    progressionIntervalDays: 1,
+    progressionIntervalDays: LIGHT_GROWTH_INTERVAL_DAYS,
     icon: "/habits/light/books.png",
     phase: "reduction",
   },
@@ -98,7 +100,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "increase",
     unit: "reps",
     growthStep: 1,
-    progressionIntervalDays: 1,
+    progressionIntervalDays: LIGHT_GROWTH_INTERVAL_DAYS,
     icon: "💪",
     phase: "reduction",
   },
@@ -110,7 +112,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "increase",
     unit: "minutes",
     growthStep: 1,
-    progressionIntervalDays: 1,
+    progressionIntervalDays: LIGHT_GROWTH_INTERVAL_DAYS,
     icon: "🏃",
     phase: "reduction",
   },
@@ -122,7 +124,7 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     progressionDirection: "increase",
     unit: "seconds",
     growthStep: 1,
-    progressionIntervalDays: 1,
+    progressionIntervalDays: LIGHT_GROWTH_INTERVAL_DAYS,
     icon: "🧘",
     phase: "reduction",
   },
