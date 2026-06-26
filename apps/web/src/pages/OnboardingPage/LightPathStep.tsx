@@ -32,6 +32,7 @@ import "../../components/ContentPanels/ContentPanels.css";
 type LightPathStepProps = {
   lightHabits: SelectedHabit[];
   activePathId: LightPathId;
+  wakeTime?: string;
   onActivePathChange: (pathId: LightPathId) => void;
   onChange: (habits: SelectedHabit[]) => void;
   onPathTransitionChange?: (isTransitioning: boolean) => void;
@@ -181,6 +182,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
     {
       lightHabits,
       activePathId,
+      wakeTime,
       onActivePathChange,
       onChange,
       onPathTransitionChange,
@@ -355,7 +357,7 @@ export const LightPathStep = forwardRef<LightPathStepHandle, LightPathStepProps>
         !isSetupTarget &&
         !(complete && setupSettled);
       const metaVisible = Boolean(complete && selected && setupSettled);
-      const metaText = selected && complete ? getLightHabitSummary(selected) : "";
+      const metaText = selected && complete ? getLightHabitSummary(selected, wakeTime) : "";
 
       return (
         <div

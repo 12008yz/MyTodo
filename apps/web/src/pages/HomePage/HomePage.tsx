@@ -123,6 +123,7 @@ export function HomePage() {
         minutesLoggedToday={isLightDashboard(lightData) ? lightData.minutes_logged_today : undefined}
         dailyBudgetMin={isLightDashboard(lightData) ? lightData.daily_budget_min : undefined}
         trialEndsAt={user?.trial_ends_at}
+        wakeTime={user?.wake_time}
       />
     </>
   );

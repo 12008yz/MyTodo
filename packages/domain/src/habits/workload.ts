@@ -4,7 +4,6 @@ import {
   CREATIVE_PROJECT_TARGET_MINUTES,
   CUSTOM_LIGHT_TARGET_MINUTES,
   EARLY_RISE_HABIT_NAME,
-  EARLY_RISE_SHIFT_MIN,
   FOREIGN_LANGUAGE_HABIT_NAME,
   GRATITUDE_DAILY_MIN,
   LESSON_MINUTES_ESTIMATE,
@@ -294,7 +293,7 @@ export function recommendLightGoal(
   }
 
   if (activityId === "energy-early") {
-    return Math.max(baselineValue, EARLY_RISE_SHIFT_MIN);
+    return Math.max(0, baselineValue);
   }
 
   if (activityId === "energy-nutrition") {
@@ -488,7 +487,7 @@ export function formatHabitComfortLabel(habit: HabitIdentity): string {
     case "energy-walk":
       return "от 10 мин/день";
     case "energy-early":
-      return "раньше на 5 мин";
+      return "от времени подъёма";
     case "energy-nutrition":
       return "";
     case "creator-programming":

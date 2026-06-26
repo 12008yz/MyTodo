@@ -61,6 +61,11 @@ export {
   type HabitIconSource,
 } from "./habits/resolve-icon.js";
 export {
+  isEarlyRiseCategoryKey,
+  isNonSessionLightCategory,
+  isNutritionCategoryKey,
+} from "./habits/category.js";
+export {
   authTokensSchema,
   loginRequestSchema,
   logoutRequestSchema,

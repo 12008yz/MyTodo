@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DailyPlan, DailyPlanBlock, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
-import { SESSION_TARGET_MIN } from "@mytodo/shared";
+import { isNonSessionLightCategory, SESSION_TARGET_MIN } from "@mytodo/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClientApiError } from "../../lib/api";
 import { FocusScreen } from "../sessions/FocusScreen";
@@ -44,6 +44,7 @@ type DailyPlanListProps = {
   minutesLoggedToday?: number;
   dailyBudgetMin?: number;
   trialEndsAt?: string | null;
+  wakeTime?: string | null;
 };
 
 type ValuePromptState = {
@@ -164,6 +165,7 @@ type HabitListLayerProps = {
   backgroundSessions: Map<string, HabitSessionResponse>;
   focusElapsedByHabitId: Map<string, number>;
   isRecoveringSessions: boolean;
+  wakeTime?: string | null;
   onStart: (habit: TodayLightHabit | TodayDarkHabit, block: DailyPlanBlock | null) => void;
 };
 
@@ -176,6 +178,7 @@ function HabitListLayer({
   backgroundSessions,
   focusElapsedByHabitId,
   isRecoveringSessions,
+  wakeTime,
   onStart,
 }: HabitListLayerProps) {
   const plan = getPlan(sideData);
@@ -240,8 +243,9 @@ function HabitListLayer({
               isRecoveringSessions={isRecoveringSessions}
               sessionBusy={sessionBusy}
               focusLocked={Boolean(focusHabitId && !hasActiveFocus)}
+              wakeTime={wakeTime}
               onStart={
-                habit.type !== "abstinence"
+                habit.type !== "abstinence" && !isNonSessionLightCategory(habit.category_key)
                   ? () => onStart(habit, block)
                   : undefined
               }
@@ -275,6 +279,7 @@ export function DailyPlanList({
   minutesLoggedToday,
   dailyBudgetMin,
   trialEndsAt,
+  wakeTime,
 }: DailyPlanListProps) {
   const activeData = activeSide === "light" ? light : dark;
   const plan = getPlan(activeData);
@@ -635,7 +640,7 @@ export function DailyPlanList({
         ...(light.isLoading ? [] : light.habits),
         ...(dark.isLoading ? [] : dark.habits),
       ]
-        .filter((habit) => habit.type !== "abstinence")
+        .filter((habit) => habit.type !== "abstinence" && !isNonSessionLightCategory(habit.category_key))
         .map((habit) => habit.id)
         .sort()
         .join(","),
@@ -745,6 +750,7 @@ export function DailyPlanList({
           backgroundSessions={backgroundSessions}
           focusElapsedByHabitId={focusElapsedByHabitId}
           isRecoveringSessions={isRecovering}
+          wakeTime={wakeTime}
           onStart={(habit, block) => void handleStart(habit, block)}
         />
         <HabitListLayer
@@ -756,6 +762,7 @@ export function DailyPlanList({
           backgroundSessions={backgroundSessions}
           focusElapsedByHabitId={focusElapsedByHabitId}
           isRecoveringSessions={isRecovering}
+          wakeTime={wakeTime}
           onStart={(habit, block) => void handleStart(habit, block)}
         />
       </div>

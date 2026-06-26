@@ -296,7 +296,7 @@ function isInstantCompleteCategory(categoryKey?: HabitCategoryKey): boolean {
 }
 
 function instantCompleteBaseline(categoryKey?: HabitCategoryKey): string {
-  if (categoryKey === "early_rise") return "5";
+  if (categoryKey === "early_rise") return "0";
   if (categoryKey === "healthy_nutrition") return "0";
   return "";
 }
@@ -467,11 +467,11 @@ export function estimateLightHabitsComfortMinutes(habits: SelectedHabit[]): numb
 
 export function getEarlyRiseSummary(habit: SelectedHabit, wakeTime: string): string {
   if (habit.kind === "custom" && habit.categoryKey === "early_rise") {
-    const shift = habit.practicesNow === false ? 5 : Number(habit.baseline) || 5;
-    return `Цель: ${formatEarlyRiseTargetWakeTime(wakeTime, shift)}`;
+    const shift = habit.practicesNow === false ? 0 : Number(habit.baseline) || 0;
+    return `Подъём в ${formatEarlyRiseTargetWakeTime(wakeTime, shift)}`;
   }
 
-  return "Раньше на 5 мин";
+  return `Подъём в ${formatEarlyRiseTargetWakeTime(wakeTime, 0)}`;
 }
 
 export function getLightHabitSummary(habit: SelectedHabit, wakeTime?: string): string {
@@ -479,8 +479,11 @@ export function getLightHabitSummary(habit: SelectedHabit, wakeTime?: string): s
     return "";
   }
 
-  if (habit.kind === "custom" && habit.categoryKey === "early_rise" && wakeTime) {
-    return getEarlyRiseSummary(habit, wakeTime);
+  if (habit.kind === "custom" && habit.categoryKey === "early_rise") {
+    if (wakeTime) {
+      return getEarlyRiseSummary(habit, wakeTime);
+    }
+    return "От времени подъёма";
   }
 
   if (habit.practicesNow === false) {

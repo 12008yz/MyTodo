@@ -25,6 +25,16 @@ const profile = {
 };
 
 describe("workload", () => {
+  it("starts early rise at zero shift from registered wake time", () => {
+    expect(
+      recommendLightGoal(
+        { name: "Ранний подъём", unit: "minutes", templateId: null, categoryKey: "early_rise" },
+        profile,
+        0,
+      ),
+    ).toBe(0);
+  });
+
   it("computes BMI", () => {
     expect(computeBmi(80, 180)).toBeCloseTo(24.7, 1);
   });
@@ -279,6 +289,22 @@ describe("calibrateHabit", () => {
 
     expect(result.type).toBe("abstinence");
     expect(result.lastRelapseAt).toEqual(now);
+  });
+
+  it("calibrates early rise from wake-time shift with 5-minute growth every 3 days", () => {
+    const result = calibrateHabit({
+      kind: "custom",
+      name: "Ранний подъём",
+      unit: "minutes",
+      baselineValue: 0,
+      categoryKey: "early_rise",
+      profile,
+      activeLightHabitsIncludingNew: 1,
+    });
+
+    expect(result.currentGoal).toBe(0);
+    expect(result.growthStep).toBe(5);
+    expect(result.progressionIntervalDays).toBe(3);
   });
 
   it("calibrates custom minute habits with step 5", () => {

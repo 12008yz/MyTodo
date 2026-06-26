@@ -121,6 +121,29 @@ describe("Habits", () => {
     expect(language.current_goal).toBe(25);
   });
 
+  it("creates early rise from zero shift with 5-minute growth every 3 days", async () => {
+    const auth = await createOnboardedUser("early-rise@example.com");
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: {
+        name: "Ранний подъём",
+        unit: "minutes",
+        baseline_value: 0,
+        category_key: "early_rise",
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const habit = habitResponseSchema.parse(JSON.parse(response.body));
+    expect(habit.category_key).toBe("early_rise");
+    expect(habit.current_goal).toBe(0);
+    expect(habit.growth_step).toBe(5);
+    expect(habit.progression_interval_days).toBe(3);
+  });
+
   it("rejects habit creation before onboarding", async () => {
     const registerResponse = await app.inject({
       method: "POST",

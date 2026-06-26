@@ -1,5 +1,6 @@
 import { useState, type MouseEvent } from "react";
 import type { DailyPlanBlock, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
+import { isEarlyRiseCategoryKey, isNonSessionLightCategory } from "@mytodo/shared";
 import { ClientApiError } from "../../lib/api";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import {
@@ -73,6 +74,7 @@ type DailyPlanHabitRowProps = {
   isRecoveringSessions: boolean;
   sessionBusy: boolean;
   focusLocked: boolean;
+  wakeTime?: string | null;
   onStart?: () => void;
 };
 
@@ -121,6 +123,7 @@ export function DailyPlanHabitRow({
   isRecoveringSessions,
   sessionBusy,
   focusLocked,
+  wakeTime,
   onStart,
 }: DailyPlanHabitRowProps) {
   const checkinMutation = useCheckinMutation(side);
@@ -128,14 +131,18 @@ export function DailyPlanHabitRow({
   const [expanded, setExpanded] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const status = habit.checkin?.status;
+  const isEarlyRise = isEarlyRiseCategoryKey(habit.category_key);
+  const isNonSessionHabit = isNonSessionLightCategory(habit.category_key);
 
   const isPending = checkinMutation.isPending;
   const timer = hasTimerField(habit) ? habit.timer : null;
   const goalReached = status === "success";
-  const canStartSession = habit.type !== "abstinence" && Boolean(onStart);
+  const canStartSession =
+    !isNonSessionHabit && habit.type !== "abstinence" && Boolean(onStart);
   const startDisabled =
     sessionBusy || focusLocked || hasActiveFocus || !canStartSession;
-  const canQuickAdd = habit.type === "target" && status !== "skipped";
+  const canQuickAdd =
+    habit.type === "target" && status !== "skipped" && !isNonSessionHabit;
   const currentValue = habit.checkin?.value ?? 0;
   const sessionProgress = getLiveSessionProgress(habit.unit, sessionElapsedSeconds);
   const hasSessionProgress = sessionProgress > 0;
@@ -159,6 +166,7 @@ export function DailyPlanHabitRow({
     goalReached,
     resumeSession: Boolean(resumeSession),
     hasActiveFocus,
+    wakeTime,
   });
 
   const runCheckin = async (payload: Parameters<typeof checkinMutation.mutateAsync>[0]) => {
@@ -261,13 +269,13 @@ export function DailyPlanHabitRow({
           <span className={["home__plan-badge", badge.className].join(" ")}>{badge.label}</span>
         </header>
 
-        <p className="home__plan-item-goal">{formatGoalLabel(habit)}</p>
+        <p className="home__plan-item-goal">{formatGoalLabel(habit, wakeTime)}</p>
 
         {timer ? (
           <p className="home__task-timer">Чистое время: {formatTimer(timer.elapsed)}</p>
         ) : null}
 
-        {!timer && habit.type !== "abstinence" ? (
+        {!timer && habit.type !== "abstinence" && !isNonSessionHabit ? (
           <div className="home__plan-item-progress">
             <div
               className="home__plan-item-progress-track"
@@ -312,6 +320,23 @@ export function DailyPlanHabitRow({
               }}
             >
               {startLabel}
+            </button>
+          ) : null}
+
+          {isEarlyRise && status !== "success" && status !== "skipped" ? (
+            <button
+              type="button"
+              className="home__task-btn home__task-btn--start"
+              disabled={isPending || sessionBusy}
+              onClick={(event) => {
+                event.stopPropagation();
+                void runCheckin({
+                  habit_id: habit.id,
+                  value: habit.current_goal > 0 ? habit.current_goal : 1,
+                });
+              }}
+            >
+              Подъём выполнен
             </button>
           ) : null}
 
@@ -371,7 +396,9 @@ export function DailyPlanHabitRow({
               Подробнее
             </p>
             <p className="home__plan-item-drawer-text">
-              {block
+              {isEarlyRise
+                ? "Цель — проснуться не позже указанного времени. После 3 успешных дней подъём сдвинется на 5 минут раньше."
+                : block
                 ? `Следующая сессия: ${block.duration_min} мин. Ожидаемый результат — ~${block.expected_yield} ${formatUnit(block.unit)}.`
                 : goalReached
                   ? "Цель на сегодня выполнена. Можно добавить сверх плана или начать ещё одну сессию."

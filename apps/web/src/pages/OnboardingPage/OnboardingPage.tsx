@@ -485,6 +485,7 @@ export function OnboardingPage() {
             ref={lightPathStepRef}
             lightHabits={lightHabits}
             activePathId={activeLightPathId}
+            wakeTime={body.wakeTime}
             onActivePathChange={handleActivePathChange}
             onChange={setLightHabits}
             onPathTransitionChange={handlePathTransitionChange}

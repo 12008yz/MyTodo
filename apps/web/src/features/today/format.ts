@@ -1,4 +1,6 @@
 import type { DailyPlanBlock, HabitUnit, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
+import { isEarlyRiseCategoryKey } from "@mytodo/shared";
+import { formatEarlyRiseTargetWakeTime } from "@mytodo/domain";
 
 const UNIT_LABELS: Record<HabitUnit, string> = {
   pages: "стр.",
@@ -16,7 +18,17 @@ export function formatUnit(unit: HabitUnit | null): string {
   return UNIT_LABELS[unit] ?? unit;
 }
 
-export function formatGoalLabel(habit: TodayLightHabit | TodayDarkHabit): string {
+export function formatGoalLabel(
+  habit: TodayLightHabit | TodayDarkHabit,
+  wakeTime?: string | null,
+): string {
+  if (isEarlyRiseCategoryKey(habit.category_key)) {
+    if (wakeTime) {
+      return `цель: подъём в ${formatEarlyRiseTargetWakeTime(wakeTime, habit.current_goal)}`;
+    }
+    return "цель: подъём в ваше время";
+  }
+
   const unit = formatUnit(habit.unit);
   const goal = habit.current_goal;
 
@@ -85,11 +97,21 @@ export function formatCardHint(params: {
   goalReached: boolean;
   resumeSession: boolean;
   hasActiveFocus: boolean;
+  wakeTime?: string | null;
 }): CardHint | null {
-  const { habit, block, goalReached, resumeSession, hasActiveFocus } = params;
+  const { habit, block, goalReached, resumeSession, hasActiveFocus, wakeTime } = params;
 
   if (goalReached) {
     const unit = formatUnit(habit.unit);
+    const isEarlyRise = isEarlyRiseCategoryKey(habit.category_key);
+
+    if (isEarlyRise && wakeTime && habit.preview_next_goal > habit.current_goal) {
+      return {
+        text: `Цель выполнена · завтра: ${formatEarlyRiseTargetWakeTime(wakeTime, habit.preview_next_goal)}`,
+        variant: "success",
+      };
+    }
+
     if (habit.preview_next_goal > habit.current_goal) {
       return {
         text: `Цель выполнена · завтра: ${habit.preview_next_goal} ${unit}`,
