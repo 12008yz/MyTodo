@@ -9,6 +9,8 @@ import {
   habitSessionActiveResponseSchema,
   habitSessionCompleteResponseSchema,
   habitSessionSchema,
+  habitReadingProgressSchema,
+  selectHabitBookRequestSchema,
   habitResponseSchema,
   startHabitSessionRequestSchema,
   pushSubscribeRequestSchema,
@@ -29,6 +31,8 @@ import {
   type HabitSessionActiveResponse,
   type HabitSessionCompleteResponse,
   type HabitSessionResponse,
+  type HabitReadingProgress,
+  type SelectHabitBookRequest,
   type LoginRequest,
   type PatchEnglishSettingsRequest,
   type PatchMeRequest,
@@ -75,6 +79,7 @@ import {
   demoPauseHabitSession,
   demoResumeHabitSession,
   demoStopHabitSession,
+  demoSelectHabitBook,
   demoSubscribePush,
   demoUpdateEnglishSettings,
   demoUpdateMe,
@@ -340,6 +345,23 @@ export async function startHabitSession(
     body: JSON.stringify(data),
   });
   return habitSessionSchema.parse(response);
+}
+
+export async function selectHabitBook(
+  habitId: string,
+  data: SelectHabitBookRequest,
+): Promise<HabitReadingProgress> {
+  selectHabitBookRequestSchema.parse(data);
+
+  if (isDemoMode()) {
+    return demoSelectHabitBook(habitId, data);
+  }
+
+  const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/reading/select`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  return habitReadingProgressSchema.parse(response);
 }
 
 export async function completeHabitSession(

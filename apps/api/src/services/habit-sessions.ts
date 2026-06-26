@@ -37,6 +37,7 @@ export class HabitSessionService {
   constructor(
     private readonly db: DbExecutor,
     private readonly pledgeService?: PledgeService,
+    private readonly readingProgressService?: import("./reading-progress.js").ReadingProgressService,
   ) {}
 
   async start(
@@ -197,7 +198,12 @@ export class HabitSessionService {
         );
       }
 
-      const checkin = await new CheckinService(executor, this.pledgeService).applySessionValue(
+      const checkin = await new CheckinService(
+        executor,
+        this.pledgeService,
+        undefined,
+        this.readingProgressService,
+      ).applySessionValue(
         user,
         habit.id,
         valueToAdd,

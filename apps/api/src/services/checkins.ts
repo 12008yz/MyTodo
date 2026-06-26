@@ -29,6 +29,7 @@ export class CheckinService {
     private readonly db: DbExecutor,
     private readonly pledgeService?: import("./pledges.js").PledgeService,
     private readonly pushService?: import("./push.js").PushService,
+    private readonly readingProgressService?: import("./reading-progress.js").ReadingProgressService,
   ) {}
 
   async listByDate(userId: string, date: string) {
@@ -61,6 +62,16 @@ export class CheckinService {
     }
 
     const checkin = await this.saveCheckin(habit.id, date, status, value);
+
+    if (habit.templateId === "books" && value != null) {
+      await this.readingProgressService?.creditFromCheckinValue(
+        user.id,
+        habit.id,
+        date,
+        value,
+        this.db,
+      );
+    }
 
     if (status === "fail") {
       await this.pledgeService?.failActivePledgeForHabit(habit.id, this.db);
@@ -123,6 +134,16 @@ export class CheckinService {
     const newValue = mode === "set" ? value : currentValue + value;
     const status = resolveCheckinStatus(this.toCheckinHabit(habit), { value: newValue });
     const checkin = await this.saveCheckin(habit.id, date, status, newValue);
+
+    if (habit.templateId === "books") {
+      await this.readingProgressService?.creditFromCheckinValue(
+        user.id,
+        habit.id,
+        date,
+        newValue,
+        this.db,
+      );
+    }
 
     if (status === "fail") {
       await this.pledgeService?.failActivePledgeForHabit(habit.id, this.db);
@@ -188,7 +209,12 @@ export class CheckinService {
     }
 
     return this.db.transaction(async (tx) => {
-      const batchService = new CheckinService(tx, this.pledgeService);
+      const batchService = new CheckinService(
+        tx,
+        this.pledgeService,
+        undefined,
+        this.readingProgressService,
+      );
       const batchResults: UpsertResult[] = [];
 
       for (const item of body.checkins) {

@@ -18,6 +18,7 @@ import { toHabitResponse } from "../lib/habit-mapper.js";
 import { previewStatusFromCheckin, toProgressionHabit } from "../lib/habit-progression.js";
 import type { DoomScrollService } from "./doom-scroll.js";
 import type { HabitSessionService } from "./habit-sessions.js";
+import type { ReadingProgressService } from "./reading-progress.js";
 import type { PomodoroService } from "./pomodoro.js";
 
 type Side = "light" | "dark";
@@ -30,6 +31,7 @@ export class TodayService {
     private readonly pomodoroService: PomodoroService,
     private readonly doomScrollService: DoomScrollService,
     private readonly habitSessionService: HabitSessionService,
+    private readonly readingProgressService: ReadingProgressService,
   ) {}
 
   async getLightDashboard(user: User) {
@@ -98,39 +100,13 @@ export class TodayService {
       side,
     );
 
-    const habitsPayload = userHabits.map((habit) => {
-      const checkin = todayCheckins.get(habit.id) ?? null;
-      const dayStatus = previewStatusFromCheckin(checkin?.status);
-      const previewNextGoal = computeNextGoal(toProgressionHabit(habit), dayStatus);
-      const activeFrom = getUserLocalDate(habit.createdAt, user.timezone);
-      const streakDays = computeHabitStreak(
-        (checkinsByHabit.get(habit.id) ?? []).map((row) => ({
-          date: row.date,
-          status: row.status as DayCheckin["status"],
-        })),
-        today,
-        activeFrom,
-        habit.type as "target" | "limit" | "abstinence",
-        habit.phase as "reduction" | "abstinence",
-      );
-
-      return {
-        ...toHabitResponse(habit),
-        checkin: checkin
-          ? {
-              id: checkin.id,
-              date: checkin.date,
-              status: checkin.status as "success" | "fail" | "pending" | "skipped",
-              value: checkin.value === null ? null : Number(checkin.value),
-              updated_at: checkin.updatedAt.toISOString(),
-              current_goal: Number(habit.currentGoal),
-              preview_next_goal: previewNextGoal,
-            }
-          : null,
-        preview_next_goal: previewNextGoal,
-        streak_days: streakDays,
-      };
-    });
+    const habitsPayload = await this.buildHabitsPayload(
+      user,
+      userHabits,
+      checkinsByHabit,
+      todayCheckins,
+      today,
+    );
 
     const minutesLoggedToday =
       side === "light"
@@ -300,6 +276,59 @@ export class TodayService {
 
         return total + Number(checkin.value);
       }, 0);
+  }
+
+  private async buildHabitsPayload(
+    user: User,
+    userHabits: Habit[],
+    checkinsByHabit: Map<string, CheckinRow[]>,
+    todayCheckins: Map<string, CheckinRow>,
+    today: string,
+  ) {
+    const booksHabitIds = userHabits
+      .filter((habit) => habit.templateId === "books")
+      .map((habit) => habit.id);
+    const readingByHabit = await this.readingProgressService.listForHabits(
+      user.id,
+      booksHabitIds,
+    );
+
+    return userHabits.map((habit) => {
+      const checkin = todayCheckins.get(habit.id) ?? null;
+      const dayStatus = previewStatusFromCheckin(checkin?.status);
+      const previewNextGoal = computeNextGoal(toProgressionHabit(habit), dayStatus);
+      const activeFrom = getUserLocalDate(habit.createdAt, user.timezone);
+      const streakDays = computeHabitStreak(
+        (checkinsByHabit.get(habit.id) ?? []).map((row) => ({
+          date: row.date,
+          status: row.status as DayCheckin["status"],
+        })),
+        today,
+        activeFrom,
+        habit.type as "target" | "limit" | "abstinence",
+        habit.phase as "reduction" | "abstinence",
+      );
+
+      const reading = readingByHabit.get(habit.id) ?? null;
+
+      return {
+        ...toHabitResponse(habit),
+        checkin: checkin
+          ? {
+              id: checkin.id,
+              date: checkin.date,
+              status: checkin.status as "success" | "fail" | "pending" | "skipped",
+              value: checkin.value === null ? null : Number(checkin.value),
+              updated_at: checkin.updatedAt.toISOString(),
+              current_goal: Number(habit.currentGoal),
+              preview_next_goal: previewNextGoal,
+            }
+          : null,
+        preview_next_goal: previewNextGoal,
+        streak_days: streakDays,
+        ...(habit.templateId === "books" ? { reading } : {}),
+      };
+    });
   }
 
   private buildTimer(lastRelapseAt: string | null, now: Date) {

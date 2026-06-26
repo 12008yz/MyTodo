@@ -56,6 +56,11 @@ export {
   type ProgressionDirection,
 } from "./constants/habits.js";
 export {
+  BOOK_PAGE_COUNTS,
+  getKnownBookPageCount,
+  isKnownBookId,
+} from "./constants/books.js";
+export {
   HABIT_CATEGORY_ICONS,
   resolveHabitIcon,
   type HabitIconSource,
@@ -123,6 +128,12 @@ export {
   type HabitSessionResponse,
   type StartHabitSessionRequest,
 } from "./schemas/habit-session.js";
+export {
+  habitReadingProgressSchema,
+  selectHabitBookRequestSchema,
+  type HabitReadingProgress,
+  type SelectHabitBookRequest,
+} from "./schemas/reading.js";
 export {
   batchCheckinRequestSchema,
   batchCheckinResponseSchema,

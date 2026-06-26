@@ -15,6 +15,7 @@ import { registerCheckinRoutes } from "./routes/checkins.js";
 import { registerTodayRoutes } from "./routes/today.js";
 import { registerPomodoroRoutes } from "./routes/pomodoro.js";
 import { registerHabitSessionRoutes } from "./routes/habit-sessions.js";
+import { registerReadingRoutes } from "./routes/reading.js";
 import { registerDoomScrollRoutes } from "./routes/doom-scroll.js";
 import { registerStatsRoutes } from "./routes/stats.js";
 import { registerEnglishRoutes } from "./routes/english.js";
@@ -28,6 +29,7 @@ import { CheckinService } from "./services/checkins.js";
 import { TodayService } from "./services/today.js";
 import { PomodoroService } from "./services/pomodoro.js";
 import { HabitSessionService } from "./services/habit-sessions.js";
+import { ReadingProgressService } from "./services/reading-progress.js";
 import { DoomScrollService } from "./services/doom-scroll.js";
 import { StatsService } from "./services/stats.js";
 import { EnglishService } from "./services/english.js";
@@ -87,12 +89,19 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
   await seedPushTemplates(db);
   const { authService, userService } = createAuthServices(app, db, pledgeService);
   const billingService = new BillingService(db, yukassa, pledgeService);
-  const checkinService = new CheckinService(db, pledgeService, pushService);
+  const readingProgressService = new ReadingProgressService(db);
+  const checkinService = new CheckinService(db, pledgeService, pushService, readingProgressService);
   const pushQueue = env.NODE_ENV === "test" ? undefined : createPushQueue(redis);
   const pomodoroService = new PomodoroService(db, pledgeService);
-  const habitSessionService = new HabitSessionService(db, pledgeService);
+  const habitSessionService = new HabitSessionService(db, pledgeService, readingProgressService);
   const doomScrollService = new DoomScrollService(db, checkinService, pushService, pushQueue);
-  const todayService = new TodayService(db, pomodoroService, doomScrollService, habitSessionService);
+  const todayService = new TodayService(
+    db,
+    pomodoroService,
+    doomScrollService,
+    habitSessionService,
+    readingProgressService,
+  );
   const statsService = new StatsService(db);
   const englishService = new EnglishService(db);
   const requireAccess = createRequireAccess(db, billingService);
@@ -107,6 +116,7 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
   await registerTodayRoutes(app, userService, todayService, requireAccess);
   await registerPomodoroRoutes(app, userService, pomodoroService, requireAccess);
   await registerHabitSessionRoutes(app, userService, habitSessionService, requireAccess);
+  await registerReadingRoutes(app, userService, readingProgressService, requireAccess);
   await registerDoomScrollRoutes(app, userService, doomScrollService, requireAccess);
   await registerStatsRoutes(app, userService, statsService, requireAccess);
   await registerEnglishRoutes(app, userService, englishService, requireAccess);

@@ -182,6 +182,37 @@ export const habitSessions = pgTable(
 export type HabitSession = typeof habitSessions.$inferSelect;
 export type NewHabitSession = typeof habitSessions.$inferInsert;
 
+export const habitReadingProgress = pgTable(
+  "habit_reading_progress",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    habitId: uuid("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+    bookId: varchar("book_id", { length: 64 }).notNull(),
+    pagesRead: integer("pages_read").notNull().default(0),
+    pagesCreditedToday: integer("pages_credited_today").notNull().default(0),
+    lastCheckinDate: date("last_checkin_date"),
+    startedAt: timestamp("started_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true, mode: "date" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    habitUnique: unique("habit_reading_progress_habit_id_unique").on(table.habitId),
+    userIdx: index("habit_reading_progress_user_idx").on(table.userId),
+  }),
+);
+
+export type HabitReadingProgress = typeof habitReadingProgress.$inferSelect;
+export type NewHabitReadingProgress = typeof habitReadingProgress.$inferInsert;
+
 export const doomScrollSessions = pgTable(
   "doom_scroll_sessions",
   {

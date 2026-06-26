@@ -1,65 +1,38 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  computeEffectivePagesRead,
-  persistBookCheckinProgress,
-  writeSelectedBook,
-} from "./bookSelection";
+import { describe, expect, it } from "vitest";
+import type { HabitReadingProgress } from "@mytodo/shared";
+import { computeEffectivePagesRead } from "./bookSelection";
 
-const HABIT_ID = "habit-books-1";
+const baseReading: HabitReadingProgress = {
+  book_id: "meditations",
+  pages_read: 10,
+  pages_credited_today: 5,
+  last_checkin_date: "2026-06-24",
+  completed_at: null,
+  page_count: 176,
+};
 
-function installLocalStorageMock(): void {
-  const store = new Map<string, string>();
-  vi.stubGlobal("localStorage", {
-    getItem: (key: string) => store.get(key) ?? null,
-    setItem: (key: string, value: string) => {
-      store.set(key, value);
-    },
-    removeItem: (key: string) => {
-      store.delete(key);
-    },
-    clear: () => {
-      store.clear();
-    },
-  });
-}
-
-describe("bookSelection progress", () => {
-  beforeEach(() => {
-    installLocalStorageMock();
-    writeSelectedBook(HABIT_ID, {
-      id: "meditations",
-      title: "Размышления",
-      author: "Марк Аврелий",
-    });
+describe("computeEffectivePagesRead", () => {
+  it("adds only new checkin pages on the same day", () => {
+    expect(computeEffectivePagesRead(baseReading, "2026-06-24", 8, 0)).toBe(13);
   });
 
-  it("tracks pages from checkins across days", () => {
-    persistBookCheckinProgress(HABIT_ID, "2026-06-24", 5);
-    expect(computeEffectivePagesRead(HABIT_ID, "2026-06-24", 5, 0)).toBe(5);
-
-    expect(computeEffectivePagesRead(HABIT_ID, "2026-06-25", 0, 0)).toBe(5);
-    persistBookCheckinProgress(HABIT_ID, "2026-06-25", 3);
-    expect(computeEffectivePagesRead(HABIT_ID, "2026-06-25", 3, 0)).toBe(8);
+  it("resets daily credit on a new day", () => {
+    expect(computeEffectivePagesRead(baseReading, "2026-06-25", 3, 0)).toBe(13);
   });
 
   it("includes live session pages before checkin is saved", () => {
-    persistBookCheckinProgress(HABIT_ID, "2026-06-24", 5);
-    persistBookCheckinProgress(HABIT_ID, "2026-06-25", 3);
-    expect(computeEffectivePagesRead(HABIT_ID, "2026-06-25", 3, 2)).toBe(10);
+    expect(computeEffectivePagesRead(baseReading, "2026-06-24", 5, 2)).toBe(12);
   });
 
-  it("resets progress when book changes", () => {
-    persistBookCheckinProgress(HABIT_ID, "2026-06-25", 10);
-    writeSelectedBook(
-      HABIT_ID,
-      {
-        id: "chto-delat",
-        title: "Что делать?",
-        author: "Николай Чернышевский",
-      },
-      { planDate: "2026-06-25", checkinBaseline: 0 },
-    );
-    expect(computeEffectivePagesRead(HABIT_ID, "2026-06-25", 0, 0)).toBe(0);
-    expect(computeEffectivePagesRead(HABIT_ID, "2026-06-25", 2, 0)).toBe(2);
+  it("counts today checkin before first daily credit is stored", () => {
+    const firstSelect: HabitReadingProgress = {
+      book_id: "meditations",
+      pages_read: 0,
+      pages_credited_today: 0,
+      last_checkin_date: null,
+      completed_at: null,
+      page_count: 176,
+    };
+    expect(computeEffectivePagesRead(firstSelect, "2026-06-24", 5, 0)).toBe(5);
   });
 });

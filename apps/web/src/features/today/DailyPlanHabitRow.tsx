@@ -1,15 +1,14 @@
 import { useEffect, useState, type MouseEvent } from "react";
-import type { DailyPlanBlock, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
+import type { DailyPlanBlock, HabitReadingProgress, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
 import { isEarlyRiseCategoryKey, isNonSessionLightCategory } from "@mytodo/shared";
-import { ClientApiError } from "../../lib/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { ClientApiError, selectHabitBook } from "../../lib/api";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import { BookPickerModal } from "./BookPickerModal";
 import {
-  readSelectedBook,
-  writeSelectedBook,
+  bookFromReading,
   getBookPageCount,
   computeEffectivePagesRead,
-  persistBookCheckinProgress,
   type SelectedBook,
 } from "./bookSelection";
 import {
@@ -106,6 +105,12 @@ function hasTimerField(habit: TodayLightHabit | TodayDarkHabit): habit is TodayD
   return "timer" in habit;
 }
 
+function habitReading(
+  habit: TodayLightHabit | TodayDarkHabit,
+): HabitReadingProgress | null | undefined {
+  return "reading" in habit ? habit.reading : null;
+}
+
 function resolveBadge(
   habit: TodayLightHabit | TodayDarkHabit,
   _block: DailyPlanBlock | null,
@@ -147,6 +152,7 @@ export function DailyPlanHabitRow({
   onAbortSessionForBookChange,
 }: DailyPlanHabitRowProps) {
   const checkinMutation = useCheckinMutation(side);
+  const queryClient = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
@@ -154,17 +160,19 @@ export function DailyPlanHabitRow({
   const [selectedBook, setSelectedBook] = useState<SelectedBook | null>(null);
   const status = habit.checkin?.status;
   const isBooks = isBooksHabit(habit);
+  const reading = habitReading(habit);
   const isEarlyRise = isEarlyRiseCategoryKey(habit.category_key);
   const isNonSessionHabit = isNonSessionLightCategory(habit.category_key);
-  const selectedBookPageCount = selectedBook ? getBookPageCount(selectedBook.id) : null;
+  const selectedBookPageCount =
+    reading?.page_count ?? (selectedBook ? getBookPageCount(selectedBook.id) : null);
   const currentValue = habit.checkin?.value ?? 0;
   const liveSessionPages =
     isBooks && (resumeSession || hasActiveFocus)
       ? getLiveSessionProgressLabel(habit.unit, sessionElapsedSeconds)
       : 0;
   const pagesReadTowardBook =
-    isBooks && selectedBook && planDate
-      ? computeEffectivePagesRead(habit.id, planDate, currentValue, liveSessionPages)
+    isBooks && planDate
+      ? computeEffectivePagesRead(reading, planDate, currentValue, liveSessionPages)
       : 0;
   const remainingBookPages =
     selectedBookPageCount != null
@@ -188,13 +196,8 @@ export function DailyPlanHabitRow({
       setSelectedBook(null);
       return;
     }
-    setSelectedBook(readSelectedBook(habit.id));
-  }, [habit.id, isBooks]);
-
-  useEffect(() => {
-    if (!isBooks || !selectedBook || !planDate) return;
-    persistBookCheckinProgress(habit.id, planDate, currentValue);
-  }, [isBooks, selectedBook, habit.id, planDate, currentValue]);
+    setSelectedBook(bookFromReading(reading));
+  }, [habit.id, reading, isBooks]);
 
   const isPending = checkinMutation.isPending;
   const timer = hasTimerField(habit) ? habit.timer : null;
@@ -266,25 +269,27 @@ export function DailyPlanHabitRow({
 
   const handleBookSelect = async (book: SelectedBook) => {
     if (selectedBook?.id === book.id) {
-      writeSelectedBook(habit.id, book);
-      setSelectedBook(book);
       return;
     }
 
     setActionError(null);
     try {
-      if (isBooks) {
+      if (isBooks && selectedBook) {
         await onAbortSessionForBookChange?.(habit.id);
         await checkinMutation.mutateAsync({
           habit_id: habit.id,
           value: 0,
         });
+        await selectHabitBook(habit.id, {
+          book_id: book.id,
+          checkin_baseline: 0,
+        });
+      } else {
+        await selectHabitBook(habit.id, {
+          book_id: book.id,
+        });
       }
-      writeSelectedBook(
-        habit.id,
-        book,
-        planDate ? { planDate, checkinBaseline: 0 } : undefined,
-      );
+      await queryClient.invalidateQueries({ queryKey: ["today", side] });
       setSelectedBook(book);
     } catch (err) {
       setActionError(

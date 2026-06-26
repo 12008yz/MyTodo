@@ -67,12 +67,16 @@ export function sessionBudgetMinutes(seconds: number): number {
 }
 
 export function sessionTotalSeconds(session: {
-  planned_min: number;
+  planned_min?: number;
   planned_seconds?: number | null;
+  plannedMin?: number;
+  plannedSeconds?: number | null;
 }): number {
-  if (session.planned_seconds != null && session.planned_seconds > 0) {
-    return session.planned_seconds;
+  const plannedSeconds = session.planned_seconds ?? session.plannedSeconds ?? null;
+  if (plannedSeconds != null && plannedSeconds > 0) {
+    return plannedSeconds;
   }
 
-  return Math.max(1, session.planned_min * 60);
+  const plannedMin = session.planned_min ?? session.plannedMin ?? 0;
+  return Math.max(1, plannedMin * 60);
 }

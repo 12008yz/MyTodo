@@ -24,6 +24,10 @@ import {
   type HabitSessionActiveResponse,
   type HabitSessionCompleteResponse,
   type HabitSessionResponse,
+  type HabitReadingProgress,
+  type SelectHabitBookRequest,
+  getKnownBookPageCount,
+  isKnownBookId,
   type LoginRequest,
   type CompleteHabitSessionRequest,
   type PatchEnglishSettingsRequest,
@@ -51,7 +55,9 @@ const DEMO_STORAGE_KEY = "mytodo_demo_state";
 const DEMO_ACCESS_TOKEN = "demo-access-token";
 const DEMO_REFRESH_TOKEN = "demo-refresh-token";
 /** Bump when showcase seed changes — existing localStorage is refreshed on login. */
-const DEMO_STATE_VERSION = 2;
+const DEMO_STATE_VERSION = 3;
+
+type DemoReadingProgress = HabitReadingProgress;
 
 type DemoState = {
   version: number;
@@ -60,6 +66,7 @@ type DemoState = {
   english: EnglishSettingsResponse;
   checkins: CheckinResponse[];
   sessions: DemoHabitSession[];
+  readingByHabitId: Record<string, DemoReadingProgress>;
 };
 
 type DemoHabitSession = Omit<HabitSessionResponse, "remaining_seconds" | "is_paused"> & {
@@ -186,6 +193,7 @@ function loadState(): DemoState | null {
       ...parsed,
       checkins: parsed.checkins ?? [],
       sessions: parsed.sessions ?? [],
+      readingByHabitId: parsed.readingByHabitId ?? {},
     });
   } catch {
     return null;
@@ -207,6 +215,7 @@ function ensureState(): DemoState {
     english: defaultEnglish(),
     checkins: [],
     sessions: [],
+    readingByHabitId: {},
   };
   saveState(state);
   return state;
@@ -366,6 +375,7 @@ export function demoRegister(data: RegisterRequest): AuthResponse {
     english: defaultEnglish(),
     checkins: [],
     sessions: [],
+    readingByHabitId: {},
   });
 
   return toAuthResponse(user);
@@ -716,6 +726,7 @@ function buildShowcaseState(): DemoState {
     english: defaultEnglish(),
     checkins,
     sessions: [],
+    readingByHabitId: {},
   };
 }
 
@@ -782,9 +793,98 @@ function buildTodayStats(checkinsToday: CheckinResponse[], habitIds: Set<string>
   };
 }
 
+function creditDemoReadingFromCheckin(
+  state: DemoState,
+  habit: HabitResponse,
+  date: string,
+  checkinValue: number,
+): void {
+  if (habit.template_id !== "books" || checkinValue == null) {
+    return;
+  }
+
+  const existing = state.readingByHabitId[habit.id];
+  if (!existing) {
+    return;
+  }
+
+  let pagesRead = existing.pages_read;
+  let pagesCreditedToday = existing.pages_credited_today;
+  let lastCheckinDate = existing.last_checkin_date;
+
+  if (lastCheckinDate !== date) {
+    lastCheckinDate = date;
+    pagesCreditedToday = 0;
+  }
+
+  if (checkinValue > pagesCreditedToday) {
+    pagesRead += checkinValue - pagesCreditedToday;
+    pagesCreditedToday = checkinValue;
+  }
+
+  const pageCount = getKnownBookPageCount(existing.book_id);
+  const completedAt =
+    pageCount != null && pagesRead >= pageCount
+      ? (existing.completed_at ?? nowIso())
+      : existing.completed_at;
+
+  state.readingByHabitId[habit.id] = {
+    ...existing,
+    pages_read: pagesRead,
+    pages_credited_today: pagesCreditedToday,
+    last_checkin_date: lastCheckinDate,
+    completed_at: completedAt,
+    page_count: pageCount,
+  };
+}
+
+export function demoSelectHabitBook(
+  habitId: string,
+  data: SelectHabitBookRequest,
+): HabitReadingProgress {
+  const state = ensureState();
+  const habit = state.habits.find((row) => row.id === habitId && row.is_active);
+
+  if (!habit) {
+    throw new Error("Привычка не найдена");
+  }
+
+  if (habit.template_id !== "books") {
+    throw new Error("Reading progress is only available for books habits");
+  }
+
+  if (!isKnownBookId(data.book_id)) {
+    throw new Error("Unknown book_id");
+  }
+
+  const existing = state.readingByHabitId[habitId];
+  const hasBaseline = data.checkin_baseline !== undefined;
+  const planDate = hasBaseline ? todayDate() : null;
+  const checkinBaseline = Math.max(0, data.checkin_baseline ?? 0);
+
+  if (existing?.book_id === data.book_id) {
+    saveState(state);
+    return existing;
+  }
+
+  const next: DemoReadingProgress = {
+    book_id: data.book_id,
+    pages_read: 0,
+    pages_credited_today: hasBaseline ? checkinBaseline : 0,
+    last_checkin_date: planDate,
+    completed_at: null,
+    page_count: getKnownBookPageCount(data.book_id),
+  };
+
+  state.readingByHabitId[habitId] = next;
+  saveState(state);
+  return next;
+}
+
 function mapHabitToTodayLight(
   habit: HabitResponse,
   checkin: CheckinResponse | null,
+  reading: DemoReadingProgress | null = null,
 ): TodayLightHabit {
   const previewNextGoal = demoPreviewNextGoal(habit, checkin?.status);
   return {
@@ -809,6 +909,7 @@ function mapHabitToTodayLight(
       : null,
     preview_next_goal: previewNextGoal,
     streak_days: checkin?.status === "success" ? 1 : 0,
+    ...(habit.template_id === "books" ? { reading } : {}),
   };
 }
 
@@ -851,7 +952,8 @@ function buildLightTodayResponse(): TodayLightResponse {
     stats,
     habits: sideHabits.map((habit) => {
       const checkin = todayCheckins.find((c) => c.habit_id === habit.id) ?? null;
-      return mapHabitToTodayLight(habit, checkin);
+      const reading = state.readingByHabitId[habit.id] ?? null;
+      return mapHabitToTodayLight(habit, checkin, reading);
     }),
     daily_plan: buildDemoDailyPlan(state, "light", date),
   });
@@ -1101,6 +1203,8 @@ function upsertSessionCheckin(
     state.checkins.push(checkin);
   }
 
+  creditDemoReadingFromCheckin(state, habit, date, nextValue);
+
   return {
     date,
     status,
@@ -1149,6 +1253,10 @@ export function demoCreateCheckin(data: CreateCheckinRequest): CheckinResponse {
     state.checkins[existingIndex] = checkin;
   } else {
     state.checkins.push(checkin);
+  }
+
+  if (resolvedValue != null) {
+    creditDemoReadingFromCheckin(state, habit, date, resolvedValue);
   }
 
   saveState(state);
