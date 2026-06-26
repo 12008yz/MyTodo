@@ -49,10 +49,6 @@ export function BookPickerModal({
         <h3 id="book-picker-title" className="home__value-prompt-title">
           Выбрать книгу
         </h3>
-        <p className="home__value-prompt-hint">
-          Бесплатные книги из общественного достояния. Срок — по нашей системе: 5 стр. в день
-          на старте, +1 страница каждые 3 успешных дня.
-        </p>
 
         <ul className="home__book-picker-list">
           {BOOK_RECOMMENDATIONS.map((book) => {

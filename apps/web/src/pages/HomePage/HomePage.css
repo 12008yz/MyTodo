@@ -1435,6 +1435,12 @@
   max-height: min(80vh, calc(560 * var(--s)));
   overflow: auto;
   text-align: left;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.home__book-picker-panel::-webkit-scrollbar {
+  display: none;
 }
 
 .home__book-picker-list {
