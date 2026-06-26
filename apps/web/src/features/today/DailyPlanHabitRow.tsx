@@ -7,8 +7,16 @@ import { BookPickerModal } from "./BookPickerModal";
 import {
   readSelectedBook,
   writeSelectedBook,
+  getBookPageCount,
+  computeEffectivePagesRead,
+  persistBookCheckinProgress,
   type SelectedBook,
 } from "./bookSelection";
+import {
+  buildHabitBookEstimate,
+  formatBookFinishedLabel,
+  formatHabitBookRemainingTime,
+} from "./bookReadingPlan";
 import {
   formatCardHint,
   formatGoalLabel,
@@ -75,6 +83,7 @@ type DailyPlanHabitRowProps = {
   habit: TodayLightHabit | TodayDarkHabit;
   block: DailyPlanBlock | null;
   side: TodaySide;
+  planDate: string;
   hasActiveFocus: boolean;
   resumeSession: HabitSessionResponse | null;
   sessionElapsedSeconds: number;
@@ -83,6 +92,7 @@ type DailyPlanHabitRowProps = {
   focusLocked: boolean;
   wakeTime?: string | null;
   onStart?: () => void;
+  onAbortSessionForBookChange?: (habitId: string) => Promise<void>;
 };
 
 function formatSessionCountdown(totalSeconds: number): string {
@@ -124,6 +134,7 @@ export function DailyPlanHabitRow({
   habit,
   block,
   side,
+  planDate,
   hasActiveFocus,
   resumeSession,
   sessionElapsedSeconds,
@@ -132,6 +143,7 @@ export function DailyPlanHabitRow({
   focusLocked,
   wakeTime,
   onStart,
+  onAbortSessionForBookChange,
 }: DailyPlanHabitRowProps) {
   const checkinMutation = useCheckinMutation(side);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -143,6 +155,32 @@ export function DailyPlanHabitRow({
   const isBooks = isBooksHabit(habit);
   const isEarlyRise = isEarlyRiseCategoryKey(habit.category_key);
   const isNonSessionHabit = isNonSessionLightCategory(habit.category_key);
+  const selectedBookPageCount = selectedBook ? getBookPageCount(selectedBook.id) : null;
+  const currentValue = habit.checkin?.value ?? 0;
+  const liveSessionPages =
+    isBooks && (resumeSession || hasActiveFocus)
+      ? getLiveSessionProgressLabel(habit.unit, sessionElapsedSeconds)
+      : 0;
+  const pagesReadTowardBook =
+    isBooks && selectedBook && planDate
+      ? computeEffectivePagesRead(habit.id, planDate, currentValue, liveSessionPages)
+      : 0;
+  const remainingBookPages =
+    selectedBookPageCount != null
+      ? Math.max(0, selectedBookPageCount - pagesReadTowardBook)
+      : null;
+  const selectedBookRemainingEstimate =
+    remainingBookPages != null && remainingBookPages > 0
+      ? buildHabitBookEstimate({
+          pageCount: remainingBookPages,
+          currentGoal: habit.current_goal,
+          growthStep: habit.growth_step,
+          intervalDays: habit.progression_interval_days,
+          successDaysAtGoal: habit.success_days_at_goal,
+        })
+      : null;
+  const isBookFinished =
+    isBooks && selectedBook && remainingBookPages != null && remainingBookPages <= 0;
 
   useEffect(() => {
     if (!isBooks) {
@@ -151,6 +189,11 @@ export function DailyPlanHabitRow({
     }
     setSelectedBook(readSelectedBook(habit.id));
   }, [habit.id, isBooks]);
+
+  useEffect(() => {
+    if (!isBooks || !selectedBook || !planDate) return;
+    persistBookCheckinProgress(habit.id, planDate, currentValue);
+  }, [isBooks, selectedBook, habit.id, planDate, currentValue]);
 
   const isPending = checkinMutation.isPending;
   const timer = hasTimerField(habit) ? habit.timer : null;
@@ -161,7 +204,6 @@ export function DailyPlanHabitRow({
     sessionBusy || focusLocked || hasActiveFocus || !canStartSession;
   const canQuickAdd =
     habit.type === "target" && status !== "skipped" && !isNonSessionHabit;
-  const currentValue = habit.checkin?.value ?? 0;
   const sessionProgress = getLiveSessionProgress(habit.unit, sessionElapsedSeconds);
   const hasSessionProgress = sessionProgress > 0;
   const progressValue = hasSessionProgress ? currentValue + sessionProgress : currentValue;
@@ -217,6 +259,39 @@ export function DailyPlanHabitRow({
           : err instanceof Error
             ? err.message
             : "Не удалось добавить",
+      );
+    }
+  };
+
+  const handleBookSelect = async (book: SelectedBook) => {
+    if (selectedBook?.id === book.id) {
+      writeSelectedBook(habit.id, book);
+      setSelectedBook(book);
+      return;
+    }
+
+    setActionError(null);
+    try {
+      if (isBooks) {
+        await onAbortSessionForBookChange?.(habit.id);
+        await checkinMutation.mutateAsync({
+          habit_id: habit.id,
+          value: 0,
+        });
+      }
+      writeSelectedBook(
+        habit.id,
+        book,
+        planDate ? { planDate, checkinBaseline: 0 } : undefined,
+      );
+      setSelectedBook(book);
+    } catch (err) {
+      setActionError(
+        err instanceof ClientApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Не удалось сменить книгу",
       );
     }
   };
@@ -288,10 +363,6 @@ export function DailyPlanHabitRow({
         </header>
 
         <p className="home__plan-item-goal">{formatGoalLabel(habit, wakeTime)}</p>
-
-        {isBooks && selectedBook ? (
-          <p className="home__plan-item-book">Сейчас: {selectedBook.title}</p>
-        ) : null}
 
         {timer ? (
           <p className="home__task-timer">Чистое время: {formatTimer(timer.elapsed)}</p>
@@ -422,14 +493,25 @@ export function DailyPlanHabitRow({
                 ? "Цель — проснуться не позже указанного времени. После 3 успешных дней подъём сдвинется на 5 минут раньше."
                 : isBooks
                   ? selectedBook
-                    ? `Читаешь «${selectedBook.title}». Можно сменить книгу или начать сессию чтения.`
-                    : "Выбери книгу из рекомендаций или начни сессию чтения по плану."
+                    ? isBookFinished
+                      ? `«${selectedBook.title}» прочитана. Можно выбрать следующую книгу.`
+                      : `Читаешь «${selectedBook.title}». Ниже — сколько дней осталось по нашей системе.`
+                    : "Выбери книгу из рекомендаций — покажем срок чтения и остаток по мере прогресса."
                 : block
                 ? `Следующая сессия: ${block.duration_min} мин. Ожидаемый результат — ~${block.expected_yield} ${formatUnit(block.unit)}.`
                 : goalReached
                   ? "Цель на сегодня выполнена. Можно добавить сверх плана или начать ещё одну сессию."
                   : "Нажмите «Начать», чтобы запустить таймер фокуса."}
             </p>
+            {isBooks && selectedBook && (selectedBookRemainingEstimate || isBookFinished) ? (
+              <div className="home__plan-item-book-plan-block">
+                <p className="home__plan-item-book-plan-detail">
+                  {isBookFinished
+                    ? formatBookFinishedLabel()
+                    : formatHabitBookRemainingTime(selectedBookRemainingEstimate!)}
+                </p>
+              </div>
+            ) : null}
             {isBooks ? (
               <button
                 type="button"
@@ -473,10 +555,7 @@ export function DailyPlanHabitRow({
         isOpen={bookPickerOpen}
         selectedBookId={selectedBook?.id ?? null}
         onClose={() => setBookPickerOpen(false)}
-        onSelect={(book) => {
-          writeSelectedBook(habit.id, book);
-          setSelectedBook(book);
-        }}
+        onSelect={handleBookSelect}
       />
     </>
   );

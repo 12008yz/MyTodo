@@ -1394,6 +1394,43 @@
   color: var(--color-secondary);
 }
 
+.home__plan-item-book-plan {
+  margin: calc(2 * var(--s)) 0 0;
+  font-size: calc(12 * var(--s));
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-text);
+}
+
+.home__plan-item-book-pace {
+  margin: calc(2 * var(--s)) 0 0;
+  font-size: calc(11 * var(--s));
+  line-height: 1.4;
+  color: var(--color-text-muted, var(--color-secondary));
+}
+
+.home__plan-item-book-plan-block {
+  margin: calc(8 * var(--s)) 0 calc(4 * var(--s));
+  padding: calc(10 * var(--s));
+  border-radius: calc(10 * var(--s));
+  background: rgba(95, 51, 225, 0.05);
+  border: calc(1 * var(--s)) solid rgba(95, 51, 225, 0.1);
+}
+
+.home__plan-item-book-plan-detail {
+  margin: 0;
+  font-size: calc(12 * var(--s));
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.home__plan-item-book-plan-habit {
+  margin: calc(4 * var(--s)) 0 0;
+  font-size: calc(11 * var(--s));
+  line-height: 1.45;
+  color: var(--color-secondary);
+}
+
 .home__book-picker-panel {
   max-height: min(80vh, calc(560 * var(--s)));
   overflow: auto;
@@ -1446,11 +1483,26 @@
   color: var(--color-secondary);
 }
 
+.home__book-picker-meta {
+  margin: calc(4 * var(--s)) 0 0;
+  font-size: calc(11 * var(--s));
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-primary);
+}
+
 .home__book-picker-desc {
   margin: calc(6 * var(--s)) 0 0;
   font-size: calc(12 * var(--s));
   line-height: 1.45;
   color: var(--color-text-muted, var(--color-secondary));
+}
+
+.home__book-picker-pace {
+  margin: calc(4 * var(--s)) 0 0;
+  font-size: calc(11 * var(--s));
+  line-height: 1.4;
+  color: var(--color-secondary);
 }
 
 .home__book-picker-actions {

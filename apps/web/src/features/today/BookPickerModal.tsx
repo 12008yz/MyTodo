@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { BOOK_RECOMMENDATIONS, type BookRecommendation } from "./bookRecommendations";
+import {
+  buildGeneralBookEstimate,
+  formatHabitBookReadingTime,
+} from "./bookReadingPlan";
 import type { SelectedBook } from "./bookSelection";
 
 type BookPickerModalProps = {
@@ -46,13 +50,15 @@ export function BookPickerModal({
           Выбрать книгу
         </h3>
         <p className="home__value-prompt-hint">
-          Бесплатные книги из общественного достояния — можно скачать и читать офлайн.
+          Бесплатные книги из общественного достояния. Срок — по нашей системе: 5 стр. в день
+          на старте, +1 страница каждые 3 успешных дня.
         </p>
 
         <ul className="home__book-picker-list">
           {BOOK_RECOMMENDATIONS.map((book) => {
             const isSelected = book.id === selectedBookId;
             const isPending = book.id === pendingId;
+            const estimate = buildGeneralBookEstimate(book.pageCount);
 
             return (
               <li key={book.id} className="home__book-picker-item">
@@ -67,6 +73,7 @@ export function BookPickerModal({
                 <div className="home__book-picker-item-main">
                   <p className="home__book-picker-title">{book.title}</p>
                   <p className="home__book-picker-author">{book.author}</p>
+                  <p className="home__book-picker-meta">{formatHabitBookReadingTime(estimate)}</p>
                   <p className="home__book-picker-desc">{book.description}</p>
                 </div>
                 <div className="home__book-picker-actions">

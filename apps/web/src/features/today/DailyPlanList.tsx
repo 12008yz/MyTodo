@@ -13,7 +13,7 @@ import {
   MIN_STALE_SESSION_SECONDS,
   recoverStaleSession,
 } from "../sessions/sessionRecovery";
-import { pauseSession, resumeSession } from "../sessions/session-api";
+import { pauseSession, resumeSession, stopSession } from "../sessions/session-api";
 import { useCompleteHabitSession, useStartHabitSession } from "../sessions/useHabitSession";
 import { useSessionTimer } from "../sessions/useSessionTimer";
 import { resolveEarlyCompletionValue, needsCompletionValuePrompt } from "../sessions/sessionCompletion";
@@ -31,6 +31,7 @@ const EMPTY_PLAN: DailyPlan = {
 export type SidePlanData = {
   dailyPlan?: DailyPlan | null;
   habits: (TodayLightHabit | TodayDarkHabit)[];
+  planDate?: string;
   isLoading?: boolean;
   isFetching?: boolean;
   isError?: boolean;
@@ -167,6 +168,7 @@ type HabitListLayerProps = {
   isRecoveringSessions: boolean;
   wakeTime?: string | null;
   onStart: (habit: TodayLightHabit | TodayDarkHabit, block: DailyPlanBlock | null) => void;
+  onAbortSessionForBookChange: (habitId: string) => Promise<void>;
 };
 
 function HabitListLayer({
@@ -180,6 +182,7 @@ function HabitListLayer({
   isRecoveringSessions,
   wakeTime,
   onStart,
+  onAbortSessionForBookChange,
 }: HabitListLayerProps) {
   const plan = getPlan(sideData);
   const blocks = useMemo(
@@ -237,6 +240,7 @@ function HabitListLayer({
               habit={habit}
               block={block}
               side={side}
+              planDate={sideData.planDate ?? habit.checkin?.date ?? ""}
               hasActiveFocus={hasActiveFocus}
               resumeSession={backgroundSessions.get(habit.id) ?? null}
               sessionElapsedSeconds={focusElapsedByHabitId.get(habit.id) ?? 0}
@@ -249,6 +253,7 @@ function HabitListLayer({
                   ? () => onStart(habit, block)
                   : undefined
               }
+              onAbortSessionForBookChange={onAbortSessionForBookChange}
             />
           );
         })}
@@ -651,6 +656,40 @@ export function DailyPlanList({
     isRecovering || startSession.isPending || completeSession.isPending || isEnding;
   const focusHabitId = focusState?.habit.id ?? null;
 
+  const abortSessionForBookChange = useCallback(
+    async (habitId: string) => {
+      let shouldStop = false;
+
+      if (focusState?.habit.id === habitId) {
+        setFocusState(null);
+        shouldStop = Boolean(focusState.sessionId);
+      }
+
+      if (backgroundSessions.has(habitId)) {
+        setBackgroundSessions((prev) => {
+          const next = new Map(prev);
+          next.delete(habitId);
+          return next;
+        });
+        shouldStop = true;
+      }
+
+      if (!shouldStop) {
+        return;
+      }
+
+      try {
+        await stopSession(habitId);
+        await queryClient.invalidateQueries({ queryKey: ["habit-session-active", habitId] });
+        await queryClient.invalidateQueries({ queryKey: ["today", "light"] });
+        await queryClient.invalidateQueries({ queryKey: ["today", "dark"] });
+      } catch {
+        // Сессия могла уже завершиться.
+      }
+    },
+    [backgroundSessions, focusState, queryClient],
+  );
+
   useEffect(() => {
     if (light.isLoading && dark.isLoading) {
       setIsRecovering(false);
@@ -752,6 +791,7 @@ export function DailyPlanList({
           isRecoveringSessions={isRecovering}
           wakeTime={wakeTime}
           onStart={(habit, block) => void handleStart(habit, block)}
+          onAbortSessionForBookChange={abortSessionForBookChange}
         />
         <HabitListLayer
           side="dark"
@@ -764,6 +804,7 @@ export function DailyPlanList({
           isRecoveringSessions={isRecovering}
           wakeTime={wakeTime}
           onStart={(habit, block) => void handleStart(habit, block)}
+          onAbortSessionForBookChange={abortSessionForBookChange}
         />
       </div>
 

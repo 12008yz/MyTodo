@@ -107,6 +107,7 @@ export function HomePage() {
         light={{
           dailyPlan: lightData?.daily_plan,
           habits: lightData?.habits ?? [],
+          planDate: lightData?.date,
           isLoading: lightDashboard.isLoading,
           isFetching: lightDashboard.isFetching,
           isError: lightDashboard.isError,
@@ -115,6 +116,7 @@ export function HomePage() {
         dark={{
           dailyPlan: darkData?.daily_plan,
           habits: darkData?.habits ?? [],
+          planDate: darkData?.date,
           isLoading: darkDashboard.isLoading,
           isFetching: darkDashboard.isFetching,
           isError: darkDashboard.isError,
