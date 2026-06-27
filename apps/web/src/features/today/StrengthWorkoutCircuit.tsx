@@ -161,6 +161,7 @@ export function StrengthWorkoutCircuit({
                       <video
                         className="home__strength-exercise-demo-gif"
                         src={exercise.demoGifUrl}
+                        preload="metadata"
                         autoPlay
                         loop
                         muted

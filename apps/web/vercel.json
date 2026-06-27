@@ -3,6 +3,17 @@
   "buildCommand": "cd ../.. && pnpm turbo build --filter=@mytodo/web",
   "outputDirectory": "dist",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "headers": [
+    {
+      "source": "/exercises/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
   "build": {
     "env": {
       "VITE_DEMO_MODE": "true"

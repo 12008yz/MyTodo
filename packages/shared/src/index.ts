@@ -207,6 +207,7 @@ export {
 } from "./constants/sessions.js";
 export {
   STRENGTH_WORKOUT_EXERCISES,
+  EXERCISE_MEDIA_CACHE_VERSION,
   type StrengthWorkoutExercise,
 } from "./constants/strength-workout.js";
 export {

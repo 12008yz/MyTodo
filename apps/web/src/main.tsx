@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import { registerAppServiceWorker } from "./lib/service-worker";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -12,6 +13,8 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+registerAppServiceWorker();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

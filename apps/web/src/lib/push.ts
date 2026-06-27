@@ -1,4 +1,5 @@
 import { subscribePush } from "./api";
+import { registerAppServiceWorker } from "./service-worker";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -28,13 +29,7 @@ export function isPushSupported(): boolean {
 }
 
 async function ensureServiceWorker(): Promise<ServiceWorkerRegistration | null> {
-  if (!("serviceWorker" in navigator)) return null;
-
-  try {
-    return await navigator.serviceWorker.register("/sw.js");
-  } catch {
-    return null;
-  }
+  return registerAppServiceWorker();
 }
 
 export async function requestPushSubscription(): Promise<boolean> {

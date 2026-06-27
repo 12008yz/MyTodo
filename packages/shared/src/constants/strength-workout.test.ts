@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { STRENGTH_WORKOUT_TARGET_MINUTES } from "./sessions.js";
-import { STRENGTH_WORKOUT_EXERCISES } from "./strength-workout.js";
+import {
+  EXERCISE_MEDIA_CACHE_VERSION,
+  STRENGTH_WORKOUT_EXERCISES,
+} from "./strength-workout.js";
 
 describe("strength workout constants", () => {
   it("defines four bodyweight exercises in circuit order", () => {
@@ -17,6 +20,10 @@ describe("strength workout constants", () => {
       "/exercises/lunges.mp4",
       "/exercises/pullups.mp4",
     ]);
+  });
+
+  it("uses a versioned SW cache name (keep in sync with public/sw.js)", () => {
+    expect(`mytodo-exercises-v${EXERCISE_MEDIA_CACHE_VERSION}`).toBe("mytodo-exercises-v1");
   });
 
   it("targets one short circuit per round", () => {

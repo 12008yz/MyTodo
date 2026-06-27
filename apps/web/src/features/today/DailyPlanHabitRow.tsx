@@ -44,6 +44,7 @@ import {
 } from "../sessions/sessionPlan";
 import { isBooksHabit } from "./isBooksHabit";
 import { StrengthWorkoutCircuit } from "./StrengthWorkoutCircuit";
+import { prefetchExerciseMedia } from "../../lib/exercise-media";
 
 function PlanInfoIcon({ className }: { className?: string }) {
   return (
@@ -209,6 +210,12 @@ export function DailyPlanHabitRow({
     }
     setSelectedBook(bookFromReading(reading));
   }, [habit.id, reading, isBooks]);
+
+  useEffect(() => {
+    if (isStrengthWorkout && expanded) {
+      prefetchExerciseMedia();
+    }
+  }, [expanded, isStrengthWorkout]);
 
   const isPending = checkinMutation.isPending;
   const timer = hasTimerField(habit) ? habit.timer : null;
