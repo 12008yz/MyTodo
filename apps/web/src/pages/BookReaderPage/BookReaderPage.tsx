@@ -9,11 +9,13 @@ import {
 } from "../../features/books/bookContent";
 import { useTodayDashboard } from "../../features/today/useTodayData";
 import {
+  bookPagesRemainingFromPosition,
   pagesReadTodayInBook,
 } from "../../features/books/bookReadingProgress";
 import {
-  booksReadingGoalRemainingPages,
-  formatBooksReadingTimerLabel,
+  booksPagesRemainingForToday,
+  formatBookReadingMinutesLabel,
+  formatBooksDailyProgressLabel,
   formatSessionCountdown,
   useSyncedReadingTimer,
 } from "../../features/books/bookReadingTimer";
@@ -34,9 +36,29 @@ export function BookReaderPage() {
   const bookId = reading?.book_id ?? null;
   const planDate = dashboard?.date ?? "";
 
-  const pagesRemainingToday =
-    habit && habit.template_id === "books" ? booksReadingGoalRemainingPages(habit) : 0;
-  const readingTimerDone = pagesRemainingToday <= 0;
+  const [manifest, setManifest] = useState<BookManifest | null>(null);
+  const [page, setPage] = useState<number | null>(null);
+  const [dayStartPage, setDayStartPage] = useState<number | null>(null);
+  const [pageText, setPageText] = useState("");
+  const [isPageLoading, setIsPageLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const wheelLockRef = useRef(false);
+  const dayStartPageRef = useRef<number | null>(null);
+  const dayBaselineReadyRef = useRef(false);
+  const dayBaselinePersistedRef = useRef(false);
+  const lastCreditedPagesRef = useRef<number | null>(null);
+
+  const pageCount = manifest?.pageCount ?? reading?.page_count ?? 1;
+  const dailyGoal = habit?.template_id === "books" ? habit.current_goal : 0;
+  const pagesReadTodayLive =
+    page != null && dayStartPage != null
+      ? pagesReadTodayInBook(page, dayStartPage)
+      : (habit?.checkin?.value ?? 0);
+  const pagesRemainingForTimer = booksPagesRemainingForToday(pagesReadTodayLive, dailyGoal);
+  const readingTimerDone = dailyGoal > 0 && pagesReadTodayLive >= dailyGoal;
+  const bookPagesLeft =
+    page != null && pageCount > 0 ? bookPagesRemainingFromPosition(page, pageCount) : 0;
   const timerSessionKey = `${habitId ?? ""}:${bookId ?? ""}:${planDate}`;
 
   const persistTimer = useCallback(
@@ -59,26 +81,15 @@ export function BookReaderPage() {
   const readingTimerSeconds = useSyncedReadingTimer({
     reading,
     planDate,
-    pagesRemaining: pagesRemainingToday,
+    pagesRemaining: pagesRemainingForTimer,
     sessionKey: timerSessionKey,
-    enabled: pagesRemainingToday > 0 && Boolean(reading),
+    enabled: pagesRemainingForTimer > 0 && Boolean(reading),
     onPersist: persistTimer,
   });
 
-  const [manifest, setManifest] = useState<BookManifest | null>(null);
-  const [page, setPage] = useState<number | null>(null);
-  const [pageText, setPageText] = useState("");
-  const [isPageLoading, setIsPageLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
-  const wheelLockRef = useRef(false);
-  const dayStartPageRef = useRef<number | null>(null);
-  const dayBaselineReadyRef = useRef(false);
-  const dayBaselinePersistedRef = useRef(false);
-  const lastCreditedPagesRef = useRef<number | null>(null);
-
   useEffect(() => {
     setPage(null);
+    setDayStartPage(null);
     dayStartPageRef.current = null;
     dayBaselineReadyRef.current = false;
     dayBaselinePersistedRef.current = false;
@@ -157,6 +168,7 @@ export function BookReaderPage() {
 
     if (reading.reader_day_date === planDate && reading.reader_day_start_page != null) {
       dayStartPageRef.current = reading.reader_day_start_page;
+      setDayStartPage(reading.reader_day_start_page);
       dayBaselineReadyRef.current = true;
       dayBaselinePersistedRef.current = true;
       return;
@@ -168,14 +180,17 @@ export function BookReaderPage() {
 
     const startPage = reading.last_read_page ?? 1;
     dayStartPageRef.current = startPage;
+    setDayStartPage(startPage);
     dayBaselineReadyRef.current = true;
     dayBaselinePersistedRef.current = true;
 
     void updateReadingBookmark(habitId, {
       reader_day_start_page: startPage,
       reader_day_date: planDate,
+    }).then(() => {
+      void queryClient.invalidateQueries({ queryKey: ["today", "light"] });
     });
-  }, [habit, habitId, planDate, reading]);
+  }, [habit, habitId, planDate, queryClient, reading]);
 
   useEffect(() => {
     if (
@@ -191,7 +206,7 @@ export function BookReaderPage() {
     }
 
     const dayStartPage = dayStartPageRef.current;
-    const pagesFromReader = pagesReadTodayInBook(page, dayStartPage, habit.current_goal);
+    const pagesFromReader = pagesReadTodayInBook(page, dayStartPage);
     const currentValue = habit.checkin?.value ?? 0;
 
     if (lastCreditedPagesRef.current == null) {
@@ -243,8 +258,6 @@ export function BookReaderPage() {
 
     return () => window.clearTimeout(timer);
   }, [habitId, page, persistBookmark, reading]);
-
-  const pageCount = manifest?.pageCount ?? reading?.page_count ?? 1;
 
   const goToPage = useCallback(
     (next: number) => {
@@ -368,14 +381,15 @@ export function BookReaderPage() {
           title={
             readingTimerDone
               ? "Дневная цель по страницам выполнена"
-              : `Примерно ${formatBooksReadingTimerLabel(pagesRemainingToday)} до цели на сегодня`
+              : `Осталось примерно ${pagesRemainingForTimer} стр. до плана на сегодня`
           }
         >
           <span className="book-reader__timer-value">
             {readingTimerDone ? "✓" : formatSessionCountdown(readingTimerSeconds)}
           </span>
           <span className="book-reader__timer-label">
-            {formatBooksReadingTimerLabel(pagesRemainingToday)}
+            {formatBooksDailyProgressLabel(pagesReadTodayLive, dailyGoal)}
+            {bookPagesLeft > 0 ? ` · ${formatBookReadingMinutesLabel(bookPagesLeft)}` : ""}
           </span>
         </div>
       </header>

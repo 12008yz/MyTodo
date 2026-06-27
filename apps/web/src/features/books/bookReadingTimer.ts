@@ -5,7 +5,27 @@ import { formatSessionCountdown } from "../sessions/sessionPlan";
 
 export function booksReadingGoalRemainingPages(habit: TodayLightHabit): number {
   const loggedToday = habit.checkin?.value ?? 0;
-  return Math.max(0, habit.current_goal - loggedToday);
+  return booksPagesRemainingForToday(loggedToday, habit.current_goal);
+}
+
+export function booksPagesRemainingForToday(pagesReadToday: number, dailyGoal: number): number {
+  if (pagesReadToday >= dailyGoal) {
+    return 0;
+  }
+
+  return dailyGoal - pagesReadToday;
+}
+
+export function formatBooksDailyProgressLabel(pagesReadToday: number, dailyGoal: number): string {
+  return `${pagesReadToday}/${dailyGoal} стр.`;
+}
+
+export function formatBookReadingMinutesLabel(pagesRemaining: number): string {
+  if (pagesRemaining <= 0) {
+    return "";
+  }
+
+  return `≈${booksSessionMinutesForPages(pagesRemaining)} мин`;
 }
 
 export function booksReadingBudgetSeconds(pagesRemaining: number): number {
@@ -70,6 +90,15 @@ export function useSyncedReadingTimer(options: {
     bootstrappedKeyRef.current = sessionKey;
     setRemainingSeconds(resolveReadingTimerSeconds(reading, pagesRemaining, planDate));
   }, [sessionKey, reading, planDate, pagesRemaining]);
+
+  useEffect(() => {
+    if (!enabled || pagesRemaining <= 0) {
+      return;
+    }
+
+    const budget = booksReadingBudgetSeconds(pagesRemaining);
+    setRemainingSeconds((value) => Math.min(value, budget));
+  }, [enabled, pagesRemaining]);
 
   useEffect(() => {
     if (!enabled || remainingSeconds <= 0) {

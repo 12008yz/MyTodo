@@ -18,9 +18,13 @@ import { BookPickerModal } from "./BookPickerModal";
 import {
   bookFromReading,
   getBookPageCount,
-  computeEffectivePagesRead,
   type SelectedBook,
 } from "./bookSelection";
+import {
+  bookPagesRemainingFromPosition,
+  pagesReadTodayFromProgress,
+} from "../books/bookReadingProgress";
+import { formatBookReadingMinutesLabel } from "../books/bookReadingTimer";
 import {
   buildHabitBookEstimate,
   formatBookFinishedLabel,
@@ -196,22 +200,17 @@ export function DailyPlanHabitRow({
   const selectedBookPageCount =
     reading?.page_count ?? (selectedBook ? getBookPageCount(selectedBook.id) : null);
   const currentValue = habit.checkin?.value ?? 0;
-  const liveSessionPages =
-    isBooks && (resumeSession || hasActiveFocus)
-      ? getLiveSessionProgressLabel(habit.unit, sessionElapsedSeconds)
-      : 0;
-  const pagesReadTowardBook =
-    isBooks && planDate
-      ? computeEffectivePagesRead(reading, planDate, currentValue, liveSessionPages)
-      : 0;
-  const remainingBookPages =
-    selectedBookPageCount != null
-      ? Math.max(0, selectedBookPageCount - pagesReadTowardBook)
+  const todayPagesRead =
+    isBooks && reading && planDate ? pagesReadTodayFromProgress(reading, planDate) : 0;
+  const booksDailyProgress = isBooks ? Math.max(currentValue, todayPagesRead) : currentValue;
+  const pagesLeftInBook =
+    isBooks && reading && selectedBookPageCount != null
+      ? bookPagesRemainingFromPosition(reading.last_read_page, selectedBookPageCount)
       : null;
   const selectedBookRemainingEstimate =
-    remainingBookPages != null && remainingBookPages > 0
+    pagesLeftInBook != null && pagesLeftInBook > 0
       ? buildHabitBookEstimate({
-          pageCount: remainingBookPages,
+          pageCount: pagesLeftInBook,
           currentGoal: habit.current_goal,
           growthStep: habit.growth_step,
           intervalDays: habit.progression_interval_days,
@@ -219,7 +218,11 @@ export function DailyPlanHabitRow({
         })
       : null;
   const isBookFinished =
-    isBooks && selectedBook && remainingBookPages != null && remainingBookPages <= 0;
+    isBooks &&
+    selectedBook &&
+    selectedBookPageCount != null &&
+    reading != null &&
+    (reading.completed_at != null || reading.last_read_page >= selectedBookPageCount);
 
   useEffect(() => {
     if (!isBooks) {
@@ -288,11 +291,18 @@ export function DailyPlanHabitRow({
   const sessionProgress = getLiveSessionProgress(habit.unit, sessionElapsedSeconds);
   const hasSessionProgress = sessionProgress > 0;
   const progressValue = hasSessionProgress ? currentValue + sessionProgress : currentValue;
+  const effectiveProgressValue = isBooks ? booksDailyProgress : progressValue;
+  const effectiveProgressPercent =
+    habit.type !== "abstinence" && habit.current_goal > 0
+      ? Math.min(100, (effectiveProgressValue / habit.current_goal) * 100)
+      : 0;
   const progressPercent =
     habit.type !== "abstinence" && habit.current_goal > 0
       ? Math.min(100, (progressValue / habit.current_goal) * 100)
       : 0;
-  const progressLabelValue = hasSessionProgress
+  const progressLabelValue = isBooks
+    ? String(booksDailyProgress)
+    : hasSessionProgress
     ? habit.unit === "minutes" && progressValue < 10
       ? progressValue.toFixed(1)
       : String(
@@ -460,15 +470,16 @@ export function DailyPlanHabitRow({
               role="progressbar"
               aria-valuemin={0}
               aria-valuemax={habit.current_goal}
-              aria-valuenow={Math.floor(progressValue)}
+              aria-valuenow={Math.floor(isBooks ? effectiveProgressValue : progressValue)}
             >
               <span
                 className="home__plan-item-progress-fill"
-                style={{ width: `${progressPercent}%` }}
+                style={{ width: `${isBooks ? effectiveProgressPercent : progressPercent}%` }}
               />
             </div>
             <p className="home__task-progress">
               {progressLabelValue} / {habit.current_goal} {formatUnit(habit.unit)}
+              {isBooks && reading ? ` · стр. ${reading.last_read_page}` : ""}
             </p>
           </div>
         ) : null}
@@ -658,7 +669,7 @@ export function DailyPlanHabitRow({
                 <p className="home__plan-item-book-plan-detail">
                   {isBookFinished
                     ? formatBookFinishedLabel()
-                    : formatHabitBookRemainingTime(selectedBookRemainingEstimate!)}
+                    : `${formatBookReadingMinutesLabel(pagesLeftInBook!)} · ${formatHabitBookRemainingTime(selectedBookRemainingEstimate!)}`}
                 </p>
               </div>
             ) : null}
