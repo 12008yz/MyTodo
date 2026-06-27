@@ -11,6 +11,8 @@ export type BookRecommendation = {
   ebookUrl: string;
   /** Подпись на кнопке скачивания. */
   ebookLabel?: string;
+  /** Язык in-app текста, если отличается от названия в каталоге. */
+  inAppLanguage?: string;
 };
 
 /** Бесплатные книги из общественного достояния для привычки «Чтение книг». */
@@ -48,6 +50,8 @@ export const BOOK_RECOMMENDATIONS: BookRecommendation[] = [
     ebookUrl:
       "https://publ.lib.ru/ARCHIVES/S/SMAYLS_Semyuel'/Smayls_S.__Samorazvitie_.(2000).[djv].zip",
     ebookLabel: "Скачать DJVU",
+    /** In-app text is English (Gutenberg #935); Russian DJVU is download-only. */
+    inAppLanguage: "en",
   },
   {
     id: "franklin-autobiography",

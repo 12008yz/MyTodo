@@ -195,6 +195,11 @@ export const habitReadingProgress = pgTable(
     bookId: varchar("book_id", { length: 64 }).notNull(),
     pagesRead: integer("pages_read").notNull().default(0),
     pagesCreditedToday: integer("pages_credited_today").notNull().default(0),
+    lastReadPage: integer("last_read_page").notNull().default(1),
+    timerRemainingSeconds: integer("timer_remaining_seconds"),
+    timerSavedDate: date("timer_saved_date"),
+    readerDayStartPage: integer("reader_day_start_page"),
+    readerDayDate: date("reader_day_date"),
     lastCheckinDate: date("last_checkin_date"),
     startedAt: timestamp("started_at", { withTimezone: true, mode: "date" })
       .notNull()

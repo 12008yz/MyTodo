@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import type { DailyPlanBlock, HabitReadingProgress, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
 import {
   isEarlyRiseCategoryKey,
@@ -174,6 +175,7 @@ export function DailyPlanHabitRow({
 }: DailyPlanHabitRowProps) {
   const checkinMutation = useCheckinMutation(side);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [actionError, setActionError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [expandedLook, setExpandedLook] = useState(false);
@@ -661,16 +663,32 @@ export function DailyPlanHabitRow({
               </div>
             ) : null}
             {isBooks ? (
-              <button
-                type="button"
-                className="home__plan-drawer-btn home__plan-drawer-btn--primary"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setBookPickerOpen(true);
-                }}
-              >
-                Выбрать книгу
-              </button>
+              <div className="home__plan-book-actions">
+                {selectedBook ? (
+                  <button
+                    type="button"
+                    className="home__plan-drawer-btn home__plan-drawer-btn--primary"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      navigate(`/habits/${habit.id}/read`);
+                    }}
+                  >
+                    {reading && reading.last_read_page > 1
+                      ? `Продолжить · стр. ${reading.last_read_page}`
+                      : "Читать"}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="home__plan-drawer-btn"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setBookPickerOpen(true);
+                  }}
+                >
+                  Выбрать книгу
+                </button>
+              </div>
             ) : null}
             {side === "light" && status !== "success" && status !== "fail" ? (
               <button

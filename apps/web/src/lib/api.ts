@@ -11,6 +11,7 @@ import {
   habitSessionSchema,
   habitReadingProgressSchema,
   selectHabitBookRequestSchema,
+  updateReadingBookmarkRequestSchema,
   habitResponseSchema,
   startHabitSessionRequestSchema,
   pushSubscribeRequestSchema,
@@ -33,6 +34,7 @@ import {
   type HabitSessionResponse,
   type HabitReadingProgress,
   type SelectHabitBookRequest,
+  type UpdateReadingBookmarkRequest,
   type LoginRequest,
   type PatchEnglishSettingsRequest,
   type PatchMeRequest,
@@ -80,6 +82,7 @@ import {
   demoResumeHabitSession,
   demoStopHabitSession,
   demoSelectHabitBook,
+  demoUpdateReadingBookmark,
   demoSubscribePush,
   demoUpdateEnglishSettings,
   demoUpdateMe,
@@ -359,6 +362,23 @@ export async function selectHabitBook(
 
   const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/reading/select`, {
     method: "PUT",
+    body: JSON.stringify(data),
+  });
+  return habitReadingProgressSchema.parse(response);
+}
+
+export async function updateReadingBookmark(
+  habitId: string,
+  data: UpdateReadingBookmarkRequest,
+): Promise<HabitReadingProgress> {
+  updateReadingBookmarkRequestSchema.parse(data);
+
+  if (isDemoMode()) {
+    return demoUpdateReadingBookmark(habitId, data);
+  }
+
+  const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/reading/bookmark`, {
+    method: "PATCH",
     body: JSON.stringify(data),
   });
   return habitReadingProgressSchema.parse(response);

@@ -139,8 +139,10 @@ export {
 export {
   habitReadingProgressSchema,
   selectHabitBookRequestSchema,
+  updateReadingBookmarkRequestSchema,
   type HabitReadingProgress,
   type SelectHabitBookRequest,
+  type UpdateReadingBookmarkRequest,
 } from "./schemas/reading.js";
 export {
   batchCheckinRequestSchema,

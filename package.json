@@ -11,7 +11,8 @@
     "db:migrate": "pnpm --filter @mytodo/api db:migrate",
     "db:studio": "pnpm --filter @mytodo/api db:studio",
     "worker": "pnpm --filter @mytodo/api worker",
-    "seed": "pnpm --filter @mytodo/api seed"
+    "seed": "pnpm --filter @mytodo/api seed",
+    "books:prepare": "node scripts/books/prepare-books.mjs"
   },
   "devDependencies": {
     "turbo": "^2.3.3",

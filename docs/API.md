@@ -37,6 +37,18 @@ Auth: `Authorization: Bearer <access_token>` unless noted.
 | DELETE | `/habits/:id` | Soft-delete (`is_active = false`) |
 | GET | `/habits/:id/timer` | Abstinence timer |
 
+## Book reading (books habit)
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| GET | `/habits/:id/reading` | Current book progress `{ reading }` |
+| PUT | `/habits/:id/reading/select` | Select book `{ book_id, checkin_baseline? }` |
+| PATCH | `/habits/:id/reading/bookmark` | Save reader state: `{ last_read_page? }`, `{ timer_remaining_seconds?, timer_saved_date? }`, `{ reader_day_start_page?, reader_day_date? }` (at least one field) |
+
+`reading` fields: `book_id`, `pages_read` (habit credit), `pages_credited_today`, `last_read_page` (reader bookmark), `timer_remaining_seconds`, `timer_saved_date` (paused reading timer for today), `reader_day_start_page`, `reader_day_date` (today's reading baseline for page credit), `last_checkin_date`, `completed_at`, `page_count`.
+
+Book texts are served as static files from the web app (`/books/{book_id}/pages/NNN.txt`), not via API.
+
 ## Checkins
 
 | Method | Path | Description |
@@ -143,6 +155,4 @@ Protected routes require valid JWT + active trial/subscription (`402` when expir
 Exceptions: `/auth/*`, `/health`, `/billing/webhook`.
 
 Admin routes require `role = admin` (`403` otherwise).
-
-Проверь всё за собой ещё раз. Что бы не было ошибок или несостыковок
 

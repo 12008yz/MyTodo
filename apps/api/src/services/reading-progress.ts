@@ -74,6 +74,11 @@ export class ReadingProgressService {
         bookId,
         pagesRead: 0,
         pagesCreditedToday: planDate ? checkinBaseline : 0,
+        lastReadPage: 1,
+        timerRemainingSeconds: null,
+        timerSavedDate: null,
+        readerDayStartPage: null,
+        readerDayDate: null,
         lastCheckinDate: planDate ?? null,
         startedAt: now,
         completedAt: null,
@@ -85,6 +90,11 @@ export class ReadingProgressService {
           bookId,
           pagesRead: 0,
           pagesCreditedToday: planDate ? checkinBaseline : 0,
+          lastReadPage: 1,
+          timerRemainingSeconds: null,
+          timerSavedDate: null,
+          readerDayStartPage: null,
+          readerDayDate: null,
           lastCheckinDate: planDate ?? null,
           startedAt: now,
           completedAt: null,
@@ -102,6 +112,73 @@ export class ReadingProgressService {
     }
 
     return this.toResponse(inserted);
+  }
+
+  async updateBookmark(
+    userId: string,
+    habitId: string,
+    data: {
+      lastReadPage?: number;
+      timerRemainingSeconds?: number;
+      timerSavedDate?: string;
+      readerDayStartPage?: number;
+      readerDayDate?: string;
+    },
+  ): Promise<HabitReadingProgressResponse> {
+    await this.getBooksHabit(userId, habitId);
+    const row = await this.findRow(userId, habitId);
+    if (!row) {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
+        "Select a book before setting a bookmark",
+      );
+    }
+
+    const now = new Date();
+    const updates: Partial<typeof habitReadingProgress.$inferInsert> = {
+      updatedAt: now,
+    };
+
+    if (data.lastReadPage !== undefined) {
+      const pageCount = getKnownBookPageCount(row.bookId);
+      updates.lastReadPage =
+        pageCount != null
+          ? Math.min(Math.max(1, data.lastReadPage), pageCount)
+          : Math.max(1, data.lastReadPage);
+    }
+
+    if (data.timerRemainingSeconds !== undefined) {
+      updates.timerRemainingSeconds = Math.max(0, data.timerRemainingSeconds);
+    }
+
+    if (data.timerSavedDate !== undefined) {
+      updates.timerSavedDate = data.timerSavedDate;
+    }
+
+    if (data.readerDayStartPage !== undefined) {
+      updates.readerDayStartPage = Math.max(1, data.readerDayStartPage);
+    }
+
+    if (data.readerDayDate !== undefined) {
+      updates.readerDayDate = data.readerDayDate;
+    }
+
+    const [updated] = await this.db
+      .update(habitReadingProgress)
+      .set(updates)
+      .where(eq(habitReadingProgress.id, row.id))
+      .returning();
+
+    if (!updated) {
+      throw new ApiError(
+        HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        ERROR_CODES.INTERNAL_ERROR,
+        "Failed to update bookmark",
+      );
+    }
+
+    return this.toResponse(updated);
   }
 
   async creditFromCheckinValue(
@@ -200,6 +277,11 @@ export class ReadingProgressService {
       book_id: row.bookId,
       pages_read: row.pagesRead,
       pages_credited_today: row.pagesCreditedToday,
+      last_read_page: row.lastReadPage,
+      timer_remaining_seconds: row.timerRemainingSeconds,
+      timer_saved_date: row.timerSavedDate,
+      reader_day_start_page: row.readerDayStartPage,
+      reader_day_date: row.readerDayDate,
       last_checkin_date: row.lastCheckinDate,
       completed_at: row.completedAt?.toISOString() ?? null,
       page_count: getKnownBookPageCount(row.bookId),

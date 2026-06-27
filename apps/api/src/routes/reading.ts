@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { getUserLocalDate } from "@mytodo/domain";
-import { habitReadingProgressSchema, selectHabitBookRequestSchema } from "@mytodo/shared";
+import { habitReadingProgressSchema, selectHabitBookRequestSchema, updateReadingBookmarkRequestSchema } from "@mytodo/shared";
 import { authenticate } from "../plugins/authenticate.js";
 import type { RequireAccessHandler } from "../plugins/require-access.js";
 import type { UserService } from "../services/auth.js";
@@ -39,6 +39,23 @@ export async function registerReadingRoutes(
       const reading = await readingProgressService.selectBook(user, params.id, body.book_id, {
         planDate,
         checkinBaseline: body.checkin_baseline,
+      });
+      return habitReadingProgressSchema.parse(reading);
+    },
+  );
+
+  app.patch(
+    "/api/v1/habits/:id/reading/bookmark",
+    { preHandler: preHandlers },
+    async (request) => {
+      const params = z.object({ id: z.string().uuid() }).parse(request.params);
+      const body = updateReadingBookmarkRequestSchema.parse(request.body);
+      const reading = await readingProgressService.updateBookmark(request.userId, params.id, {
+        lastReadPage: body.last_read_page,
+        timerRemainingSeconds: body.timer_remaining_seconds,
+        timerSavedDate: body.timer_saved_date,
+        readerDayStartPage: body.reader_day_start_page,
+        readerDayDate: body.reader_day_date,
       });
       return habitReadingProgressSchema.parse(reading);
     },

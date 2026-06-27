@@ -155,6 +155,27 @@
       "when": 1782760800000,
       "tag": "0022_habit_reading_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1782764400000,
+      "tag": "0023_reading_last_page",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1782768000000,
+      "tag": "0024_reading_timer",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1782771600000,
+      "tag": "0025_reading_day_start",
+      "breakpoints": true
     }
   ]
 }

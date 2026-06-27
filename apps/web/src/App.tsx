@@ -7,6 +7,7 @@ import { HomePage } from "./pages/HomePage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { ChartsPage } from "./pages/ChartsPage/ChartsPage";
 import { ProfilePage } from "./pages/ProfilePage/ProfilePage";
+import { BookReaderPage } from "./pages/BookReaderPage/BookReaderPage";
 import { ProgressPage } from "./pages/ProgressPage/ProgressPage";
 import { AuthGuard, GuestGuard, OnboardingGuard } from "./routes/guards";
 import { NotFoundRedirect } from "./routes/NotFoundRedirect";
@@ -28,6 +29,7 @@ export default function App() {
             </Route>
 
             <Route element={<AuthGuard />}>
+              <Route path="/habits/:habitId/read" element={<BookReaderPage />} />
               <Route element={<AppShell />}>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/progress" element={<ProgressPage />} />

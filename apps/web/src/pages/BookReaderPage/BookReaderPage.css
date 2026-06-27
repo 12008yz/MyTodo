@@ -1,0 +1,195 @@
+.book-reader {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-bg, #f8f7fc);
+  color: var(--color-text, #1a1a2e);
+}
+
+.book-reader__header {
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--s, 1px));
+  padding: calc(12 * var(--s, 1px)) calc(16 * var(--s, 1px));
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.book-reader__back {
+  border: none;
+  background: transparent;
+  color: var(--color-primary, #5f33e1);
+  font-size: calc(14 * var(--s, 1px));
+  cursor: pointer;
+  padding: calc(6 * var(--s, 1px)) calc(4 * var(--s, 1px));
+}
+
+.book-reader__title-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.book-reader__title {
+  margin: 0;
+  font-size: calc(15 * var(--s, 1px));
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.book-reader__author {
+  margin: calc(2 * var(--s, 1px)) 0 0;
+  font-size: calc(12 * var(--s, 1px));
+  color: var(--color-secondary, #6b7280);
+}
+
+.book-reader__timer {
+  flex-shrink: 0;
+  text-align: right;
+  padding-left: calc(10 * var(--s, 1px));
+  min-width: calc(52 * var(--s, 1px));
+}
+
+.book-reader__timer-value {
+  display: block;
+  font-size: calc(15 * var(--s, 1px));
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-primary, #5f33e1);
+  line-height: 1.2;
+}
+
+.book-reader__timer-label {
+  display: block;
+  margin-top: calc(2 * var(--s, 1px));
+  font-size: calc(10 * var(--s, 1px));
+  color: var(--color-secondary, #6b7280);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.book-reader__timer--done .book-reader__timer-value {
+  font-size: calc(14 * var(--s, 1px));
+  color: #16a34a;
+}
+
+.book-reader__timer--done .book-reader__timer-label {
+  color: #16a34a;
+}
+
+.book-reader__main {
+  padding: calc(20 * var(--s, 1px)) calc(18 * var(--s, 1px)) calc(32 * var(--s, 1px));
+  max-width: 42rem;
+  width: 100%;
+  margin: 0 auto;
+  position: relative;
+  z-index: 0;
+}
+
+.book-reader__stage {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  position: relative;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+.book-reader__edge {
+  display: none;
+}
+
+@media (pointer: fine) {
+  .book-reader__edge {
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: min(28%, 12rem);
+    border: none;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+    z-index: 1;
+  }
+
+  .book-reader__edge--prev {
+    left: 0;
+  }
+
+  .book-reader__edge--next {
+    right: 0;
+  }
+
+  .book-reader__edge:hover:not(:disabled) {
+    background: rgba(95, 51, 225, 0.05);
+  }
+
+  .book-reader__edge:disabled {
+    cursor: default;
+  }
+}
+
+.book-reader__page-label {
+  margin: 0 0 calc(12 * var(--s, 1px));
+  font-size: calc(12 * var(--s, 1px));
+  color: var(--color-secondary, #6b7280);
+}
+
+.book-reader__text {
+  margin: 0;
+  font-size: calc(16 * var(--s, 1px));
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.book-reader__footer {
+  flex-shrink: 0;
+  padding: calc(12 * var(--s, 1px)) calc(16 * var(--s, 1px)) calc(16 * var(--s, 1px));
+  padding-bottom: calc(16 * var(--s, 1px) + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.book-reader__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(8 * var(--s, 1px));
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.book-reader__nav-btn {
+  border: 1px solid rgba(95, 51, 225, 0.2);
+  background: rgba(95, 51, 225, 0.06);
+  color: var(--color-primary, #5f33e1);
+  border-radius: calc(10 * var(--s, 1px));
+  padding: calc(10 * var(--s, 1px)) calc(14 * var(--s, 1px));
+  font-size: calc(14 * var(--s, 1px));
+  cursor: pointer;
+}
+
+.book-reader__nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.book-reader__status {
+  padding: calc(40 * var(--s, 1px)) calc(20 * var(--s, 1px));
+  text-align: center;
+  color: var(--color-secondary, #6b7280);
+}
+
+.book-reader__error {
+  color: #b42318;
+}

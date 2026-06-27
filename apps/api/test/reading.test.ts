@@ -97,6 +97,7 @@ describe("Reading progress", () => {
     const reading = habitReadingProgressSchema.parse(JSON.parse(selectResponse.body));
     expect(reading.book_id).toBe("meditations");
     expect(reading.pages_read).toBe(0);
+    expect(reading.last_read_page).toBe(1);
     expect(reading.page_count).toBe(176);
     expect(reading.last_checkin_date).toBeNull();
 
@@ -114,6 +115,7 @@ describe("Reading progress", () => {
     const changed = habitReadingProgressSchema.parse(JSON.parse(changeResponse.body));
     expect(changed.book_id).toBe("self-help-smiles");
     expect(changed.pages_read).toBe(0);
+    expect(changed.last_read_page).toBe(1);
     expect(changed.last_checkin_date).not.toBeNull();
 
     const getResponse = await app.inject({
@@ -186,5 +188,75 @@ describe("Reading progress", () => {
     const today = todayLightResponseSchema.parse(JSON.parse(todayResponse.body));
     const booksHabit = today.habits.find((item) => item.id === habit.id);
     expect(booksHabit?.reading?.book_id).toBe("meditations");
+  });
+
+  it("updates last_read_page bookmark", async () => {
+    const auth = await createOnboardedUser("reading-bookmark@example.com");
+    const habit = await createBooksHabit(auth.access_token);
+
+    await app.inject({
+      method: "PUT",
+      url: `/api/v1/habits/${habit.id}/reading/select`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: { book_id: "meditations" },
+    });
+
+    const bookmarkResponse = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/habits/${habit.id}/reading/bookmark`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: { last_read_page: 42 },
+    });
+
+    expect(bookmarkResponse.statusCode).toBe(200);
+    const bookmark = habitReadingProgressSchema.parse(JSON.parse(bookmarkResponse.body));
+    expect(bookmark.last_read_page).toBe(42);
+
+    const clampedResponse = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/habits/${habit.id}/reading/bookmark`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: { last_read_page: 9999 },
+    });
+
+    const clamped = habitReadingProgressSchema.parse(JSON.parse(clampedResponse.body));
+    expect(clamped.last_read_page).toBe(176);
+  });
+
+  it("persists reading timer across sessions on the same day", async () => {
+    const auth = await createOnboardedUser("reading-timer@example.com");
+    const habit = await createBooksHabit(auth.access_token);
+
+    await app.inject({
+      method: "PUT",
+      url: `/api/v1/habits/${habit.id}/reading/select`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: { book_id: "meditations" },
+    });
+
+    const saveTimerResponse = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/habits/${habit.id}/reading/bookmark`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: {
+        timer_remaining_seconds: 345,
+        timer_saved_date: "2026-06-24",
+      },
+    });
+
+    expect(saveTimerResponse.statusCode).toBe(200);
+    const saved = habitReadingProgressSchema.parse(JSON.parse(saveTimerResponse.body));
+    expect(saved.timer_remaining_seconds).toBe(345);
+    expect(saved.timer_saved_date).toBe("2026-06-24");
+
+    const getResponse = await app.inject({
+      method: "GET",
+      url: `/api/v1/habits/${habit.id}/reading`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    const body = JSON.parse(getResponse.body) as { reading: unknown };
+    const reading = habitReadingProgressSchema.parse(body.reading);
+    expect(reading.timer_remaining_seconds).toBe(345);
   });
 });

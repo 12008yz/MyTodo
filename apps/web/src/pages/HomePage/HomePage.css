@@ -1399,6 +1399,17 @@
   font-weight: 600;
 }
 
+.home__plan-book-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(8 * var(--s));
+  margin-top: calc(10 * var(--s));
+}
+
+.home__plan-book-actions .home__plan-drawer-btn {
+  margin-top: 0;
+}
+
 .home__plan-item-book {
   margin: calc(4 * var(--s)) 0 0;
   font-size: calc(12 * var(--s));

@@ -63,6 +63,28 @@ const DEMO_STATE_VERSION = 4;
 
 type DemoReadingProgress = HabitReadingProgress;
 
+function normalizeReadingProgress(reading: DemoReadingProgress): DemoReadingProgress {
+  return {
+    ...reading,
+    last_read_page: reading.last_read_page ?? 1,
+    timer_remaining_seconds: reading.timer_remaining_seconds ?? null,
+    timer_saved_date: reading.timer_saved_date ?? null,
+    reader_day_start_page: reading.reader_day_start_page ?? null,
+    reader_day_date: reading.reader_day_date ?? null,
+  };
+}
+
+function normalizeReadingByHabitId(
+  readingByHabitId: Record<string, DemoReadingProgress>,
+): Record<string, DemoReadingProgress> {
+  return Object.fromEntries(
+    Object.entries(readingByHabitId).map(([habitId, reading]) => [
+      habitId,
+      normalizeReadingProgress(reading),
+    ]),
+  );
+}
+
 type DemoState = {
   version: number;
   user: UserProfile;
@@ -229,7 +251,7 @@ function loadState(): DemoState | null {
         ...parsed,
         checkins: parsed.checkins ?? [],
         sessions: parsed.sessions ?? [],
-        readingByHabitId: parsed.readingByHabitId ?? {},
+        readingByHabitId: normalizeReadingByHabitId(parsed.readingByHabitId ?? {}),
       }),
     );
   } catch {
@@ -901,17 +923,72 @@ export function demoSelectHabitBook(
   const checkinBaseline = Math.max(0, data.checkin_baseline ?? 0);
 
   if (existing?.book_id === data.book_id) {
+    const normalized = normalizeReadingProgress(existing);
+    state.readingByHabitId[habitId] = normalized;
     saveState(state);
-    return existing;
+    return normalized;
   }
 
   const next: DemoReadingProgress = {
     book_id: data.book_id,
     pages_read: 0,
     pages_credited_today: hasBaseline ? checkinBaseline : 0,
+    last_read_page: 1,
+    timer_remaining_seconds: null,
+    timer_saved_date: null,
+    reader_day_start_page: null,
+    reader_day_date: null,
     last_checkin_date: planDate,
     completed_at: null,
     page_count: getKnownBookPageCount(data.book_id),
+  };
+
+  state.readingByHabitId[habitId] = next;
+  saveState(state);
+  return next;
+}
+
+export function demoUpdateReadingBookmark(
+  habitId: string,
+  data: import("@mytodo/shared").UpdateReadingBookmarkRequest,
+): HabitReadingProgress {
+  const state = ensureState();
+  const habit = state.habits.find((row) => row.id === habitId && row.is_active);
+
+  if (!habit) {
+    throw new Error("Привычка не найдена");
+  }
+
+  if (habit.template_id !== "books") {
+    throw new Error("Reading progress is only available for books habits");
+  }
+
+  const existing = state.readingByHabitId[habitId];
+  if (!existing) {
+    throw new Error("Select a book before setting a bookmark");
+  }
+
+  const pageCount = existing.page_count ?? getKnownBookPageCount(existing.book_id);
+  const next: DemoReadingProgress = {
+    ...existing,
+    ...(data.last_read_page !== undefined
+      ? {
+          last_read_page:
+            pageCount != null
+              ? Math.min(Math.max(1, data.last_read_page), pageCount)
+              : Math.max(1, data.last_read_page),
+        }
+      : {}),
+    ...(data.timer_remaining_seconds !== undefined
+      ? {
+          timer_remaining_seconds: Math.max(0, data.timer_remaining_seconds),
+          timer_saved_date: data.timer_saved_date ?? todayDate(),
+        }
+      : {}),
+    ...(data.reader_day_start_page !== undefined
+      ? { reader_day_start_page: Math.max(1, data.reader_day_start_page) }
+      : {}),
+    ...(data.reader_day_date !== undefined ? { reader_day_date: data.reader_day_date } : {}),
   };
 
   state.readingByHabitId[habitId] = next;
