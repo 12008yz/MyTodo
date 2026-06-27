@@ -3,6 +3,7 @@ import {
   isEarlyRiseCategoryKey,
   isNonSessionLightCategory,
   isNutritionCategoryKey,
+  isPlankHabit,
   isStrengthWorkoutCategoryKey,
   isStrengthWorkoutHabit,
 } from "./category.js";
@@ -28,5 +29,11 @@ describe("habit category helpers", () => {
     expect(isStrengthWorkoutHabit({ category_key: "strength_workout" })).toBe(true);
     expect(isStrengthWorkoutHabit({ name: "Силовая тренировка" })).toBe(true);
     expect(isStrengthWorkoutHabit({ name: "Бег", category_key: "walking" })).toBe(false);
+  });
+
+  it("detects plank habit", () => {
+    expect(isPlankHabit({ template_id: "plank" })).toBe(true);
+    expect(isPlankHabit({ name: "Планка" })).toBe(true);
+    expect(isPlankHabit({ name: "Бег", template_id: "running" })).toBe(false);
   });
 });

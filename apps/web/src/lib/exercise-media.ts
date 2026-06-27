@@ -1,12 +1,12 @@
-import { STRENGTH_WORKOUT_EXERCISES } from "@mytodo/shared";
+import { listExerciseDemoUrls } from "@mytodo/shared";
 
 const prefetchedUrls = new Set<string>();
 
 export function getExerciseMediaUrls(): string[] {
-  return STRENGTH_WORKOUT_EXERCISES.map((exercise) => exercise.demoGifUrl);
+  return [...listExerciseDemoUrls()];
 }
 
-/** Warm HTTP cache (and SW cache via fetch) when the strength workout drawer opens. */
+/** Warm HTTP cache (and SW cache via fetch) when an exercise demo drawer opens. */
 export function prefetchExerciseMedia(): void {
   if (typeof document === "undefined") {
     return;

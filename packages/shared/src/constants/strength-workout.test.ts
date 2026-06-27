@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import { STRENGTH_WORKOUT_TARGET_MINUTES } from "./sessions.js";
 import {
   EXERCISE_MEDIA_CACHE_VERSION,
+  EXERCISE_MEDIA_PATHS,
+  PLANK_DEMO_URL,
   STRENGTH_WORKOUT_BASE_MINUTES,
   STRENGTH_WORKOUT_EXERCISES,
   STRENGTH_WORKOUT_INITIAL_REPS,
@@ -14,17 +16,11 @@ import {
   STRENGTH_WORKOUT_REPS_PER_ROUND,
   exerciseDemoUrl,
   isExerciseDemoVideo,
+  listExerciseDemoUrls,
   resolveStrengthProgressionLevel,
   strengthDailyGoalMinutes,
   strengthRepsPerExercise,
 } from "./strength-workout.js";
-
-const EXERCISE_MEDIA_PATHS = [
-  "/exercises/squat.mp4",
-  "/exercises/pushups.mp4",
-  "/exercises/lunges.mp4",
-  "/exercises/pullups.mp4",
-] as const;
 
 describe("strength workout constants", () => {
   it("defines four bodyweight exercises in circuit order", () => {
@@ -36,12 +32,14 @@ describe("strength workout constants", () => {
       "pullups",
     ]);
     expect(STRENGTH_WORKOUT_EXERCISES.map((item) => item.demoGifUrl)).toEqual(
-      EXERCISE_MEDIA_PATHS.map((path) => exerciseDemoUrl(path)),
+      EXERCISE_MEDIA_PATHS.filter((path) => path !== "/exercises/plank.mp4").map((path) =>
+        exerciseDemoUrl(path),
+      ),
     );
   });
 
   it("uses a versioned SW cache name (keep in sync with public/sw.js)", () => {
-    expect(`mytodo-exercises-v${EXERCISE_MEDIA_CACHE_VERSION}`).toBe("mytodo-exercises-v4");
+    expect(`mytodo-exercises-v${EXERCISE_MEDIA_CACHE_VERSION}`).toBe("mytodo-exercises-v5");
   });
 
   it("keeps public/sw.js in sync with EXERCISE_MEDIA_CACHE_VERSION", () => {
@@ -61,6 +59,13 @@ describe("strength workout constants", () => {
   it("detects mp4 demo URLs with cache-busting query params", () => {
     expect(isExerciseDemoVideo(exerciseDemoUrl("/exercises/squat.mp4"))).toBe(true);
     expect(isExerciseDemoVideo("/exercises/squat.gif")).toBe(false);
+  });
+
+  it("lists all bundled exercise demo URLs with cache version", () => {
+    expect(listExerciseDemoUrls()).toEqual(
+      EXERCISE_MEDIA_PATHS.map((path) => exerciseDemoUrl(path)),
+    );
+    expect(PLANK_DEMO_URL).toBe(exerciseDemoUrl("/exercises/plank.mp4"));
   });
 
   it("starts at five reps per exercise", () => {

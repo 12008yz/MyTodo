@@ -28,6 +28,13 @@ export function isStrengthWorkoutHabit(habit: {
   );
 }
 
+export function isPlankHabit(habit: {
+  template_id?: string | null;
+  name?: string | null;
+}): boolean {
+  return habit.template_id === "plank" || habit.name?.trim() === "Планка";
+}
+
 /** Habits without pomodoro sessions or minute progress bars on Today. */
 export function isNonSessionLightCategory(
   categoryKey: HabitCategoryKey | null | undefined,

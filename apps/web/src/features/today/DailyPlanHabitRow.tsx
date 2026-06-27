@@ -3,6 +3,7 @@ import type { DailyPlanBlock, HabitReadingProgress, HabitSessionResponse, TodayD
 import {
   isEarlyRiseCategoryKey,
   isNonSessionLightCategory,
+  isPlankHabit,
   isStrengthWorkoutHabit,
   resolveStrengthProgressionLevel,
   strengthRepsPerExercise,
@@ -46,6 +47,7 @@ import {
 } from "../sessions/sessionPlan";
 import { isBooksHabit } from "./isBooksHabit";
 import { StrengthWorkoutCircuit, clearStrengthCircuitStorage, isStrengthCircuitRoundComplete } from "./StrengthWorkoutCircuit";
+import { PlankTechniqueDemo } from "./PlankTechniqueDemo";
 import { prefetchExerciseMedia } from "../../lib/exercise-media";
 
 function PlanInfoIcon({ className }: { className?: string }) {
@@ -148,7 +150,7 @@ function resolveBadge(
 function isInteractiveTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
-    Boolean(target.closest("button, a, input, label, .home__strength-circuit, video"))
+    Boolean(target.closest("button, a, input, label, .home__strength-circuit, .home__plank-technique-wrap, .home__plank-technique, video"))
   );
 }
 
@@ -178,6 +180,7 @@ export function DailyPlanHabitRow({
   const status = habit.checkin?.status;
   const isBooks = isBooksHabit(habit);
   const isStrengthWorkout = isStrengthWorkoutHabit(habit);
+  const isPlank = isPlankHabit(habit);
   const strengthReps = strengthRepsPerExercise(
     resolveStrengthProgressionLevel(habit.baseline_value, habit.current_goal),
   );
@@ -221,10 +224,10 @@ export function DailyPlanHabitRow({
   }, [habit.id, reading, isBooks]);
 
   useEffect(() => {
-    if (isStrengthWorkout && expanded) {
+    if ((isStrengthWorkout || isPlank) && expanded) {
       prefetchExerciseMedia();
     }
-  }, [expanded, isStrengthWorkout]);
+  }, [expanded, isStrengthWorkout, isPlank]);
 
   const isPending = checkinMutation.isPending;
   const timer = hasTimerField(habit) ? habit.timer : null;
@@ -592,6 +595,8 @@ export function DailyPlanHabitRow({
               <p className="home__plan-item-drawer-text">
                 {isEarlyRise
                   ? "Цель — проснуться не позже указанного времени. После 3 успешных дней подъём сдвинется на 5 минут раньше."
+                  : isPlank
+                    ? "Посмотрите технику ниже, затем нажмите «Начать» — будет короткий отсчёт и таймер планки."
                   : isBooks
                     ? selectedBook
                       ? isBookFinished
@@ -638,6 +643,7 @@ export function DailyPlanHabitRow({
                 }}
               />
             ) : null}
+            {isPlank ? <PlankTechniqueDemo /> : null}
             {isBooks && selectedBook && (selectedBookRemainingEstimate || isBookFinished) ? (
               <div className="home__plan-item-book-plan-block">
                 <p className="home__plan-item-book-plan-detail">

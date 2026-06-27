@@ -7,7 +7,16 @@ export type StrengthWorkoutExercise = {
 };
 
 /** Bump when replacing files under /public/exercises/ (also update sw.js cache name). */
-export const EXERCISE_MEDIA_CACHE_VERSION = 4;
+export const EXERCISE_MEDIA_CACHE_VERSION = 5;
+
+/** All bundled exercise demo files under /public/exercises/. */
+export const EXERCISE_MEDIA_PATHS = [
+  "/exercises/squat.mp4",
+  "/exercises/pushups.mp4",
+  "/exercises/lunges.mp4",
+  "/exercises/pullups.mp4",
+  "/exercises/plank.mp4",
+] as const;
 
 /** Minutes credited when an exercise is marked done (one «Сделал» = all reps). */
 export const STRENGTH_WORKOUT_MINUTES_PER_REP = 1;
@@ -72,6 +81,12 @@ export function exerciseDemoUrl(path: string): string {
 
 export function isExerciseDemoVideo(url: string): boolean {
   return url.split("?")[0]?.endsWith(".mp4") ?? false;
+}
+
+export const PLANK_DEMO_URL = exerciseDemoUrl("/exercises/plank.mp4");
+
+export function listExerciseDemoUrls(): readonly string[] {
+  return EXERCISE_MEDIA_PATHS.map((path) => exerciseDemoUrl(path));
 }
 
 /** Bodyweight circuit — four exercises per round. */

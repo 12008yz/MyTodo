@@ -73,6 +73,7 @@ export {
   isEarlyRiseCategoryKey,
   isNonSessionLightCategory,
   isNutritionCategoryKey,
+  isPlankHabit,
   isStrengthWorkoutCategoryKey,
   isStrengthWorkoutHabit,
 } from "./habits/category.js";
@@ -208,8 +209,11 @@ export {
 export {
   STRENGTH_WORKOUT_EXERCISES,
   EXERCISE_MEDIA_CACHE_VERSION,
+  EXERCISE_MEDIA_PATHS,
+  PLANK_DEMO_URL,
   exerciseDemoUrl,
   isExerciseDemoVideo,
+  listExerciseDemoUrls,
   STRENGTH_WORKOUT_MINUTES_PER_REP,
   STRENGTH_WORKOUT_INITIAL_REPS,
   STRENGTH_WORKOUT_REPS_PER_EXERCISE,
