@@ -43,7 +43,6 @@ export function BookReaderPage() {
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
-  const wheelLockRef = useRef(false);
   const dayStartPageRef = useRef<number | null>(null);
   const dayBaselineReadyRef = useRef(false);
   const dayBaselinePersistedRef = useRef(false);
@@ -137,17 +136,19 @@ export function BookReaderPage() {
 
     void fetchBookPage(bookId, page)
       .then((text) => {
-        if (!cancelled) {
-          setPageText(text);
+        if (cancelled) {
+          return;
         }
+        setPageText(text);
+        requestAnimationFrame(() => {
+          if (!cancelled) {
+            setIsPageLoading(false);
+          }
+        });
       })
       .catch((err: unknown) => {
         if (!cancelled) {
           setLoadError(err instanceof Error ? err.message : "Не удалось загрузить страницу");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
           setIsPageLoading(false);
         }
       });
@@ -303,44 +304,25 @@ export function BookReaderPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [goNext, goPrev]);
 
-  useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage || !window.matchMedia("(pointer: fine)").matches) {
-      return;
-    }
-
-    const onWheel = (event: WheelEvent) => {
-      if (page == null || isPageLoading || wheelLockRef.current) {
-        return;
-      }
-
-      if (Math.abs(event.deltaY) < 24) {
-        return;
-      }
-
-      event.preventDefault();
-      wheelLockRef.current = true;
-      goToPage(page + (event.deltaY > 0 ? 1 : -1));
-      window.setTimeout(() => {
-        wheelLockRef.current = false;
-      }, 450);
-    };
-
-    stage.addEventListener("wheel", onWheel, { passive: false });
-    return () => stage.removeEventListener("wheel", onWheel);
-  }, [goToPage, isPageLoading, page]);
-
   if (!habitId) {
-    return <p className="book-reader__status">Привычка не найдена</p>;
+    return (
+      <div className="book-reader">
+        <p className="book-reader__status">Привычка не найдена</p>
+      </div>
+    );
   }
 
   if (isTodayLoading && !habit) {
-    return <p className="book-reader__status">Загрузка…</p>;
+    return (
+      <div className="book-reader">
+        <p className="book-reader__status">Загрузка…</p>
+      </div>
+    );
   }
 
   if (!habit || habit.template_id !== "books") {
     return (
-      <div className="book-reader">
+      <div className="book-reader book-reader--fallback">
         <p className="book-reader__status book-reader__error">Это не привычка чтения книг</p>
         <button type="button" className="book-reader__back" onClick={() => navigate("/")}>
           На главную
@@ -351,7 +333,7 @@ export function BookReaderPage() {
 
   if (!reading || !bookId) {
     return (
-      <div className="book-reader">
+      <div className="book-reader book-reader--fallback">
         <p className="book-reader__status">Сначала выберите книгу в плане на сегодня</p>
         <button type="button" className="book-reader__back" onClick={() => navigate("/")}>
           На главную
@@ -395,32 +377,26 @@ export function BookReaderPage() {
       </header>
 
       <div className="book-reader__stage" ref={stageRef}>
-        <button
-          type="button"
-          className="book-reader__edge book-reader__edge--prev"
-          aria-label="Предыдущая страница"
-          disabled={page == null || page <= 1}
-          onClick={goPrev}
-        />
         <main className="book-reader__main">
           {loadError ? <p className="book-reader__error">{loadError}</p> : null}
-          {isPageLoading ? <p className="book-reader__status">Загрузка страницы…</p> : null}
-          {!isPageLoading && page != null ? (
+          {page != null ? (
             <>
               <p className="book-reader__page-label">
                 Страница {page} из {pageCount}
               </p>
-              <p className="book-reader__text">{pageText || " "}</p>
+              <div
+                className={[
+                  "book-reader__text-wrap",
+                  isPageLoading ? "book-reader__text-wrap--loading" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                <p className="book-reader__text">{pageText || "\u00a0"}</p>
+              </div>
             </>
           ) : null}
         </main>
-        <button
-          type="button"
-          className="book-reader__edge book-reader__edge--next"
-          aria-label="Следующая страница"
-          disabled={page == null || page >= pageCount}
-          onClick={goNext}
-        />
       </div>
 
       <footer className="book-reader__footer">
@@ -431,7 +407,7 @@ export function BookReaderPage() {
             disabled={page == null || page <= 1}
             onClick={goPrev}
           >
-            ← Назад
+            ← Пред. стр.
           </button>
           <button
             type="button"
@@ -439,7 +415,7 @@ export function BookReaderPage() {
             disabled={page == null || page >= pageCount}
             onClick={goNext}
           >
-            Вперёд →
+            След. стр. →
           </button>
         </div>
       </footer>
