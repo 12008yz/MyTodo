@@ -44,6 +44,16 @@ export async function registerReadingRoutes(
     },
   );
 
+  app.delete(
+    "/api/v1/habits/:id/reading",
+    { preHandler: preHandlers },
+    async (request) => {
+      const params = z.object({ id: z.string().uuid() }).parse(request.params);
+      await readingProgressService.clearBookSelection(request.userId, params.id);
+      return { reading: null };
+    },
+  );
+
   app.patch(
     "/api/v1/habits/:id/reading/bookmark",
     { preHandler: preHandlers },

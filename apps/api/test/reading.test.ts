@@ -259,4 +259,35 @@ describe("Reading progress", () => {
     const reading = habitReadingProgressSchema.parse(body.reading);
     expect(reading.timer_remaining_seconds).toBe(345);
   });
+
+  it("clears book selection", async () => {
+    const auth = await createOnboardedUser("reading-clear@example.com");
+    const habit = await createBooksHabit(auth.access_token);
+
+    await app.inject({
+      method: "PUT",
+      url: `/api/v1/habits/${habit.id}/reading/select`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: { book_id: "meditations" },
+    });
+
+    const clearResponse = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/habits/${habit.id}/reading`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    expect(clearResponse.statusCode).toBe(200);
+    const cleared = JSON.parse(clearResponse.body) as { reading: unknown };
+    expect(cleared.reading).toBeNull();
+
+    const getResponse = await app.inject({
+      method: "GET",
+      url: `/api/v1/habits/${habit.id}/reading`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    const body = JSON.parse(getResponse.body) as { reading: unknown };
+    expect(body.reading).toBeNull();
+  });
 });

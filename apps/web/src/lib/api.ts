@@ -82,6 +82,8 @@ import {
   demoResumeHabitSession,
   demoStopHabitSession,
   demoSelectHabitBook,
+  demoClearHabitBook,
+  demoResetTodayCheckin,
   demoUpdateReadingBookmark,
   demoSubscribePush,
   demoUpdateEnglishSettings,
@@ -365,6 +367,33 @@ export async function selectHabitBook(
     body: JSON.stringify(data),
   });
   return habitReadingProgressSchema.parse(response);
+}
+
+export async function clearHabitBook(habitId: string): Promise<void> {
+  if (isDemoMode()) {
+    demoClearHabitBook(habitId);
+    return;
+  }
+
+  await apiFetch<unknown>(`/api/v1/habits/${habitId}/reading`, {
+    method: "DELETE",
+  });
+}
+
+export async function resetTodayCheckin(habitId: string, date?: string): Promise<void> {
+  if (isDemoMode()) {
+    demoResetTodayCheckin(habitId, date);
+    return;
+  }
+
+  const params = new URLSearchParams({ habit_id: habitId });
+  if (date) {
+    params.set("date", date);
+  }
+
+  await apiFetch<unknown>(`/api/v1/checkins?${params.toString()}`, {
+    method: "DELETE",
+  });
 }
 
 export async function updateReadingBookmark(

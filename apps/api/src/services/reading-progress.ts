@@ -114,6 +114,15 @@ export class ReadingProgressService {
     return this.toResponse(inserted);
   }
 
+  async clearBookSelection(userId: string, habitId: string): Promise<void> {
+    await this.getBooksHabit(userId, habitId);
+    await this.db
+      .delete(habitReadingProgress)
+      .where(
+        and(eq(habitReadingProgress.userId, userId), eq(habitReadingProgress.habitId, habitId)),
+      );
+  }
+
   async updateBookmark(
     userId: string,
     habitId: string,

@@ -10,7 +10,7 @@ type BookPickerModalProps = {
   isOpen: boolean;
   selectedBookId: string | null;
   onClose: () => void;
-  onSelect: (book: SelectedBook) => void;
+  onSelect: (book: SelectedBook | null) => void;
 };
 
 export function BookPickerModal({
@@ -23,6 +23,23 @@ export function BookPickerModal({
 
   useEffect(() => {
     if (!isOpen) {
+      return;
+    }
+
+    const home = document.querySelector(".home");
+    if (!(home instanceof HTMLElement)) {
+      return;
+    }
+
+    home.classList.add("home--scroll-locked");
+
+    return () => {
+      home.classList.remove("home--scroll-locked");
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
       setPendingId(null);
     }
   }, [isOpen]);
@@ -31,7 +48,14 @@ export function BookPickerModal({
     return null;
   }
 
-  const handleSelect = (book: BookRecommendation) => {
+  const handleToggle = (book: BookRecommendation) => {
+    if (book.id === selectedBookId) {
+      setPendingId(book.id);
+      onSelect(null);
+      onClose();
+      return;
+    }
+
     setPendingId(book.id);
     onSelect({ id: book.id, title: book.title, author: book.author });
     onClose();
@@ -73,15 +97,6 @@ export function BookPickerModal({
                   <p className="home__book-picker-desc">{book.description}</p>
                 </div>
                 <div className="home__book-picker-actions">
-                  <a
-                    className="home__book-picker-link"
-                    href={book.ebookUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    {book.ebookLabel ?? "Скачать"}
-                  </a>
                   <button
                     type="button"
                     className={[
@@ -91,9 +106,9 @@ export function BookPickerModal({
                       .filter(Boolean)
                       .join(" ")}
                     disabled={isPending}
-                    onClick={() => handleSelect(book)}
+                    onClick={() => handleToggle(book)}
                   >
-                    {isSelected ? "Выбрано" : "Выбрать"}
+                    {isSelected ? "Снять выбор" : "Выбрать"}
                   </button>
                 </div>
               </li>

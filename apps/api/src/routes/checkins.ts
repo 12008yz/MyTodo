@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { getUserLocalDate } from "@mytodo/domain";
 import {
   batchCheckinRequestSchema,
   batchCheckinResponseSchema,
@@ -43,6 +44,23 @@ export async function registerCheckinRoutes(
           toCheckinResponse(result.checkin, result.currentGoal, result.previewNextGoal),
         ),
       );
+    },
+  );
+
+  app.delete(
+    "/api/v1/checkins",
+    { preHandler: checkinPreHandlers },
+    async (request) => {
+      const query = z
+        .object({
+          habit_id: z.string().uuid(),
+          date: z.string().date().optional(),
+        })
+        .parse(request.query);
+      const user = await userService.getById(request.userId);
+      const date = query.date ?? getUserLocalDate(new Date(), user.timezone);
+      await checkinService.deleteForDate(request.userId, query.habit_id, date);
+      return { deleted: true };
     },
   );
 

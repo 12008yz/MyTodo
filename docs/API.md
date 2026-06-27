@@ -43,6 +43,7 @@ Auth: `Authorization: Bearer <access_token>` unless noted.
 | ------ | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | GET    | `/habits/:id/reading`          | Current book progress `{ reading }`                                                                                                                              |
 | PUT    | `/habits/:id/reading/select`   | Select book `{ book_id, checkin_baseline? }`                                                                                                                     |
+| DELETE | `/habits/:id/reading`          | Clear selected book `{ reading: null }`                                                                                                                            |
 | PATCH  | `/habits/:id/reading/bookmark` | Save reader state: `{ last_read_page? }`, `{ timer_remaining_seconds?, timer_saved_date? }`, `{ reader_day_start_page?, reader_day_date? }` (at least one field) |
 
 `reading` fields: `book_id`, `pages_read` (habit credit), `pages_credited_today`, `last_read_page` (reader bookmark), `timer_remaining_seconds`, `timer_saved_date` (paused reading timer for today), `reader_day_start_page`, `reader_day_date` (today's reading baseline for page credit), `last_checkin_date`, `completed_at`, `page_count`.
@@ -55,6 +56,7 @@ Book texts are served as static files from the web app (`/books/{book_id}/pages/
 | ------ | --------------------------- | ------------------------------------ |
 | GET    | `/checkins?date=YYYY-MM-DD` | Checkins for date                    |
 | POST   | `/checkins`                 | Create/update checkin                |
+| DELETE | `/checkins?habit_id=&date=` | Remove today's checkin for a habit (`date` optional, defaults to user local today) |
 | POST   | `/checkins/batch`           | Offline batch sync (409 on conflict) |
 
 ## Today dashboards
@@ -156,3 +158,4 @@ Exceptions: `/auth/*`, `/health`, `/billing/webhook`.
 
 Admin routes require `role = admin` (`403` otherwise).
 
+проверь всё за собой ещё раз. Что бы не было ошибок или несостыковок | НЕ УДАЛЯТЬ СТРОКУ!!!

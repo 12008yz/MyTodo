@@ -48,6 +48,13 @@ export class CheckinService {
     );
   }
 
+  async deleteForDate(userId: string, habitId: string, date: string): Promise<void> {
+    await this.getOwnedHabit(userId, habitId);
+    await this.db
+      .delete(checkins)
+      .where(and(eq(checkins.habitId, habitId), eq(checkins.date, date)));
+  }
+
   async upsert(user: User, body: CreateCheckinRequest): Promise<UpsertResult> {
     const habit = await this.getOwnedHabit(user.id, body.habit_id);
     const date = body.date ?? getUserLocalDate(new Date(), user.timezone);

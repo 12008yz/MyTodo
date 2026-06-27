@@ -12,7 +12,7 @@ import {
   STRETCH_TARGET_MINUTES,
 } from "@mytodo/shared";
 import { useQueryClient } from "@tanstack/react-query";
-import { ClientApiError, selectHabitBook } from "../../lib/api";
+import { ClientApiError, clearHabitBook, resetTodayCheckin, selectHabitBook } from "../../lib/api";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import { BookPickerModal } from "./BookPickerModal";
 import {
@@ -356,7 +356,27 @@ export function DailyPlanHabitRow({
     }
   };
 
-  const handleBookSelect = async (book: SelectedBook) => {
+  const handleBookSelect = async (book: SelectedBook | null) => {
+    if (book === null) {
+      setActionError(null);
+      try {
+        await onAbortSessionForBookChange?.(habit.id);
+        await resetTodayCheckin(habit.id);
+        await clearHabitBook(habit.id);
+        await queryClient.invalidateQueries({ queryKey: ["today", side] });
+        setSelectedBook(null);
+      } catch (err) {
+        setActionError(
+          err instanceof ClientApiError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "Не удалось снять выбор",
+        );
+      }
+      return;
+    }
+
     if (selectedBook?.id === book.id) {
       return;
     }
@@ -365,10 +385,7 @@ export function DailyPlanHabitRow({
     try {
       if (isBooks && selectedBook) {
         await onAbortSessionForBookChange?.(habit.id);
-        await checkinMutation.mutateAsync({
-          habit_id: habit.id,
-          value: 0,
-        });
+        await resetTodayCheckin(habit.id);
         await selectHabitBook(habit.id, {
           book_id: book.id,
           checkin_baseline: 0,
@@ -697,7 +714,7 @@ export function DailyPlanHabitRow({
                     setBookPickerOpen(true);
                   }}
                 >
-                  Выбрать книгу
+                  {selectedBook ? "Сменить книгу" : "Выбрать книгу"}
                 </button>
               </div>
             ) : null}

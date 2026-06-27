@@ -948,6 +948,31 @@ export function demoSelectHabitBook(
   return next;
 }
 
+export function demoClearHabitBook(habitId: string): void {
+  const state = ensureState();
+  const habit = state.habits.find((row) => row.id === habitId && row.is_active);
+
+  if (!habit) {
+    throw new Error("Привычка не найдена");
+  }
+
+  if (habit.template_id !== "books") {
+    throw new Error("Reading progress is only available for books habits");
+  }
+
+  delete state.readingByHabitId[habitId];
+  saveState(state);
+}
+
+export function demoResetTodayCheckin(habitId: string, date?: string): void {
+  const state = ensureState();
+  const planDate = date ?? todayDate();
+  state.checkins = state.checkins.filter(
+    (checkin) => !(checkin.habit_id === habitId && checkin.date === planDate),
+  );
+  saveState(state);
+}
+
 export function demoUpdateReadingBookmark(
   habitId: string,
   data: import("@mytodo/shared").UpdateReadingBookmarkRequest,

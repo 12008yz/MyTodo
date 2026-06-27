@@ -296,6 +296,11 @@
   padding-bottom: calc(110 * var(--s) + env(safe-area-inset-bottom, 0px));
 }
 
+.home--scroll-locked .home__scroll {
+  overflow: hidden;
+  touch-action: none;
+}
+
 .home__scroll::-webkit-scrollbar {
   display: none;
   width: 0;
