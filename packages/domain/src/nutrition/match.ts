@@ -1,8 +1,7 @@
 import {
-  NUTRITION_FALLBACK_RECIPE_IDS,
   NUTRITION_MATCH_LIMIT,
-  NUTRITION_MATCH_MIN_SCORE,
   NUTRITION_MIN_INGREDIENTS,
+  getNutritionIngredient,
   type NutritionRecipe,
 } from "@mytodo/shared";
 
@@ -12,12 +11,16 @@ export type MatchedNutritionRecipe = {
   matchedRequired: number;
   totalRequired: number;
   missingRequiredIds: string[];
-  isFallback?: boolean;
 };
 
 export type MatchNutritionRecipesOptions = {
   limit?: number;
-  minScore?: number;
+};
+
+export type NutritionNearMiss = {
+  recipe: NutritionRecipe;
+  missingRequiredIds: string[];
+  missingLabels: string[];
 };
 
 function scoreRecipe(
@@ -29,17 +32,14 @@ function scoreRecipe(
   const matchedRequiredIds = requiredIds.filter((id) => selectedSet.has(id));
   const totalRequired = requiredIds.length;
   const matchedRequired = matchedRequiredIds.length;
-  const baseScore = totalRequired > 0 ? matchedRequired / totalRequired : 0;
-
-  const optionalBonus = Math.min(
-    0.15,
-    recipe.ingredients.filter((item) => item.optional && selectedSet.has(item.id)).length * 0.05,
-  );
-
   const missingRequiredIds = requiredIds.filter((id) => !selectedSet.has(id));
-  const missingPenalty = missingRequiredIds.length * 0.1;
 
-  const score = Math.max(0, Math.min(1, baseScore + optionalBonus - missingPenalty));
+  const optionalMatched = recipe.ingredients.filter(
+    (item) => item.optional && selectedSet.has(item.id),
+  ).length;
+
+  const coverage = totalRequired > 0 ? matchedRequired / totalRequired : 1;
+  const score = coverage + optionalMatched * 0.05;
 
   return {
     score,
@@ -49,25 +49,19 @@ function scoreRecipe(
   };
 }
 
-function buildFallbackMatches(
-  recipes: NutritionRecipe[],
-  fallbackIds: readonly string[],
-): MatchedNutritionRecipe[] {
-  const byId = new Map(recipes.map((recipe) => [recipe.id, recipe]));
-
-  return fallbackIds
-    .map((id) => byId.get(id))
-    .filter((recipe): recipe is NutritionRecipe => recipe != null)
-    .map((recipe) => ({
-      recipe,
-      score: 0,
-      matchedRequired: 0,
-      totalRequired: recipe.ingredients.filter((item) => !item.optional).length,
-      missingRequiredIds: [],
-      isFallback: true,
-    }));
+/** Only ingredients the user listed appear in the personalized recipe. */
+export function personalizeNutritionRecipe(
+  recipe: NutritionRecipe,
+  selectedIds: string[],
+): NutritionRecipe {
+  const selected = new Set(selectedIds);
+  return {
+    ...recipe,
+    ingredients: recipe.ingredients.filter((item) => selected.has(item.id)),
+  };
 }
 
+/** Recipes the user can cook with exactly the products they named (all required items present). */
 export function matchNutritionRecipes(
   selectedIds: string[],
   recipes: NutritionRecipe[],
@@ -79,15 +73,14 @@ export function matchNutritionRecipes(
   }
 
   const limit = options.limit ?? NUTRITION_MATCH_LIMIT;
-  const minScore = options.minScore ?? NUTRITION_MATCH_MIN_SCORE;
   const selectedSet = new Set(uniqueIds);
 
-  const ranked = recipes
+  return recipes
     .map((recipe) => {
       const scored = scoreRecipe(selectedSet, recipe);
       return { recipe, ...scored };
     })
-    .filter((item) => item.score >= minScore)
+    .filter((item) => item.missingRequiredIds.length === 0)
     .sort((left, right) => {
       if (right.score !== left.score) {
         return right.score - left.score;
@@ -97,10 +90,39 @@ export function matchNutritionRecipes(
       return leftTime - rightTime;
     })
     .slice(0, limit);
+}
 
-  if (ranked.length > 0) {
-    return ranked;
+/** Hint when nothing matches — what to add for almost-ready recipes. */
+export function findNutritionNearMisses(
+  selectedIds: string[],
+  recipes: NutritionRecipe[],
+  limit = 3,
+): NutritionNearMiss[] {
+  const uniqueIds = [...new Set(selectedIds)];
+  if (uniqueIds.length < NUTRITION_MIN_INGREDIENTS) {
+    return [];
   }
 
-  return buildFallbackMatches(recipes, NUTRITION_FALLBACK_RECIPE_IDS).slice(0, limit);
+  const selectedSet = new Set(uniqueIds);
+
+  return recipes
+    .map((recipe) => {
+      const scored = scoreRecipe(selectedSet, recipe);
+      return { recipe, ...scored };
+    })
+    .filter((item) => item.missingRequiredIds.length > 0 && item.matchedRequired > 0)
+    .sort((left, right) => {
+      if (right.matchedRequired !== left.matchedRequired) {
+        return right.matchedRequired - left.matchedRequired;
+      }
+      return left.missingRequiredIds.length - right.missingRequiredIds.length;
+    })
+    .slice(0, limit)
+    .map((item) => ({
+      recipe: item.recipe,
+      missingRequiredIds: item.missingRequiredIds,
+      missingLabels: item.missingRequiredIds.map(
+        (id) => getNutritionIngredient(id)?.label ?? id,
+      ),
+    }));
 }

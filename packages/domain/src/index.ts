@@ -54,9 +54,12 @@ export {
   type HabitForDayClose,
 } from "./habits/day-close.js";
 export {
+  findNutritionNearMisses,
   matchNutritionRecipes,
+  personalizeNutritionRecipe,
   type MatchedNutritionRecipe,
   type MatchNutritionRecipesOptions,
+  type NutritionNearMiss,
 } from "./nutrition/match.js";
 export { getUserLocalDate, isDayCloseMinute } from "./time/user-day.js";
 export {

@@ -22,8 +22,16 @@ export const NUTRITION_INGREDIENTS: NutritionIngredient[] = [
   { id: "celery", label: "Сельдерей", category: "vegetables" },
   { id: "radish", label: "Редис", category: "vegetables" },
   { id: "apple", label: "Яблоко", category: "vegetables", aliases: ["яблоки"] },
+  { id: "avocado", label: "Авокадо", category: "vegetables" },
+  { id: "mushroom", label: "Шампиньоны", category: "vegetables", aliases: ["грибы", "шампиньон", "шампиньоны"] },
+  { id: "banana", label: "Банан", category: "vegetables", aliases: ["бананы"] },
+  { id: "pear", label: "Груша", category: "vegetables", aliases: ["груши"] },
+  { id: "cauliflower", label: "Цветная капуста", category: "vegetables" },
+  { id: "sweet_potato", label: "Батат", category: "vegetables", aliases: ["сладкий картофель", "батат"] },
 
-  { id: "chicken_breast", label: "Куриная грудка", category: "protein", aliases: ["грудка", "курица"] },
+  { id: "chicken_breast", label: "Куриная грудка", category: "protein", aliases: ["грудка", "курица", "куриная грудка", "куринная грудка"] },
+  { id: "minced_chicken", label: "Куриный фарш", category: "protein", aliases: ["фарш куриный", "куриный фарш"] },
+  { id: "cod", label: "Треска", category: "protein" },
   { id: "turkey", label: "Индейка", category: "protein" },
   { id: "egg", label: "Яйцо", category: "protein", aliases: ["яйца"] },
   { id: "tuna_canned", label: "Тунец консервированный", category: "protein", aliases: ["тунец"] },
@@ -41,6 +49,7 @@ export const NUTRITION_INGREDIENTS: NutritionIngredient[] = [
   { id: "yogurt", label: "Йогурт натуральный", category: "dairy", aliases: ["йогурт"] },
   { id: "cheese", label: "Сыр", category: "dairy" },
   { id: "feta", label: "Брынза / фета", category: "dairy", aliases: ["брынза", "фета"] },
+  { id: "sour_cream", label: "Сметана", category: "dairy", aliases: ["сметана 10%", "сметана 15%"] },
 
   { id: "buckwheat", label: "Гречка", category: "grains" },
   { id: "oatmeal", label: "Овсянка", category: "grains", aliases: ["овсяные хлопья"] },
@@ -59,6 +68,8 @@ export const NUTRITION_INGREDIENTS: NutritionIngredient[] = [
   { id: "tomato_paste", label: "Томатная паста", category: "pantry" },
   { id: "soy_sauce", label: "Соевый соус", category: "pantry" },
   { id: "ginger", label: "Имбирь", category: "pantry" },
+  { id: "flax_seeds", label: "Льняные семена", category: "pantry", aliases: ["лен", "семена льна"] },
+  { id: "sesame", label: "Кунжут", category: "pantry" },
 ];
 
 const INGREDIENT_BY_ID = new Map(NUTRITION_INGREDIENTS.map((item) => [item.id, item]));
@@ -94,15 +105,41 @@ function normalizeProductToken(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function splitProductTokens(text: string): string[] {
-  return text
-    .split(/[,;\n]+|(?:\s+и\s+)/i)
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
-
 function namesForIngredient(item: NutritionIngredient): string[] {
   return [item.label, ...(item.aliases ?? [])].map((name) => normalizeProductToken(name));
+}
+
+const INGREDIENT_NAME_PATTERNS: { id: string; name: string }[] = NUTRITION_INGREDIENTS.flatMap(
+  (item) => namesForIngredient(item).map((name) => ({ id: item.id, name })),
+).sort((left, right) => right.name.length - left.name.length);
+
+function isNameBoundary(normalized: string, index: number): boolean {
+  return index >= normalized.length || normalized[index] === " ";
+}
+
+function skipSeparators(normalized: string, start: number): number {
+  let index = start;
+  while (index < normalized.length) {
+    if (normalized[index] === " ") {
+      index += 1;
+      continue;
+    }
+    if (normalized.startsWith("и ", index) || normalized.slice(index) === "и") {
+      index += normalized[index + 1] === " " ? 2 : 1;
+      continue;
+    }
+    break;
+  }
+  return index;
+}
+
+function splitIntoSegments(text: string): string[] {
+  const parts = text
+    .split(/[,;\n]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const trimmed = text.trim();
+  return parts.length > 0 ? parts : trimmed ? [trimmed] : [];
 }
 
 function matchProductToken(token: string): string | null {
@@ -138,21 +175,71 @@ function matchProductToken(token: string): string | null {
   return best?.id ?? null;
 }
 
+function addIngredientId(
+  id: string,
+  ingredientIds: string[],
+  seen: Set<string>,
+): void {
+  if (seen.has(id)) {
+    return;
+  }
+  seen.add(id);
+  ingredientIds.push(id);
+}
+
+function parseSegment(
+  segment: string,
+  ingredientIds: string[],
+  unrecognized: string[],
+  seen: Set<string>,
+): void {
+  const normalized = normalizeProductToken(segment);
+  let index = 0;
+
+  while (index < normalized.length) {
+    index = skipSeparators(normalized, index);
+    if (index >= normalized.length) {
+      break;
+    }
+
+    let matched = false;
+    for (const pattern of INGREDIENT_NAME_PATTERNS) {
+      if (
+        normalized.startsWith(pattern.name, index) &&
+        isNameBoundary(normalized, index + pattern.name.length)
+      ) {
+        addIngredientId(pattern.id, ingredientIds, seen);
+        index += pattern.name.length;
+        matched = true;
+        break;
+      }
+    }
+    if (matched) {
+      continue;
+    }
+
+    const spaceIndex = normalized.indexOf(" ", index);
+    const wordEnd = spaceIndex === -1 ? normalized.length : spaceIndex;
+    const word = normalized.slice(index, wordEnd);
+    const wordMatch = matchProductToken(word);
+    if (wordMatch) {
+      addIngredientId(wordMatch, ingredientIds, seen);
+      index = wordEnd;
+      continue;
+    }
+
+    unrecognized.push(word);
+    index = wordEnd;
+  }
+}
+
 export function parseNutritionProductsText(text: string): ParseNutritionProductsResult {
   const ingredientIds: string[] = [];
   const unrecognized: string[] = [];
   const seen = new Set<string>();
 
-  for (const token of splitProductTokens(text)) {
-    const matchedId = matchProductToken(token);
-    if (matchedId) {
-      if (!seen.has(matchedId)) {
-        seen.add(matchedId);
-        ingredientIds.push(matchedId);
-      }
-      continue;
-    }
-    unrecognized.push(token);
+  for (const segment of splitIntoSegments(text)) {
+    parseSegment(segment, ingredientIds, unrecognized, seen);
   }
 
   return { ingredientIds, unrecognized };
@@ -161,5 +248,5 @@ export function parseNutritionProductsText(text: string): ParseNutritionProducts
 export function formatNutritionIngredientIds(ids: string[]): string {
   return ids
     .map((id) => getNutritionIngredient(id)?.label ?? id)
-    .join(", ");
+    .join(" ");
 }

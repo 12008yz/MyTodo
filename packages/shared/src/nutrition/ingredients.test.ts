@@ -12,6 +12,27 @@ describe("parseNutritionProductsText", () => {
     expect(result.unrecognized).toEqual([]);
   });
 
+  it("parses space-separated products", () => {
+    const result = parseNutritionProductsText("яйца помидоры творог");
+
+    expect(result.ingredientIds).toEqual(["egg", "tomato", "cottage_cheese"]);
+    expect(result.unrecognized).toEqual([]);
+  });
+
+  it("parses multi-word product names", () => {
+    const result = parseNutritionProductsText("куриная грудка рис огурец");
+
+    expect(result.ingredientIds).toEqual(["chicken_breast", "rice", "cucumber"]);
+    expect(result.unrecognized).toEqual([]);
+  });
+
+  it("recognizes common typo for chicken breast", () => {
+    const result = parseNutritionProductsText("куринная грудка рис");
+
+    expect(result.ingredientIds).toEqual(["chicken_breast", "rice"]);
+    expect(result.unrecognized).toEqual([]);
+  });
+
   it("parses newline-separated products", () => {
     const result = parseNutritionProductsText("овсянка\nяблоко\nмёд");
 
@@ -20,21 +41,21 @@ describe("parseNutritionProductsText", () => {
   });
 
   it("deduplicates repeated products", () => {
-    const result = parseNutritionProductsText("яйцо, яйца, eggs");
+    const result = parseNutritionProductsText("яйцо яйца");
 
     expect(result.ingredientIds).toEqual(["egg"]);
   });
 
   it("returns unrecognized tokens", () => {
-    const result = parseNutritionProductsText("яйца, авокадо, помидор");
+    const result = parseNutritionProductsText("яйца авокадо помидор");
 
-    expect(result.ingredientIds).toEqual(["egg", "tomato"]);
-    expect(result.unrecognized).toEqual(["авокадо"]);
+    expect(result.ingredientIds).toEqual(["egg", "avocado", "tomato"]);
+    expect(result.unrecognized).toEqual([]);
   });
 });
 
 describe("formatNutritionIngredientIds", () => {
   it("joins ingredient labels", () => {
-    expect(formatNutritionIngredientIds(["egg", "tomato"])).toBe("Яйцо, Помидор");
+    expect(formatNutritionIngredientIds(["egg", "tomato"])).toBe("Яйцо Помидор");
   });
 });

@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { matchNutritionRecipes } from "@mytodo/domain";
+import {
+  findNutritionNearMisses,
+  matchNutritionRecipes,
+  personalizeNutritionRecipe,
+} from "@mytodo/domain";
 import {
   NUTRITION_MEAL_LABELS,
   NUTRITION_METHOD_LABELS,
@@ -11,7 +15,6 @@ import {
   getNutritionIngredient,
   isCompanionLightHabit,
   parseNutritionProductsText,
-  type HabitNutritionLog,
   type NutritionRecipe,
 } from "@mytodo/shared";
 import { getNutritionTodayLog, putNutritionTodayLog } from "../../lib/api";
@@ -20,11 +23,14 @@ import "./NutritionPage.css";
 
 type Step = "ingredients" | "suggestions" | "recipe";
 
-function logStep(log: HabitNutritionLog | null): Step {
-  if (log?.recipe_id) {
-    return "recipe";
-  }
-  return "ingredients";
+const STEPS: { id: Step; label: string }[] = [
+  { id: "ingredients", label: "Продукты" },
+  { id: "suggestions", label: "Рецепты" },
+  { id: "recipe", label: "Готовим" },
+];
+
+function stepIndex(step: Step): number {
+  return STEPS.findIndex((item) => item.id === step);
 }
 
 export function NutritionPage() {
@@ -64,18 +70,17 @@ export function NutritionPage() {
         if (log) {
           setSelectedIds(log.ingredient_ids);
           setProductsText(formatNutritionIngredientIds(log.ingredient_ids));
-          const nextStep = logStep(log);
-          setStep(nextStep);
+          if (log.ingredient_ids.length >= NUTRITION_MIN_INGREDIENTS) {
+            setMatches(matchNutritionRecipes(log.ingredient_ids, NUTRITION_RECIPES));
+          }
           if (log.recipe_id) {
             const recipe = NUTRITION_RECIPES.find((row) => row.id === log.recipe_id) ?? null;
             setActiveRecipe(recipe);
-            if (nextStep === "suggestions") {
-              setMatches(matchNutritionRecipes(log.ingredient_ids, NUTRITION_RECIPES));
-            }
           }
         }
+        setStep("ingredients");
       } catch {
-        // demo/offline — остаёмся на шаге продуктов
+        setStep("ingredients");
       } finally {
         if (!cancelled) {
           setHydrated(true);
@@ -87,6 +92,30 @@ export function NutritionPage() {
       cancelled = true;
     };
   }, [habitId, hydrated]);
+
+  const recognizedPreview = parseNutritionProductsText(productsText);
+  const activeStepIndex = stepIndex(step);
+  const nearMisses = useMemo(
+    () =>
+      selectedIds.length >= NUTRITION_MIN_INGREDIENTS
+        ? findNutritionNearMisses(selectedIds, NUTRITION_RECIPES)
+        : [],
+    [selectedIds],
+  );
+  const displayRecipe = useMemo(
+    () => (activeRecipe ? personalizeNutritionRecipe(activeRecipe, selectedIds) : null),
+    [activeRecipe, selectedIds],
+  );
+
+  const goToStep = (next: Step) => {
+    if (next === "suggestions" && selectedIds.length < NUTRITION_MIN_INGREDIENTS) {
+      return;
+    }
+    if (next === "recipe" && !activeRecipe) {
+      return;
+    }
+    setStep(next);
+  };
 
   if (!habitId) {
     return (
@@ -107,10 +136,16 @@ export function NutritionPage() {
   if (!habit || !isCompanionLightHabit(habit)) {
     return (
       <div className="nutrition-page">
-        <p className="nutrition-page__status">Это не привычка «Правильное питание»</p>
-        <button type="button" className="nutrition-page__btn nutrition-page__btn--secondary" onClick={() => navigate("/")}>
-          На главную
-        </button>
+        <div className="nutrition-page__shell">
+          <p className="nutrition-page__status">Это не привычка «Правильное питание»</p>
+          <button
+            type="button"
+            className="nutrition-page__btn nutrition-page__btn--ghost"
+            onClick={() => navigate("/")}
+          >
+            На главную
+          </button>
+        </div>
       </div>
     );
   }
@@ -144,7 +179,9 @@ export function NutritionPage() {
     setUnrecognizedProducts(parsed.unrecognized);
 
     if (parsed.ingredientIds.length < NUTRITION_MIN_INGREDIENTS) {
-      setError(`Укажите хотя бы ${NUTRITION_MIN_INGREDIENTS} продукта через запятую или с новой строки`);
+      setError(
+        `Укажите хотя бы ${NUTRITION_MIN_INGREDIENTS} продукта — через пробел, запятую или с новой строки`,
+      );
       return;
     }
 
@@ -162,156 +199,266 @@ export function NutritionPage() {
     await persistLog(selectedIds, recipe.id);
   };
 
-  const selectedSet = new Set(selectedIds);
-  const recognizedPreview = parseNutritionProductsText(productsText);
+  const ingredientCountForRecipe = (recipe: NutritionRecipe) =>
+    personalizeNutritionRecipe(recipe, selectedIds).ingredients.length;
 
   return (
     <div className="nutrition-page">
-      <header className="nutrition-page__header">
-        <button type="button" className="nutrition-page__back" onClick={() => navigate("/")}>
-          ← На главную
-        </button>
-        <h1 className="nutrition-page__title">Правильное питание</h1>
-        <p className="nutrition-page__subtitle">
-          {step === "ingredients" && "Перечислите, что есть дома — подберём рецепты"}
-          {step === "suggestions" && "Выберите рецепт"}
-          {step === "recipe" && activeRecipe?.title}
-        </p>
-      </header>
+      <div className="nutrition-page__glow nutrition-page__glow--green" aria-hidden="true" />
+      <div className="nutrition-page__glow nutrition-page__glow--purple" aria-hidden="true" />
 
-      {error ? <p className="nutrition-page__status nutrition-page__status--error">{error}</p> : null}
+      <div className="nutrition-page__shell">
+        <header className="nutrition-page__header">
+          <button type="button" className="nutrition-page__back" onClick={() => navigate("/")}>
+            ← На главную
+          </button>
+          <div className="nutrition-page__headline">
+            <h1 className="nutrition-page__title">Правильное питание</h1>
+            <p className="nutrition-page__subtitle">
+              {step === "ingredients" && "Напишите, что есть дома — подберём рецепты"}
+              {step === "suggestions" && "Выберите, что приготовить"}
+              {step === "recipe" && (activeRecipe?.title ?? "Готовим")}
+            </p>
+          </div>
+          <ol className="nutrition-page__steps" aria-label="Шаги">
+            {STEPS.map((item, index) => {
+              const isActive = item.id === step;
+              const isDone = index < activeStepIndex;
+              const isDisabled =
+                (item.id === "suggestions" && selectedIds.length < NUTRITION_MIN_INGREDIENTS) ||
+                (item.id === "recipe" && !activeRecipe);
 
-      {step === "ingredients" ? (
-        <>
-          <label className="nutrition-page__field">
-            <span className="nutrition-page__field-label">Ваши продукты</span>
-            <textarea
-              className="nutrition-page__textarea"
-              rows={6}
-              placeholder={"Например:\nяйца, помидоры, творог\nовсянка, яблоко"}
-              value={productsText}
-              onChange={(event) => {
-                setProductsText(event.target.value);
-                setError(null);
-              }}
-            />
-          </label>
-          {recognizedPreview.ingredientIds.length > 0 ? (
-            <p className="nutrition-page__hint">
-              Распознали: {formatNutritionIngredientIds(recognizedPreview.ingredientIds)}
-            </p>
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    className={[
+                      "nutrition-page__step",
+                      isActive ? "nutrition-page__step--active" : "",
+                      isDone ? "nutrition-page__step--done" : "",
+                      isDisabled ? "nutrition-page__step--disabled" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    disabled={isDisabled}
+                    onClick={() => goToStep(item.id)}
+                  >
+                    <span className="nutrition-page__step-dot" aria-hidden="true" />
+                    {item.label}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </header>
+
+        <main className="nutrition-page__main">
+          {error ? <p className="nutrition-page__alert nutrition-page__alert--error">{error}</p> : null}
+
+          {step === "ingredients" ? (
+            <section className="nutrition-page__panel">
+              <label className="nutrition-page__field">
+                <span className="nutrition-page__field-label">Ваши продукты</span>
+                <textarea
+                  className="nutrition-page__textarea"
+                  rows={6}
+                  placeholder={"Например:\nогурец творог рис куриная грудка\nяйца помидоры"}
+                  value={productsText}
+                  onChange={(event) => {
+                    setProductsText(event.target.value);
+                    setError(null);
+                  }}
+                />
+              </label>
+              <p className="nutrition-page__field-hint">
+                Пишите через пробел, запятую или с новой строки · минимум {NUTRITION_MIN_INGREDIENTS}{" "}
+                продукта
+              </p>
+
+              {recognizedPreview.ingredientIds.length > 0 ? (
+                <div className="nutrition-page__chips-block">
+                  <p className="nutrition-page__chips-label">Распознали</p>
+                  <div className="nutrition-page__chips">
+                    {recognizedPreview.ingredientIds.map((id) => (
+                      <span key={id} className="nutrition-page__chip nutrition-page__chip--ok">
+                        {getNutritionIngredient(id)?.label ?? id}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {unrecognizedProducts.length > 0 ? (
+                <p className="nutrition-page__alert nutrition-page__alert--warn">
+                  Не нашли в каталоге: {unrecognizedProducts.join(", ")}
+                </p>
+              ) : null}
+            </section>
           ) : null}
-          {unrecognizedProducts.length > 0 ? (
-            <p className="nutrition-page__hint nutrition-page__hint--warn">
-              Не нашли в каталоге: {unrecognizedProducts.join(", ")}
-            </p>
+
+          {step === "suggestions" ? (
+            <section className="nutrition-page__suggestions">
+              <div className="nutrition-page__products-bar">
+                <p className="nutrition-page__chips-label">Из ваших продуктов</p>
+                <div className="nutrition-page__chips">
+                  {selectedIds.map((id) => (
+                    <span key={id} className="nutrition-page__chip nutrition-page__chip--ok">
+                      {getNutritionIngredient(id)?.label ?? id}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {matches.length === 0 ? (
+                <div className="nutrition-page__empty">
+                  <div className="nutrition-page__empty-icon" aria-hidden="true">
+                    🥗
+                  </div>
+                  <p className="nutrition-page__empty-title">Пока нет готового рецепта</p>
+                  <p className="nutrition-page__empty-text">
+                    Добавьте ещё продукты или измените список — подскажем, чего не хватает.
+                  </p>
+                  {nearMisses.length > 0 ? (
+                    <div className="nutrition-page__near-misses">
+                      {nearMisses.map((item) => (
+                        <article key={item.recipe.id} className="nutrition-page__near-miss-card">
+                          <h3 className="nutrition-page__near-miss-title">{item.recipe.title}</h3>
+                          <p className="nutrition-page__near-miss-label">Не хватает</p>
+                          <div className="nutrition-page__chips">
+                            {item.missingLabels.map((label) => (
+                              <span key={label} className="nutrition-page__chip nutrition-page__chip--missing">
+                                {label}
+                              </span>
+                            ))}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="nutrition-page__cards">
+                  {matches.map((match) => (
+                    <button
+                      key={match.recipe.id}
+                      type="button"
+                      className="nutrition-page__card"
+                      onClick={() => void handleSelectRecipe(match.recipe)}
+                    >
+                      <div className="nutrition-page__card-top">
+                        <h2 className="nutrition-page__card-title">{match.recipe.title}</h2>
+                        <span className="nutrition-page__card-match">
+                          {ingredientCountForRecipe(match.recipe)} из ваших
+                        </span>
+                      </div>
+                      <p className="nutrition-page__card-summary">{match.recipe.summary}</p>
+                      <div className="nutrition-page__card-tags">
+                        <span>{NUTRITION_MEAL_LABELS[match.recipe.meal]}</span>
+                        <span>{match.recipe.prepMinutes + match.recipe.cookMinutes} мин</span>
+                        <span>~{match.recipe.caloriesPerServing} ккал</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
           ) : null}
-          <div className="nutrition-page__actions">
+
+          {step === "recipe" && !displayRecipe ? (
+            <section className="nutrition-page__panel">
+              <p className="nutrition-page__alert nutrition-page__alert--info">
+                Рецепт не найден. Выберите другой из списка.
+              </p>
+            </section>
+          ) : null}
+
+          {step === "recipe" && displayRecipe ? (
+            <section className="nutrition-page__recipe">
+              <div className="nutrition-page__recipe-hero">
+                <div className="nutrition-page__recipe-tags">
+                  <span>{NUTRITION_MEAL_LABELS[displayRecipe.meal]}</span>
+                  <span>{NUTRITION_METHOD_LABELS[displayRecipe.method]}</span>
+                  <span>{displayRecipe.prepMinutes + displayRecipe.cookMinutes} мин</span>
+                  <span>~{displayRecipe.caloriesPerServing} ккал</span>
+                </div>
+                <p className="nutrition-page__recipe-summary">{displayRecipe.summary}</p>
+              </div>
+
+              <div className="nutrition-page__section">
+                <h2 className="nutrition-page__section-title">Из ваших продуктов</h2>
+                <ul className="nutrition-page__ingredients">
+                  {displayRecipe.ingredients.map((item) => {
+                    const label = getNutritionIngredient(item.id)?.label ?? item.id;
+                    return (
+                      <li key={`${item.id}-${item.amount}`}>
+                        <span className="nutrition-page__ingredient-name">{label}</span>
+                        <span className="nutrition-page__ingredient-amount">{item.amount}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+
+              <div className="nutrition-page__section">
+                <h2 className="nutrition-page__section-title">Приготовление</h2>
+                <ol className="nutrition-page__steps-list">
+                  {displayRecipe.steps.map((text, index) => (
+                    <li key={text}>
+                      <span className="nutrition-page__step-num">{index + 1}</span>
+                      <span>{text}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </section>
+          ) : null}
+        </main>
+
+        <footer className="nutrition-page__footer">
+          {step === "ingredients" ? (
             <button
               type="button"
               className="nutrition-page__btn nutrition-page__btn--primary"
               disabled={!productsText.trim() || isSaving}
               onClick={() => void handleFindRecipes()}
             >
-              Подобрать рецепт
+              {isSaving ? "Подбираем…" : "Подобрать рецепт"}
             </button>
-          </div>
-        </>
-      ) : null}
-
-      {step === "suggestions" ? (
-        <>
-          <p className="nutrition-page__hint">
-            Из продуктов: {formatNutritionIngredientIds(selectedIds)}
-          </p>
-          {matches.some((item) => item.isFallback) ? (
-            <p className="nutrition-page__fallback-note">
-              Точного совпадения нет — вот универсальные варианты.
-            </p>
           ) : null}
-          <div className="nutrition-page__cards">
-            {matches.map((match) => (
-              <button
-                key={match.recipe.id}
-                type="button"
-                className="nutrition-page__card"
-                onClick={() => void handleSelectRecipe(match.recipe)}
-              >
-                <h2 className="nutrition-page__card-title">{match.recipe.title}</h2>
-                <p className="nutrition-page__card-meta">
-                  {match.recipe.summary} · {match.recipe.prepMinutes + match.recipe.cookMinutes} мин · ~
-                  {match.recipe.caloriesPerServing} ккал
-                </p>
-                <p className="nutrition-page__card-meta">
-                  Используете {match.matchedRequired} из {match.totalRequired} продуктов
-                </p>
-              </button>
-            ))}
-          </div>
-          <div className="nutrition-page__actions">
+
+          {step === "suggestions" ? (
             <button
               type="button"
-              className="nutrition-page__btn nutrition-page__btn--secondary"
+              className="nutrition-page__btn nutrition-page__btn--ghost"
               onClick={() => setStep("ingredients")}
             >
               Изменить продукты
             </button>
-          </div>
-        </>
-      ) : null}
+          ) : null}
 
-      {step === "recipe" && activeRecipe ? (
-        <>
-          <div className="nutrition-page__recipe-meta">
-            <span>{NUTRITION_MEAL_LABELS[activeRecipe.meal]}</span>
-            <span>{NUTRITION_METHOD_LABELS[activeRecipe.method]}</span>
-            <span>{activeRecipe.prepMinutes + activeRecipe.cookMinutes} мин</span>
-            <span>~{activeRecipe.caloriesPerServing} ккал</span>
-          </div>
-          <p>{activeRecipe.summary}</p>
-          <h2>Ингредиенты</h2>
-          <ul className="nutrition-page__ingredients">
-            {activeRecipe.ingredients.map((item) => {
-              const has = selectedSet.has(item.id) || item.optional;
-              const label = getNutritionIngredient(item.id)?.label ?? item.id;
-              return (
-                <li
-                  key={`${item.id}-${item.amount}`}
-                  className={has ? undefined : "nutrition-page__ingredient--missing"}
-                >
-                  {label} — {item.amount}
-                  {!has ? " (нет у вас)" : ""}
-                </li>
-              );
-            })}
-          </ul>
-          <h2>Приготовление</h2>
-          <ol className="nutrition-page__steps">
-            {activeRecipe.steps.map((text) => (
-              <li key={text}>{text}</li>
-            ))}
-          </ol>
-          <div className="nutrition-page__actions">
-            <button
-              type="button"
-              className="nutrition-page__btn nutrition-page__btn--secondary"
-              onClick={() => {
-                setMatches(matchNutritionRecipes(selectedIds, NUTRITION_RECIPES));
-                setStep("suggestions");
-              }}
-            >
-              Другой рецепт
-            </button>
-            <button
-              type="button"
-              className="nutrition-page__btn nutrition-page__btn--primary"
-              onClick={() => navigate("/")}
-            >
-              На главную
-            </button>
-          </div>
-        </>
-      ) : null}
+          {step === "recipe" ? (
+            <>
+              <button
+                type="button"
+                className="nutrition-page__btn nutrition-page__btn--ghost"
+                onClick={() => {
+                  setMatches(matchNutritionRecipes(selectedIds, NUTRITION_RECIPES));
+                  setStep("suggestions");
+                }}
+              >
+                Другой рецепт
+              </button>
+              <button
+                type="button"
+                className="nutrition-page__btn nutrition-page__btn--primary"
+                onClick={() => navigate("/")}
+              >
+                На главную
+              </button>
+            </>
+          ) : null}
+        </footer>
+      </div>
     </div>
   );
 }

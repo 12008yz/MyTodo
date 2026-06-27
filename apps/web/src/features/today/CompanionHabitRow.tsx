@@ -27,25 +27,29 @@ export function CompanionHabitRow({ habit, nutritionLog: nutritionLogProp }: Com
 
   return (
     <article className="home__plan-item home__plan-item--companion">
-      <div className="home__plan-item-head">
-        <HabitIcon
-          icon={habit.icon}
-          side="light"
-          template_id={habit.template_id}
-          category_key={habit.category_key}
-          name={habit.name}
-        />
-        <div className="home__plan-item-main">
-          <h3 className="home__plan-item-title">{habit.name}</h3>
-          <p className="home__plan-item-hint">{formatGoalLabel(habit)}</p>
-          {recipeTitle ? (
-            <p className="home__plan-item-hint home__plan-item-hint--muted">
-              Последний рецепт: {recipeTitle}
-            </p>
-          ) : null}
-        </div>
-      </div>
-      <div className="home__plan-item-actions">
+      <header className="home__plan-item-header">
+        <h3 className="home__plan-item-title">
+          <HabitIcon
+            icon={habit.icon}
+            side="light"
+            template_id={habit.template_id}
+            category_key={habit.category_key}
+            name={habit.name}
+          />
+          <span className="home__plan-item-name">{habit.name}</span>
+        </h3>
+        <span className="home__plan-badge home__plan-badge--utility">Идеи ПП</span>
+      </header>
+
+      <p className="home__plan-item-goal">{formatGoalLabel(habit)}</p>
+
+      {recipeTitle ? (
+        <p className="home__plan-item-hint home__plan-item-hint--muted">
+          Последний рецепт: {recipeTitle}
+        </p>
+      ) : null}
+
+      <div className="home__task-actions">
         <button
           type="button"
           className="home__task-btn home__task-btn--start"
