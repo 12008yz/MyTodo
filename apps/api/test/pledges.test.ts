@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { addDays } from "@mytodo/domain";
+import { addDays, getUserLocalDate } from "@mytodo/domain";
 import {
   authResponseSchema,
   createPledgePaymentResponseSchema,
@@ -11,8 +11,11 @@ import { buildApp } from "../src/app.js";
 import { loadEnv } from "../src/config/env.js";
 import { MockYukassaClient } from "../src/lib/yukassa/mock-client.js";
 import { BillingService } from "../src/services/billing.js";
+import { CheckinService } from "../src/services/checkins.js";
+import { DayCloseService } from "../src/services/day-close.js";
+import { DoomScrollService } from "../src/services/doom-scroll.js";
 import { PledgeService } from "../src/services/pledges.js";
-import { dailyStats, pledges, userBadges } from "../src/db/schema/index.js";
+import { dailyStats, pledges, userBadges, users } from "../src/db/schema/index.js";
 import { ensureMigrated, truncateAuthTables } from "./helpers/db.js";
 
 const env = loadEnv({
@@ -26,6 +29,7 @@ describe("Pledges", () => {
   let yukassa: MockYukassaClient;
   let pledgeService: PledgeService;
   let billingService: BillingService;
+  let dayCloseService: DayCloseService;
 
   beforeAll(async () => {
     await ensureMigrated(env);
@@ -35,6 +39,9 @@ describe("Pledges", () => {
     db = built.app.db;
     pledgeService = new PledgeService(db, yukassa);
     billingService = new BillingService(db, yukassa, pledgeService);
+    const checkinService = new CheckinService(db);
+    const doomScrollService = new DoomScrollService(db, checkinService);
+    dayCloseService = new DayCloseService(db, doomScrollService, pledgeService);
     await app.ready();
   });
 
@@ -122,16 +129,39 @@ describe("Pledges", () => {
     expect(list[0]?.habit_id).toBe(habit.id);
   });
 
-  it("fails pledge immediately on habit fail checkin", async () => {
-    const { headers, habit } = await registerAndOnboard("fail-pledge@example.com");
-    await activatePledge(headers, habit.id);
+  it("fails pledge immediately on dark habit fail checkin", async () => {
+    const { headers } = await registerAndOnboard("fail-pledge@example.com");
+
+    const habitResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers,
+      payload: { template_id: "smoking", baseline_value: 20 },
+    });
+    const smokingHabit = habitResponseSchema.parse(JSON.parse(habitResponse.body));
+
+    await activatePledge(headers, smokingHabit.id);
 
     await app.inject({
       method: "POST",
       url: "/api/v1/checkins",
       headers,
-      payload: { habit_id: habit.id, value: 0, books_timer_expired: true },
+      payload: { habit_id: smokingHabit.id, value: 25 },
     });
+
+    const [pledge] = await db.select().from(pledges);
+    expect(pledge?.status).toBe("failed");
+  });
+
+  it("fails light habit pledge when day closes without meeting the goal", async () => {
+    const email = "books-pledge-close@example.com";
+    const { headers, habit } = await registerAndOnboard(email);
+    await activatePledge(headers, habit.id);
+
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    const closeDate = getUserLocalDate(new Date(), user!.timezone);
+
+    await dayCloseService.closeDayForUser(user!, closeDate);
 
     const [pledge] = await db.select().from(pledges);
     expect(pledge?.status).toBe("failed");
@@ -151,15 +181,13 @@ describe("Pledges", () => {
   });
 
   it("rejects second pledge in the same month", async () => {
-    const { headers, habit } = await registerAndOnboard("second-pledge@example.com");
+    const email = "second-pledge@example.com";
+    const { headers, habit } = await registerAndOnboard(email);
     await activatePledge(headers, habit.id);
 
-    await app.inject({
-      method: "POST",
-      url: "/api/v1/checkins",
-      headers,
-      payload: { habit_id: habit.id, value: 0, books_timer_expired: true },
-    });
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    const closeDate = getUserLocalDate(new Date(), user!.timezone);
+    await dayCloseService.closeDayForUser(user!, closeDate);
 
     const habit2Response = await app.inject({
       method: "POST",

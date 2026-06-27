@@ -477,8 +477,8 @@ describe("Checkins", () => {
     expect(checkin.preview_next_goal).toBe(habit.current_goal);
   });
 
-  it("records books reading fail when the timer expires without pages", async () => {
-    const auth = await createOnboardedUser("books-timer@example.com");
+  it("records books reading as pending when no pages were read", async () => {
+    const auth = await createOnboardedUser("books-zero@example.com");
     const habit = await createLightHabit(auth.access_token);
 
     const response = await app.inject({
@@ -489,18 +489,17 @@ describe("Checkins", () => {
         habit_id: habit.id,
         date: "2026-06-18",
         value: 0,
-        books_timer_expired: true,
       },
     });
 
     expect(response.statusCode).toBe(201);
     const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
-    expect(checkin.status).toBe("fail");
+    expect(checkin.status).toBe("pending");
     expect(checkin.preview_next_goal).toBe(habit.current_goal);
   });
 
-  it("records light habit fail with unchanged preview_next_goal", async () => {
-    const auth = await createOnboardedUser("light-fail@example.com");
+  it("records light habit as pending when below goal", async () => {
+    const auth = await createOnboardedUser("light-pending@example.com");
     const headers = { authorization: `Bearer ${auth.access_token}` };
 
     const habitResponse = await app.inject({
@@ -527,7 +526,7 @@ describe("Checkins", () => {
 
     expect(response.statusCode).toBe(201);
     const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
-    expect(checkin.status).toBe("fail");
+    expect(checkin.status).toBe("pending");
     expect(checkin.preview_next_goal).toBe(habit.current_goal);
   });
 

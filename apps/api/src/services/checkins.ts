@@ -293,17 +293,8 @@ export class CheckinService {
       );
     }
 
-    if (body.books_timer_expired && habit.templateId !== "books") {
-      throw new ApiError(
-        HTTP_STATUS.BAD_REQUEST,
-        ERROR_CODES.VALIDATION_ERROR,
-        "books_timer_expired is only allowed for books habits",
-      );
-    }
-
     const status = resolveCheckinStatus(this.toCheckinHabit(habit), {
       value: body.value,
-      booksTimerExpired: body.books_timer_expired,
     });
     return { status, value: body.value };
   }

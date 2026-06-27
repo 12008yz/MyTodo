@@ -811,17 +811,9 @@ function resolveDemoCheckinStatus(
   }
 
   if (habit.type === "target") {
-    if (habit.template_id === "books") {
-      if (data.value >= habit.current_goal) {
-        return { status: "success", value: data.value };
-      }
-
-      if (data.value > 0) {
-        return { status: "pending", value: data.value };
-      }
-
+    if (habit.side === "light") {
       return {
-        status: data.books_timer_expired ? "fail" : "pending",
+        status: data.value >= habit.current_goal ? "success" : "pending",
         value: data.value,
       };
     }

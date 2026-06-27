@@ -137,6 +137,88 @@ describe("Day close worker", () => {
     expect(stat?.status).toBe("fail");
   });
 
+  it("closes light habit with partial pending checkin as fail", async () => {
+    const { auth, user } = await createOnboardedUser("light-pending-close@example.com");
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+
+    const habitResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers,
+      payload: { template_id: "running", baseline_value: 10 },
+    });
+    const habit = habitResponseSchema.parse(JSON.parse(habitResponse.body));
+
+    const checkinResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins",
+      headers,
+      payload: {
+        habit_id: habit.id,
+        date: CLOSE_DATE,
+        value: 3,
+      },
+    });
+    const checkin = checkinResponseSchema.parse(JSON.parse(checkinResponse.body));
+    expect(checkin.status).toBe("pending");
+
+    await dayCloseService.closeDayForUser(user, CLOSE_DATE);
+
+    const [updatedCheckin] = await db
+      .select()
+      .from(checkins)
+      .where(eq(checkins.habitId, habit.id));
+    const [stat] = await db
+      .select()
+      .from(dailyStats)
+      .where(eq(dailyStats.habitId, habit.id));
+
+    expect(updatedCheckin?.status).toBe("fail");
+    expect(Number(updatedCheckin?.value)).toBe(3);
+    expect(stat?.status).toBe("fail");
+  });
+
+  it("closes books habit with partial pending checkin as fail", async () => {
+    const { auth, user } = await createOnboardedUser("books-pending-close@example.com");
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+
+    const habitResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers,
+      payload: { template_id: "books", baseline_value: 5 },
+    });
+    const habit = habitResponseSchema.parse(JSON.parse(habitResponse.body));
+
+    const checkinResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins",
+      headers,
+      payload: {
+        habit_id: habit.id,
+        date: CLOSE_DATE,
+        value: 3,
+      },
+    });
+    const checkin = checkinResponseSchema.parse(JSON.parse(checkinResponse.body));
+    expect(checkin.status).toBe("pending");
+
+    await dayCloseService.closeDayForUser(user, CLOSE_DATE);
+
+    const [updatedCheckin] = await db
+      .select()
+      .from(checkins)
+      .where(eq(checkins.habitId, habit.id));
+    const [stat] = await db
+      .select()
+      .from(dailyStats)
+      .where(eq(dailyStats.habitId, habit.id));
+
+    expect(updatedCheckin?.status).toBe("fail");
+    expect(Number(updatedCheckin?.value)).toBe(3);
+    expect(stat?.status).toBe("fail");
+  });
+
   it("applies preview_next_goal after successful light habit close", async () => {
     const { auth, user } = await createOnboardedUser("light-close@example.com");
     const headers = { authorization: `Bearer ${auth.access_token}` };

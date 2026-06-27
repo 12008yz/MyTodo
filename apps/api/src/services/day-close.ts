@@ -205,6 +205,10 @@ export class DayCloseService {
 
       await executor.update(habits).set(habitUpdate).where(eq(habits.id, habit.id));
 
+      if (result.status === "fail") {
+        await this.pledgeService?.failActivePledgeForHabit(habit.id, executor);
+      }
+
       return true;
     };
 

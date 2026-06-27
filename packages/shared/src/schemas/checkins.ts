@@ -8,7 +8,6 @@ const checkinBodySchema = z.object({
   date: z.string().date().optional(),
   value: z.number().min(0).max(10_000).optional(),
   status: z.enum(["fail", "skipped"]).optional(),
-  books_timer_expired: z.boolean().optional(),
 });
 
 export const createCheckinRequestSchema = checkinBodySchema.superRefine((body, ctx) => {

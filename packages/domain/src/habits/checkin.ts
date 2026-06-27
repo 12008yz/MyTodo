@@ -8,24 +8,12 @@ export type HabitForCheckin = {
 };
 
 export type ResolveCheckinInput =
-  | { value: number; booksTimerExpired?: boolean }
+  | { value: number }
   | { status: "skipped" }
   | { status: "fail" };
 
-function resolveBooksCheckinStatus(
-  value: number,
-  currentGoal: number,
-  booksTimerExpired?: boolean,
-): CheckinStatus {
-  if (value >= currentGoal) {
-    return "success";
-  }
-
-  if (value > 0) {
-    return "pending";
-  }
-
-  return booksTimerExpired ? "fail" : "pending";
+function resolveLightTargetCheckinStatus(value: number, currentGoal: number): CheckinStatus {
+  return value >= currentGoal ? "success" : "pending";
 }
 
 export function resolveCheckinStatus(
@@ -45,12 +33,8 @@ export function resolveCheckinStatus(
   }
 
   if (habit.type === "target") {
-    if (habit.templateId === "books") {
-      return resolveBooksCheckinStatus(
-        input.value,
-        habit.currentGoal,
-        input.booksTimerExpired,
-      );
+    if (habit.side === "light") {
+      return resolveLightTargetCheckinStatus(input.value, habit.currentGoal);
     }
 
     return input.value >= habit.currentGoal ? "success" : "fail";

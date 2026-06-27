@@ -105,7 +105,7 @@ describe("Pomodoro", () => {
     const body = pomodoroCompleteResponseSchema.parse(JSON.parse(completeResponse.body));
     expect(body.minutes_added).toBe(25);
     expect(body.checkin.value).toBe(25);
-    expect(body.checkin.status).toBe("fail");
+    expect(body.checkin.status).toBe("pending");
 
     const todayResponse = await app.inject({
       method: "GET",

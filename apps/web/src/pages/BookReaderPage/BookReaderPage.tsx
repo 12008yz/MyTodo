@@ -47,8 +47,6 @@ export function BookReaderPage() {
   const dayBaselineReadyRef = useRef(false);
   const dayBaselinePersistedRef = useRef(false);
   const lastCreditedPagesRef = useRef<number | null>(null);
-  const timerWasRunningRef = useRef(false);
-  const timerExpiredHandledRef = useRef(false);
 
   const pageCount = manifest?.pageCount ?? reading?.page_count ?? 1;
   const dailyGoal = habit?.template_id === "books" ? habit.current_goal : 0;
@@ -95,8 +93,6 @@ export function BookReaderPage() {
     dayBaselineReadyRef.current = false;
     dayBaselinePersistedRef.current = false;
     lastCreditedPagesRef.current = null;
-    timerWasRunningRef.current = false;
-    timerExpiredHandledRef.current = false;
   }, [habitId, bookId, planDate]);
 
   useEffect(() => {
@@ -233,46 +229,6 @@ export function BookReaderPage() {
       void queryClient.invalidateQueries({ queryKey: ["today", "light"] });
     });
   }, [habit, habitId, page, planDate, queryClient]);
-
-  useEffect(() => {
-    if (readingTimerSeconds > 0) {
-      timerWasRunningRef.current = true;
-    }
-  }, [readingTimerSeconds]);
-
-  useEffect(() => {
-    if (
-      !habitId ||
-      !planDate ||
-      readingTimerDone ||
-      pagesReadTodayLive > 0 ||
-      readingTimerSeconds > 0 ||
-      !timerWasRunningRef.current ||
-      timerExpiredHandledRef.current ||
-      pagesRemainingForTimer <= 0
-    ) {
-      return;
-    }
-
-    timerExpiredHandledRef.current = true;
-
-    void createCheckin({
-      habit_id: habitId,
-      date: planDate,
-      value: 0,
-      books_timer_expired: true,
-    }).then(() => {
-      void queryClient.invalidateQueries({ queryKey: ["today", "light"] });
-    });
-  }, [
-    habitId,
-    pagesReadTodayLive,
-    pagesRemainingForTimer,
-    planDate,
-    queryClient,
-    readingTimerDone,
-    readingTimerSeconds,
-  ]);
 
   const persistBookmark = useCallback(
     async (nextPage: number) => {

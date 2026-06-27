@@ -10,7 +10,10 @@ import {
 } from "@mytodo/shared";
 import { buildApp } from "../src/app.js";
 import { loadEnv } from "../src/config/env.js";
-import { habits } from "../src/db/schema/index.js";
+import { CheckinService } from "../src/services/checkins.js";
+import { DayCloseService } from "../src/services/day-close.js";
+import { DoomScrollService } from "../src/services/doom-scroll.js";
+import { habits, users } from "../src/db/schema/index.js";
 import { ensureMigrated, truncateAuthTables } from "./helpers/db.js";
 
 const env = loadEnv({
@@ -27,12 +30,16 @@ function shiftDate(date: string, deltaDays: number): string {
 describe("Today dashboards", () => {
   let app: Awaited<ReturnType<typeof buildApp>>["app"];
   let db: Awaited<ReturnType<typeof buildApp>>["app"]["db"];
+  let dayCloseService: DayCloseService;
 
   beforeAll(async () => {
     await ensureMigrated(env);
     const built = await buildApp({ env });
     app = built.app;
     db = built.app.db;
+    const checkinService = new CheckinService(db);
+    const doomScrollService = new DoomScrollService(db, checkinService);
+    dayCloseService = new DayCloseService(db, doomScrollService);
     await app.ready();
   });
 
@@ -337,6 +344,12 @@ describe("Today dashboards", () => {
         value: 10,
       },
     });
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, "today-stats@example.com"));
+    await dayCloseService.closeDayForUser(user!, today);
 
     const response = await app.inject({
       method: "GET",
