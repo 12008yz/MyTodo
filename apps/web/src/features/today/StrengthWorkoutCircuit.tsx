@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  isExerciseDemoVideo,
   STRENGTH_WORKOUT_EXERCISES,
   STRENGTH_WORKOUT_MINUTES_PER_REP,
 } from "@mytodo/shared";
@@ -316,14 +317,14 @@ export function StrengthWorkoutCircuit({
                     <div
                       className={[
                         "home__strength-exercise-demo",
-                        exercise.demoGifUrl.endsWith(".mp4")
+                        isExerciseDemoVideo(exercise.demoGifUrl)
                           ? "home__strength-exercise-demo--video"
                           : "",
                       ]
                         .filter(Boolean)
                         .join(" ")}
                     >
-                      {exercise.demoGifUrl.endsWith(".mp4") ? (
+                      {isExerciseDemoVideo(exercise.demoGifUrl) ? (
                         <ExerciseDemoVideo
                           src={exercise.demoGifUrl}
                           label={`Техника: ${exercise.name}`}

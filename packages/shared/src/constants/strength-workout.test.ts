@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { STRENGTH_WORKOUT_TARGET_MINUTES } from "./sessions.js";
 import {
@@ -9,10 +12,19 @@ import {
   STRENGTH_WORKOUT_REPS_BEFORE_MINUTE_BUMP,
   STRENGTH_WORKOUT_REPS_PER_EXERCISE,
   STRENGTH_WORKOUT_REPS_PER_ROUND,
+  exerciseDemoUrl,
+  isExerciseDemoVideo,
   resolveStrengthProgressionLevel,
   strengthDailyGoalMinutes,
   strengthRepsPerExercise,
 } from "./strength-workout.js";
+
+const EXERCISE_MEDIA_PATHS = [
+  "/exercises/squat.mp4",
+  "/exercises/pushups.mp4",
+  "/exercises/lunges.mp4",
+  "/exercises/pullups.mp4",
+] as const;
 
 describe("strength workout constants", () => {
   it("defines four bodyweight exercises in circuit order", () => {
@@ -23,16 +35,32 @@ describe("strength workout constants", () => {
       "lunges",
       "pullups",
     ]);
-    expect(STRENGTH_WORKOUT_EXERCISES.map((item) => item.demoGifUrl)).toEqual([
-      "/exercises/squat.mp4",
-      "/exercises/pushups.mp4",
-      "/exercises/lunges.mp4",
-      "/exercises/pullups.mp4",
-    ]);
+    expect(STRENGTH_WORKOUT_EXERCISES.map((item) => item.demoGifUrl)).toEqual(
+      EXERCISE_MEDIA_PATHS.map((path) => exerciseDemoUrl(path)),
+    );
   });
 
   it("uses a versioned SW cache name (keep in sync with public/sw.js)", () => {
-    expect(`mytodo-exercises-v${EXERCISE_MEDIA_CACHE_VERSION}`).toBe("mytodo-exercises-v3");
+    expect(`mytodo-exercises-v${EXERCISE_MEDIA_CACHE_VERSION}`).toBe("mytodo-exercises-v4");
+  });
+
+  it("keeps public/sw.js in sync with EXERCISE_MEDIA_CACHE_VERSION", () => {
+    const swPath = join(
+      dirname(fileURLToPath(import.meta.url)),
+      "../../../../apps/web/public/sw.js",
+    );
+    const swSource = readFileSync(swPath, "utf8");
+    const version = String(EXERCISE_MEDIA_CACHE_VERSION);
+
+    expect(swSource).toContain(`mytodo-exercises-v${version}`);
+    for (const path of EXERCISE_MEDIA_PATHS) {
+      expect(swSource).toContain(`${path}?v=${version}`);
+    }
+  });
+
+  it("detects mp4 demo URLs with cache-busting query params", () => {
+    expect(isExerciseDemoVideo(exerciseDemoUrl("/exercises/squat.mp4"))).toBe(true);
+    expect(isExerciseDemoVideo("/exercises/squat.gif")).toBe(false);
   });
 
   it("starts at five reps per exercise", () => {

@@ -7,7 +7,7 @@ export type StrengthWorkoutExercise = {
 };
 
 /** Bump when replacing files under /public/exercises/ (also update sw.js cache name). */
-export const EXERCISE_MEDIA_CACHE_VERSION = 3;
+export const EXERCISE_MEDIA_CACHE_VERSION = 4;
 
 /** Minutes credited when an exercise is marked done (one «Сделал» = all reps). */
 export const STRENGTH_WORKOUT_MINUTES_PER_REP = 1;
@@ -65,30 +65,39 @@ export function strengthDailyGoalMinutes(level: number): number {
   );
 }
 
+/** Cache-busted URL for exercise demo media (bump EXERCISE_MEDIA_CACHE_VERSION when files change). */
+export function exerciseDemoUrl(path: string): string {
+  return `${path}?v=${EXERCISE_MEDIA_CACHE_VERSION}`;
+}
+
+export function isExerciseDemoVideo(url: string): boolean {
+  return url.split("?")[0]?.endsWith(".mp4") ?? false;
+}
+
 /** Bodyweight circuit — four exercises per round. */
 export const STRENGTH_WORKOUT_EXERCISES: readonly StrengthWorkoutExercise[] = [
   {
     id: "squats",
     name: "Приседания",
     description: "Король всех упражнений. Качает ноги и ягодицы.",
-    demoGifUrl: "/exercises/squat.mp4",
+    demoGifUrl: exerciseDemoUrl("/exercises/squat.mp4"),
   },
   {
     id: "pushups",
     name: "Отжимания",
     description: "Классика для груди, плеч и трицепсов.",
-    demoGifUrl: "/exercises/pushups.mp4",
+    demoGifUrl: exerciseDemoUrl("/exercises/pushups.mp4"),
   },
   {
     id: "lunges",
     name: "Выпады",
     description: "Для баланса и силы ног.",
-    demoGifUrl: "/exercises/lunges.mp4",
+    demoGifUrl: exerciseDemoUrl("/exercises/lunges.mp4"),
   },
   {
     id: "pullups",
     name: "Подтягивания",
     description: "Спина, бицепсы и хват — баланс к отжиманиям.",
-    demoGifUrl: "/exercises/pullups.mp4",
+    demoGifUrl: exerciseDemoUrl("/exercises/pullups.mp4"),
   },
 ] as const;

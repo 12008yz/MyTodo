@@ -88,7 +88,7 @@ export function recalculateLightGoal(
   baselineValue: number,
   habit: HabitIdentity,
   profile: CalibrationProfile,
-  activeLightHabitsCount: number,
+  _activeLightHabitsCount: number,
   currentGoalMinutes?: number,
 ): number {
   return recommendLightGoal(habit, profile, baselineValue, currentGoalMinutes);
