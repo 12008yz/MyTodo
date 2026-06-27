@@ -1,6 +1,7 @@
 import type { DailyPlanBlock, HabitUnit, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
 import {
   isEarlyRiseCategoryKey,
+  isCompanionLightHabit,
   isStrengthWorkoutHabit,
   resolveStrengthProgressionLevel,
   strengthRepsPerExercise,
@@ -35,6 +36,10 @@ export function formatGoalLabel(
   habit: TodayLightHabit | TodayDarkHabit,
   wakeTime?: string | null,
 ): string {
+  if (isCompanionLightHabit(habit)) {
+    return "Рецепты ПП из ваших продуктов";
+  }
+
   if (isEarlyRiseCategoryKey(habit.category_key)) {
     if (wakeTime) {
       return `цель: подъём в ${formatEarlyRiseTargetWakeTime(wakeTime, habit.current_goal)}`;

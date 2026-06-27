@@ -9,7 +9,10 @@ import {
   habitSessionActiveResponseSchema,
   habitSessionCompleteResponseSchema,
   habitSessionSchema,
+  habitNutritionLogSchema,
   habitReadingProgressSchema,
+  nutritionTodayResponseSchema,
+  putNutritionTodayRequestSchema,
   selectHabitBookRequestSchema,
   updateReadingBookmarkRequestSchema,
   habitResponseSchema,
@@ -32,7 +35,9 @@ import {
   type HabitSessionActiveResponse,
   type HabitSessionCompleteResponse,
   type HabitSessionResponse,
+  type HabitNutritionLog,
   type HabitReadingProgress,
+  type PutNutritionTodayRequest,
   type SelectHabitBookRequest,
   type UpdateReadingBookmarkRequest,
   type LoginRequest,
@@ -82,6 +87,8 @@ import {
   demoResumeHabitSession,
   demoStopHabitSession,
   demoSelectHabitBook,
+  demoPutNutritionTodayLog,
+  demoGetNutritionTodayLog,
   demoClearHabitBook,
   demoResetTodayCheckin,
   demoUpdateReadingBookmark,
@@ -367,6 +374,33 @@ export async function selectHabitBook(
     body: JSON.stringify(data),
   });
   return habitReadingProgressSchema.parse(response);
+}
+
+export async function getNutritionTodayLog(habitId: string): Promise<HabitNutritionLog | null> {
+  if (isDemoMode()) {
+    return demoGetNutritionTodayLog(habitId);
+  }
+
+  const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/nutrition/today`);
+  const parsed = nutritionTodayResponseSchema.parse(response);
+  return parsed.log;
+}
+
+export async function putNutritionTodayLog(
+  habitId: string,
+  data: PutNutritionTodayRequest,
+): Promise<HabitNutritionLog> {
+  putNutritionTodayRequestSchema.parse(data);
+
+  if (isDemoMode()) {
+    return demoPutNutritionTodayLog(habitId, data);
+  }
+
+  const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/nutrition/today`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  return habitNutritionLogSchema.parse(response);
 }
 
 export async function clearHabitBook(habitId: string): Promise<void> {

@@ -16,6 +16,7 @@ import { registerTodayRoutes } from "./routes/today.js";
 import { registerPomodoroRoutes } from "./routes/pomodoro.js";
 import { registerHabitSessionRoutes } from "./routes/habit-sessions.js";
 import { registerReadingRoutes } from "./routes/reading.js";
+import { registerNutritionRoutes } from "./routes/nutrition.js";
 import { registerDoomScrollRoutes } from "./routes/doom-scroll.js";
 import { registerStatsRoutes } from "./routes/stats.js";
 import { registerEnglishRoutes } from "./routes/english.js";
@@ -30,6 +31,7 @@ import { TodayService } from "./services/today.js";
 import { PomodoroService } from "./services/pomodoro.js";
 import { HabitSessionService } from "./services/habit-sessions.js";
 import { ReadingProgressService } from "./services/reading-progress.js";
+import { NutritionLogService } from "./services/nutrition-log.js";
 import { DoomScrollService } from "./services/doom-scroll.js";
 import { StatsService } from "./services/stats.js";
 import { EnglishService } from "./services/english.js";
@@ -90,6 +92,7 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
   const { authService, userService } = createAuthServices(app, db, pledgeService);
   const billingService = new BillingService(db, yukassa, pledgeService);
   const readingProgressService = new ReadingProgressService(db);
+  const nutritionLogService = new NutritionLogService(db);
   const checkinService = new CheckinService(db, pledgeService, pushService, readingProgressService);
   const pushQueue = env.NODE_ENV === "test" ? undefined : createPushQueue(redis);
   const pomodoroService = new PomodoroService(db, pledgeService);
@@ -101,6 +104,7 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
     doomScrollService,
     habitSessionService,
     readingProgressService,
+    nutritionLogService,
   );
   const statsService = new StatsService(db);
   const englishService = new EnglishService(db);
@@ -117,6 +121,7 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
   await registerPomodoroRoutes(app, userService, pomodoroService, requireAccess);
   await registerHabitSessionRoutes(app, userService, habitSessionService, requireAccess);
   await registerReadingRoutes(app, userService, readingProgressService, requireAccess);
+  await registerNutritionRoutes(app, userService, nutritionLogService, requireAccess);
   await registerDoomScrollRoutes(app, userService, doomScrollService, requireAccess);
   await registerStatsRoutes(app, userService, statsService, requireAccess);
   await registerEnglishRoutes(app, userService, englishService, requireAccess);

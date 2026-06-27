@@ -50,6 +50,19 @@ Auth: `Authorization: Bearer <access_token>` unless noted.
 
 Book texts are served as static files from the web app (`/books/{book_id}/pages/NNN.txt`), not via API.
 
+## Nutrition (companion habit)
+
+| Method | Path                              | Description                                      |
+| ------ | --------------------------------- | ------------------------------------------------ |
+| GET    | `/habits/:id/nutrition/today`     | Today's picker state `{ log }` (or `null`)       |
+| PUT    | `/habits/:id/nutrition/today`     | Save `{ ingredient_ids, recipe_id? }` → log      |
+
+`log` fields: `id`, `habit_id`, `date`, `ingredient_ids`, `recipe_id`, `updated_at`.
+
+Only habits with `category_key: healthy_nutrition` (or name «Правильное питание»). No check-in — companion habit without day-close failure.
+
+Recipe catalog is bundled in the web app (`@mytodo/shared` / `@mytodo/domain`), not served via API.
+
 ## Checkins
 
 | Method | Path                        | Description                          |
@@ -158,4 +171,3 @@ Exceptions: `/auth/*`, `/health`, `/billing/webhook`.
 
 Admin routes require `role = admin` (`403` otherwise).
 
-проверь всё за собой ещё раз. Что бы не было ошибок или несостыковок | НЕ УДАЛЯТЬ СТРОКУ!!!

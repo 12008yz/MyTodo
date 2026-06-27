@@ -10,7 +10,7 @@ import {
   isDateInRange,
   type DayCheckin,
 } from "@mytodo/domain";
-import { AWARENESS_SESSION_MIN, resolveHabitDisplayName, type HabitTemplateId, type HabitUnit } from "@mytodo/shared";
+import { AWARENESS_SESSION_MIN, isNutritionHabit, resolveHabitDisplayName, type HabitTemplateId, type HabitUnit } from "@mytodo/shared";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Database } from "../db/index.js";
 import { checkins, habits, type Habit, type User } from "../db/schema/index.js";
@@ -19,6 +19,7 @@ import { previewStatusFromCheckin, toProgressionHabit } from "../lib/habit-progr
 import type { DoomScrollService } from "./doom-scroll.js";
 import type { HabitSessionService } from "./habit-sessions.js";
 import type { ReadingProgressService } from "./reading-progress.js";
+import type { NutritionLogService } from "./nutrition-log.js";
 import type { PomodoroService } from "./pomodoro.js";
 
 type Side = "light" | "dark";
@@ -40,6 +41,7 @@ export class TodayService {
     private readonly doomScrollService: DoomScrollService,
     private readonly habitSessionService: HabitSessionService,
     private readonly readingProgressService: ReadingProgressService,
+    private readonly nutritionLogService: NutritionLogService,
   ) {}
 
   async getLightDashboard(user: User) {
@@ -296,9 +298,17 @@ export class TodayService {
     const booksHabitIds = userHabits
       .filter((habit) => habit.templateId === "books")
       .map((habit) => habit.id);
+    const nutritionHabitIds = userHabits
+      .filter((habit) => isNutritionHabit({ category_key: habit.categoryKey, name: habit.name }))
+      .map((habit) => habit.id);
     const readingByHabit = await this.readingProgressService.listForHabits(
       user.id,
       booksHabitIds,
+    );
+    const nutritionLogByHabit = await this.nutritionLogService.listForHabits(
+      user.id,
+      nutritionHabitIds,
+      today,
     );
 
     return userHabits.map((habit) => {
@@ -318,6 +328,7 @@ export class TodayService {
       );
 
       const reading = readingByHabit.get(habit.id) ?? null;
+      const nutritionLog = nutritionLogByHabit.get(habit.id) ?? null;
 
       return {
         ...toHabitResponse(habit),
@@ -335,6 +346,9 @@ export class TodayService {
         preview_next_goal: previewNextGoal,
         streak_days: streakDays,
         ...(habit.templateId === "books" ? { reading } : {}),
+        ...(isNutritionHabit({ category_key: habit.categoryKey, name: habit.name })
+          ? { nutrition_log: nutritionLog }
+          : {}),
       };
     });
   }

@@ -5,7 +5,7 @@ import {
   isDayCloseMinute,
   type HabitForDayClose,
 } from "@mytodo/domain";
-import { SOCIAL_MEDIA_MIN_GOAL } from "@mytodo/shared";
+import { SOCIAL_MEDIA_MIN_GOAL, isCompanionLightHabit } from "@mytodo/shared";
 import { and, eq } from "drizzle-orm";
 import type { Database, DbExecutor } from "../db/index.js";
 import {
@@ -105,6 +105,10 @@ export class DayCloseService {
     date: string,
     options: { silenceMode: boolean; hasActivePledge: boolean },
   ): Promise<boolean> {
+    if (isCompanionLightHabit({ category_key: habit.categoryKey, name: habit.name })) {
+      return false;
+    }
+
     const run = async (executor: DbExecutor): Promise<boolean> => {
       const [existingStat] = await executor
         .select()

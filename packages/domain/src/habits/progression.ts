@@ -1,6 +1,8 @@
 import {
   resolveStrengthProgressionLevel,
   strengthDailyGoalMinutes,
+  isNutritionCategoryKey,
+  NUTRITION_HABIT_NAME,
 } from "@mytodo/shared";
 
 export type DayStatus = "success" | "fail" | "skipped";
@@ -38,10 +40,21 @@ function isStrengthWorkoutProgression(habit: HabitForProgression): boolean {
   );
 }
 
+function isNutritionProgression(habit: HabitForProgression): boolean {
+  return (
+    isNutritionCategoryKey(habit.categoryKey as import("@mytodo/shared").HabitCategoryKey | null | undefined) ||
+    habit.name?.trim() === NUTRITION_HABIT_NAME
+  );
+}
+
 export function applyDayProgression(
   habit: HabitForProgression,
   dayStatus: DayStatus,
 ): ProgressionResult {
+  if (isNutritionProgression(habit)) {
+    return { nextGoal: 0, nextSuccessDaysAtGoal: 0 };
+  }
+
   const interval = habit.progressionIntervalDays ?? 1;
   const successDays = habit.successDaysAtGoal ?? 0;
 

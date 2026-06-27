@@ -4,6 +4,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   serial,
@@ -217,6 +218,35 @@ export const habitReadingProgress = pgTable(
 
 export type HabitReadingProgress = typeof habitReadingProgress.$inferSelect;
 export type NewHabitReadingProgress = typeof habitReadingProgress.$inferInsert;
+
+export const habitNutritionLogs = pgTable(
+  "habit_nutrition_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    habitId: uuid("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    ingredientIds: jsonb("ingredient_ids").$type<string[]>().notNull(),
+    recipeId: varchar("recipe_id", { length: 64 }),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    habitDateUnique: unique("habit_nutrition_logs_habit_id_date_unique").on(
+      table.habitId,
+      table.date,
+    ),
+    userIdx: index("habit_nutrition_logs_user_idx").on(table.userId),
+  }),
+);
+
+export type HabitNutritionLogRow = typeof habitNutritionLogs.$inferSelect;
+export type NewHabitNutritionLogRow = typeof habitNutritionLogs.$inferInsert;
 
 export const doomScrollSessions = pgTable(
   "doom_scroll_sessions",

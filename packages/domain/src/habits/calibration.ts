@@ -210,13 +210,19 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
   const currentGoal = goalFromHabitIdentity(habitIdentity, profile, baselineValue);
   const meta = customHabitMeta(unit);
   const isEarlyRise = categoryKey === "early_rise" || resolveLightActivityId({ name, unit }) === "energy-early";
+  const isNutrition =
+    categoryKey === "healthy_nutrition" || resolveLightActivityId({ name, unit }) === "energy-nutrition";
 
   return {
     name,
     ...meta,
     baselineValue,
     currentGoal,
-    growthStep: isEarlyRise ? EARLY_RISE_SHIFT_MIN : growthStepForCustomUnit(unit),
+    growthStep: isEarlyRise
+      ? EARLY_RISE_SHIFT_MIN
+      : isNutrition
+        ? 0
+        : growthStepForCustomUnit(unit),
     progressionIntervalDays: LIGHT_GROWTH_INTERVAL_DAYS,
     successDaysAtGoal: 0,
     lastRelapseAt: null,

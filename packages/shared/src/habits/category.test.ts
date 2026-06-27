@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   isEarlyRiseCategoryKey,
+  isCompanionLightHabit,
   isNonSessionLightCategory,
   isNutritionCategoryKey,
+  isNutritionHabit,
   isPlankHabit,
   isWarmupHabit,
   isStrengthWorkoutCategoryKey,
@@ -14,6 +16,13 @@ describe("habit category helpers", () => {
     expect(isEarlyRiseCategoryKey("early_rise")).toBe(true);
     expect(isNutritionCategoryKey("healthy_nutrition")).toBe(true);
     expect(isEarlyRiseCategoryKey("meditation")).toBe(false);
+  });
+
+  it("detects nutrition habit by category or name", () => {
+    expect(isNutritionHabit({ category_key: "healthy_nutrition" })).toBe(true);
+    expect(isNutritionHabit({ name: "Правильное питание" })).toBe(true);
+    expect(isCompanionLightHabit({ name: "Правильное питание" })).toBe(true);
+    expect(isNutritionHabit({ name: "Бег" })).toBe(false);
   });
 
   it("groups non-session light categories", () => {

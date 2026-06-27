@@ -9,6 +9,10 @@ import {
   HABIT_TEMPLATE_IDS,
   HABIT_TEMPLATES,
   isStrengthWorkoutHabit,
+  isNutritionHabit,
+  isKnownNutritionIngredientId,
+  isKnownNutritionRecipeId,
+  NUTRITION_MIN_INGREDIENTS,
   resolveHabitDisplayName,
   resolveHabitIcon,
   resolveStrengthProgressionLevel,
@@ -29,6 +33,8 @@ import {
   type HabitSessionCompleteResponse,
   type HabitSessionResponse,
   type HabitReadingProgress,
+  type HabitNutritionLog,
+  type PutNutritionTodayRequest,
   type SelectHabitBookRequest,
   getKnownBookPageCount,
   isKnownBookId,
@@ -59,7 +65,7 @@ const DEMO_STORAGE_KEY = "mytodo_demo_state";
 const DEMO_ACCESS_TOKEN = "demo-access-token";
 const DEMO_REFRESH_TOKEN = "demo-refresh-token";
 /** Bump when showcase seed changes — existing localStorage is refreshed on login. */
-const DEMO_STATE_VERSION = 4;
+const DEMO_STATE_VERSION = 5;
 
 type DemoReadingProgress = HabitReadingProgress;
 
@@ -93,6 +99,7 @@ type DemoState = {
   checkins: CheckinResponse[];
   sessions: DemoHabitSession[];
   readingByHabitId: Record<string, DemoReadingProgress>;
+  nutritionByHabitId: Record<string, HabitNutritionLog>;
 };
 
 type DemoHabitSession = Omit<HabitSessionResponse, "remaining_seconds" | "is_paused"> & {
@@ -252,6 +259,7 @@ function loadState(): DemoState | null {
         checkins: parsed.checkins ?? [],
         sessions: parsed.sessions ?? [],
         readingByHabitId: normalizeReadingByHabitId(parsed.readingByHabitId ?? {}),
+        nutritionByHabitId: parsed.nutritionByHabitId ?? {},
       }),
     );
   } catch {
@@ -275,6 +283,7 @@ function ensureState(): DemoState {
     checkins: [],
     sessions: [],
     readingByHabitId: {},
+    nutritionByHabitId: {},
   };
   saveState(state);
   return state;
@@ -435,6 +444,7 @@ export function demoRegister(data: RegisterRequest): AuthResponse {
     checkins: [],
     sessions: [],
     readingByHabitId: {},
+    nutritionByHabitId: {},
   });
 
   return toAuthResponse(user);
@@ -682,9 +692,11 @@ function buildShowcaseCheckins(habits: HabitResponse[], today: string, weekStart
     if (habit.type === "abstinence") {
       status = index % 2 === 0 ? "success" : "pending";
       value = null;
-    } else if (habit.category_key === "early_rise" || habit.category_key === "healthy_nutrition") {
+    } else if (habit.category_key === "early_rise") {
       status = index % 3 === 0 ? "success" : "pending";
       value = status === "success" ? habit.current_goal : null;
+    } else if (isNutritionHabit(habit)) {
+      return;
     } else if (habit.type === "target") {
       if (index % 5 === 0) {
         status = "success";
@@ -722,10 +734,14 @@ function buildShowcaseCheckins(habits: HabitResponse[], today: string, weekStart
         continue;
       }
 
-      if (habit.category_key === "early_rise" || habit.category_key === "healthy_nutrition") {
+      if (habit.category_key === "early_rise") {
         checkins.push(
           makeCheckin(habit, date, offset % 3 === 0 ? "skipped" : "success", habit.current_goal),
         );
+        continue;
+      }
+
+      if (isNutritionHabit(habit)) {
         continue;
       }
 
@@ -787,6 +803,7 @@ function buildShowcaseState(): DemoState {
     checkins,
     sessions: [],
     readingByHabitId: {},
+    nutritionByHabitId: {},
   };
 }
 
@@ -1032,6 +1049,7 @@ function mapHabitToTodayLight(
   habit: HabitResponse,
   checkin: CheckinResponse | null,
   reading: DemoReadingProgress | null = null,
+  nutritionLog: HabitNutritionLog | null = null,
 ): TodayLightHabit {
   const previewNextGoal = demoPreviewNextGoal(habit, checkin?.status);
   const displayName = demoHabitDisplayName(habit);
@@ -1059,6 +1077,7 @@ function mapHabitToTodayLight(
     preview_next_goal: previewNextGoal,
     streak_days: checkin?.status === "success" ? 1 : 0,
     ...(habit.template_id === "books" ? { reading } : {}),
+    ...(isNutritionHabit(habit) ? { nutrition_log: nutritionLog } : {}),
   };
 }
 
@@ -1102,7 +1121,8 @@ function buildLightTodayResponse(): TodayLightResponse {
     habits: sideHabits.map((habit) => {
       const checkin = todayCheckins.find((c) => c.habit_id === habit.id) ?? null;
       const reading = state.readingByHabitId[habit.id] ?? null;
-      return mapHabitToTodayLight(habit, checkin, reading);
+      const nutritionLog = state.nutritionByHabitId[habit.id] ?? null;
+      return mapHabitToTodayLight(habit, checkin, reading, nutritionLog);
     }),
     daily_plan: buildDemoDailyPlan(state, "light", date),
   });
@@ -1370,6 +1390,55 @@ export function demoGetTodayLight(): TodayLightResponse {
   return buildLightTodayResponse();
 }
 
+export function demoGetNutritionTodayLog(habitId: string): HabitNutritionLog | null {
+  const state = ensureState();
+  const log = state.nutritionByHabitId[habitId] ?? null;
+  if (!log || log.date !== todayDate()) {
+    return null;
+  }
+  return log;
+}
+
+export function demoPutNutritionTodayLog(
+  habitId: string,
+  data: PutNutritionTodayRequest,
+): HabitNutritionLog {
+  const state = ensureState();
+  const habit = state.habits.find((row) => row.id === habitId);
+  if (!habit || !isNutritionHabit(habit)) {
+    throw new Error("Привычка питания не найдена");
+  }
+
+  const ingredientIds = [...new Set(data.ingredient_ids)];
+  if (ingredientIds.length < NUTRITION_MIN_INGREDIENTS) {
+    throw new Error(`Нужно минимум ${NUTRITION_MIN_INGREDIENTS} продукта`);
+  }
+  for (const id of ingredientIds) {
+    if (!isKnownNutritionIngredientId(id)) {
+      throw new Error(`Неизвестный продукт: ${id}`);
+    }
+  }
+  if (data.recipe_id && !isKnownNutritionRecipeId(data.recipe_id)) {
+    throw new Error(`Неизвестный рецепт: ${data.recipe_id}`);
+  }
+
+  const date = todayDate();
+  const existing = state.nutritionByHabitId[habitId];
+  const log: HabitNutritionLog = {
+    id: existing?.id ?? crypto.randomUUID(),
+    habit_id: habitId,
+    date,
+    ingredient_ids: ingredientIds,
+    recipe_id:
+      data.recipe_id !== undefined ? (data.recipe_id ?? null) : (existing?.recipe_id ?? null),
+    updated_at: nowIso(),
+  };
+
+  state.nutritionByHabitId[habitId] = log;
+  saveState(state);
+  return log;
+}
+
 export function demoGetTodayDark(): TodayDarkResponse {
   return buildDarkTodayResponse();
 }
@@ -1381,6 +1450,10 @@ export function demoCreateCheckin(data: CreateCheckinRequest): CheckinResponse {
 
   if (!habit) {
     throw new Error("Привычка не найдена");
+  }
+
+  if (isNutritionHabit(habit)) {
+    throw new Error("Для этой привычки отметка не нужна");
   }
 
   const existingIndex = state.checkins.findIndex(

@@ -183,6 +183,13 @@
       "when": 1782775200000,
       "tag": "0026_books_progression",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1782778800000,
+      "tag": "0027_habit_nutrition_logs",
+      "breakpoints": true
     }
   ]
 }

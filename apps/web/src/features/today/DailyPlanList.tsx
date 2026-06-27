@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DailyPlan, DailyPlanBlock, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
-import { isNonSessionLightCategory, isStrengthWorkoutHabit, PLANK_PREP_SECONDS } from "@mytodo/shared";
+import { isCompanionLightHabit, isNonSessionLightCategory, isStrengthWorkoutHabit, PLANK_PREP_SECONDS } from "@mytodo/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClientApiError } from "../../lib/api";
 import { FocusScreen } from "../sessions/FocusScreen";
@@ -24,6 +24,7 @@ import {
 } from "../sessions/sessionPlan";
 import { useFocusSession } from "../shell/FocusSessionContext";
 import { DailyPlanHabitRow } from "./DailyPlanHabitRow";
+import { CompanionHabitRow } from "./CompanionHabitRow";
 import type { TodaySide } from "./useTodayData";
 
 const EMPTY_PLAN: DailyPlan = {
@@ -229,6 +230,10 @@ function HabitListLayer({
           .join(" ")}
       >
         {orderedHabits.map((habit) => {
+          if (isCompanionLightHabit(habit)) {
+            return <CompanionHabitRow key={habit.id} habit={habit} />;
+          }
+
           const block = blockByHabitId.get(habit.id) ?? null;
           const hasActiveFocus = focusHabitId === habit.id;
 

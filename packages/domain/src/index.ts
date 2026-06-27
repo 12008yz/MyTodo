@@ -53,6 +53,11 @@ export {
   type DayCloseResult,
   type HabitForDayClose,
 } from "./habits/day-close.js";
+export {
+  matchNutritionRecipes,
+  type MatchedNutritionRecipe,
+  type MatchNutritionRecipesOptions,
+} from "./nutrition/match.js";
 export { getUserLocalDate, isDayCloseMinute } from "./time/user-day.js";
 export {
   computeAbstinenceElapsed,

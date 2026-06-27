@@ -4,6 +4,7 @@ import { habitResponseSchema } from "./habits.js";
 import { checkinResponseSchema } from "./checkins.js";
 import { doomScrollSessionSchema } from "./doom-scroll.js";
 import { habitReadingProgressSchema } from "./reading.js";
+import { habitNutritionLogSchema } from "./nutrition.js";
 
 export const todayStatsSchema = z.object({
   completed_today: z.number().int().min(0),
@@ -32,6 +33,7 @@ export const todayLightHabitSchema = habitResponseSchema.extend({
   preview_next_goal: z.number(),
   streak_days: z.number().int().min(0),
   reading: habitReadingProgressSchema.nullable().optional(),
+  nutrition_log: habitNutritionLogSchema.nullable().optional(),
 });
 
 export type TodayLightHabit = z.infer<typeof todayLightHabitSchema>;

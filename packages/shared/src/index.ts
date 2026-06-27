@@ -73,8 +73,10 @@ export {
 } from "./habits/resolve-display-name.js";
 export {
   isEarlyRiseCategoryKey,
+  isCompanionLightHabit,
   isNonSessionLightCategory,
   isNutritionCategoryKey,
+  isNutritionHabit,
   isPlankHabit,
   isWarmupHabit,
   isStrengthWorkoutCategoryKey,
@@ -146,6 +148,41 @@ export {
   type SelectHabitBookRequest,
   type UpdateReadingBookmarkRequest,
 } from "./schemas/reading.js";
+export {
+  habitNutritionLogSchema,
+  nutritionTodayResponseSchema,
+  putNutritionTodayRequestSchema,
+  type HabitNutritionLog,
+  type NutritionTodayResponse,
+  type PutNutritionTodayRequest,
+} from "./schemas/nutrition.js";
+export {
+  NUTRITION_FALLBACK_RECIPE_IDS,
+  NUTRITION_INGREDIENTS,
+  NUTRITION_INGREDIENT_CATEGORIES,
+  NUTRITION_MATCH_LIMIT,
+  NUTRITION_MATCH_MIN_SCORE,
+  NUTRITION_MAX_INGREDIENTS,
+  NUTRITION_MIN_INGREDIENTS,
+  NUTRITION_RECIPES,
+  NUTRITION_CATEGORY_LABELS,
+  NUTRITION_MEAL_LABELS,
+  NUTRITION_METHOD_LABELS,
+  findNutritionIngredientsByQuery,
+  formatNutritionIngredientIds,
+  parseNutritionProductsText,
+  getNutritionIngredient,
+  getNutritionRecipe,
+  isKnownNutritionIngredientId,
+  isKnownNutritionRecipeId,
+  type NutritionIngredient,
+  type NutritionIngredientCategory,
+  type NutritionMeal,
+  type NutritionMethod,
+  type NutritionRecipe,
+  type NutritionRecipeTag,
+  type ParseNutritionProductsResult,
+} from "./nutrition/index.js";
 export {
   batchCheckinRequestSchema,
   batchCheckinResponseSchema,
