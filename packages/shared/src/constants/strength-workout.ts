@@ -37,6 +37,38 @@ export const STRENGTH_WORKOUT_REPS_BEFORE_MINUTE_BUMP = 2;
 /** Exercises per circuit round. */
 export const STRENGTH_WORKOUT_REPS_PER_ROUND = 4;
 
+/** Check-in value after marking one exercise done (full round completes the daily goal). */
+export function strengthCheckinValueAfterExercise(
+  currentValue: number,
+  dailyGoalMinutes: number,
+  roundComplete: boolean,
+): number {
+  const nextValue = currentValue + STRENGTH_WORKOUT_MINUTES_PER_REP;
+  if (roundComplete) {
+    return Math.max(dailyGoalMinutes, nextValue);
+  }
+  return nextValue;
+}
+
+/** Completed exercises in the current circuit round (0–STRENGTH_WORKOUT_REPS_PER_ROUND). */
+export function strengthCircuitExercisesDone(
+  repCounts: Readonly<Record<string, number>>,
+  repsPerExercise: number,
+): number {
+  return STRENGTH_WORKOUT_EXERCISES.filter(
+    (exercise) => (repCounts[exercise.id] ?? 0) >= repsPerExercise,
+  ).length;
+}
+
+/** Progress toward today's circuit goal, as a 0–100 percentage. */
+export function strengthCircuitProgressPercent(
+  repCounts: Readonly<Record<string, number>>,
+  repsPerExercise: number,
+): number {
+  const completed = strengthCircuitExercisesDone(repCounts, repsPerExercise);
+  return Math.min(100, (completed / STRENGTH_WORKOUT_REPS_PER_ROUND) * 100);
+}
+
 /** Progression level stored in habit baseline_value (0 = start). */
 export function resolveStrengthProgressionLevel(
   baselineValue: number,

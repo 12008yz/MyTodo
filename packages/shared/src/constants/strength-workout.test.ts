@@ -24,6 +24,9 @@ import {
   strengthProgressionLevelFromOnboardingBaseline,
   formatStrengthWorkoutOnboardingDescription,
   strengthRepsPerExercise,
+  strengthCheckinValueAfterExercise,
+  strengthCircuitExercisesDone,
+  strengthCircuitProgressPercent,
 } from "./strength-workout.js";
 
 describe("strength workout constants", () => {
@@ -86,6 +89,26 @@ describe("strength workout constants", () => {
       STRENGTH_WORKOUT_MINUTES_PER_REP * STRENGTH_WORKOUT_REPS_PER_ROUND,
     ).toBe(STRENGTH_WORKOUT_TARGET_MINUTES);
     expect(STRENGTH_WORKOUT_EXERCISES).toHaveLength(STRENGTH_WORKOUT_REPS_PER_ROUND);
+  });
+
+  it("completes the daily goal when all four exercises are done", () => {
+    expect(strengthCheckinValueAfterExercise(0, 4, false)).toBe(1);
+    expect(strengthCheckinValueAfterExercise(2, 4, false)).toBe(3);
+    expect(strengthCheckinValueAfterExercise(3, 4, true)).toBe(4);
+    expect(strengthCheckinValueAfterExercise(3, 6, true)).toBe(6);
+    expect(strengthCheckinValueAfterExercise(6, 6, true)).toBe(7);
+  });
+
+  it("tracks circuit progress by completed exercises", () => {
+    const twoDone = { squats: 5, pushups: 5 };
+    expect(strengthCircuitExercisesDone(twoDone, 5)).toBe(2);
+    expect(strengthCircuitProgressPercent(twoDone, 5)).toBe(50);
+    expect(
+      strengthCircuitProgressPercent(
+        { squats: 6, pushups: 6, lunges: 6, pullups: 6 },
+        6,
+      ),
+    ).toBe(100);
   });
 
   it("targets one short circuit per round at level 0", () => {

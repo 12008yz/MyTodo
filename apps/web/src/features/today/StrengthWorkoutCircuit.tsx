@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import {
   isExerciseDemoVideo,
   STRENGTH_WORKOUT_EXERCISES,
-  STRENGTH_WORKOUT_MINUTES_PER_REP,
+  strengthCheckinValueAfterExercise,
+  strengthCircuitExercisesDone,
 } from "@mytodo/shared";
 import { ExerciseDemoVideo } from "./ExerciseDemoVideo";
 
@@ -10,11 +11,13 @@ type StrengthWorkoutCircuitProps = {
   habitId: string;
   planDate: string;
   currentValue: number;
+  dailyGoalMinutes: number;
   repsPerExercise: number;
   isPending: boolean;
   resetKey: number;
   onRepComplete: (nextValue: number) => Promise<void>;
   onRoundComplete?: () => void;
+  onProgressChange?: (completedExercises: number) => void;
 };
 
 type ExerciseRepCounts = Record<string, number>;
@@ -45,6 +48,17 @@ export function isStrengthCircuitRoundComplete(
   repsPerExercise: number,
 ): boolean {
   return isRoundComplete(readStoredRepCounts(habitId, planDate, repsPerExercise), repsPerExercise);
+}
+
+export function countStrengthCircuitExercisesDone(
+  habitId: string,
+  planDate: string,
+  repsPerExercise: number,
+): number {
+  return strengthCircuitExercisesDone(
+    readStoredRepCounts(habitId, planDate, repsPerExercise),
+    repsPerExercise,
+  );
 }
 
 function emptyRepCounts(): ExerciseRepCounts {
@@ -122,11 +136,13 @@ export function StrengthWorkoutCircuit({
   habitId,
   planDate,
   currentValue,
+  dailyGoalMinutes,
   repsPerExercise,
   isPending,
   resetKey,
   onRepComplete,
   onRoundComplete,
+  onProgressChange,
 }: StrengthWorkoutCircuitProps) {
   const [repCounts, setRepCounts] = useState(() =>
     readStoredRepCounts(habitId, planDate, repsPerExercise),
@@ -159,8 +175,15 @@ export function StrengthWorkoutCircuit({
     };
     setRepCounts(nextCounts);
 
-    const nextValue = currentValue + STRENGTH_WORKOUT_MINUTES_PER_REP;
+    const completedExercises = strengthCircuitExercisesDone(nextCounts, repsPerExercise);
+    onProgressChange?.(completedExercises);
+
     const roundComplete = isRoundComplete(nextCounts, repsPerExercise);
+    const nextValue = strengthCheckinValueAfterExercise(
+      currentValue,
+      dailyGoalMinutes,
+      roundComplete,
+    );
 
     try {
       await onRepComplete(nextValue);
@@ -169,6 +192,7 @@ export function StrengthWorkoutCircuit({
       }
     } catch {
       setRepCounts(previousCounts);
+      onProgressChange?.(strengthCircuitExercisesDone(previousCounts, repsPerExercise));
     }
   };
 

@@ -232,6 +232,9 @@ export {
   strengthProgressionLevelFromReps,
   strengthProgressionLevelFromOnboardingBaseline,
   formatStrengthWorkoutOnboardingDescription,
+  strengthCheckinValueAfterExercise,
+  strengthCircuitExercisesDone,
+  strengthCircuitProgressPercent,
   type StrengthWorkoutExercise,
 } from "./constants/strength-workout.js";
 export {

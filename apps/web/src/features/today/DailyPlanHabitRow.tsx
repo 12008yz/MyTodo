@@ -9,6 +9,7 @@ import {
   isStrengthWorkoutHabit,
   resolveStrengthProgressionLevel,
   strengthRepsPerExercise,
+  STRENGTH_WORKOUT_REPS_PER_ROUND,
   STRETCH_TARGET_MINUTES,
 } from "@mytodo/shared";
 import { useQueryClient } from "@tanstack/react-query";
@@ -53,7 +54,7 @@ import {
   type StartSessionOverrides,
 } from "../sessions/sessionPlan";
 import { isBooksHabit } from "./isBooksHabit";
-import { StrengthWorkoutCircuit, clearStrengthCircuitStorage, isStrengthCircuitRoundComplete } from "./StrengthWorkoutCircuit";
+import { StrengthWorkoutCircuit, clearStrengthCircuitStorage, countStrengthCircuitExercisesDone, isStrengthCircuitRoundComplete } from "./StrengthWorkoutCircuit";
 import { PlankTechniqueDemo } from "./PlankTechniqueDemo";
 import { WarmupTechniqueDemo } from "./WarmupTechniqueDemo";
 import { prefetchExerciseMedia } from "../../lib/exercise-media";
@@ -254,16 +255,23 @@ export function DailyPlanHabitRow({
   );
   const [extraSessionOpen, setExtraSessionOpen] = useState(false);
   const [strengthResetKey, setStrengthResetKey] = useState(0);
+  const [strengthExercisesDone, setStrengthExercisesDone] = useState(() =>
+    isStrengthWorkout
+      ? countStrengthCircuitExercisesDone(habit.id, planDate, strengthReps)
+      : 0,
+  );
   const [strengthRoundComplete, setStrengthRoundComplete] = useState(() =>
     isStrengthWorkout ? isStrengthCircuitRoundComplete(habit.id, planDate, strengthReps) : false,
   );
   useEffect(() => {
     if (!isStrengthWorkout) {
       setStrengthRoundComplete(false);
+      setStrengthExercisesDone(0);
       return;
     }
 
     setStrengthRoundComplete(isStrengthCircuitRoundComplete(habit.id, planDate, strengthReps));
+    setStrengthExercisesDone(countStrengthCircuitExercisesDone(habit.id, planDate, strengthReps));
   }, [habit.id, planDate, isStrengthWorkout, strengthResetKey, currentValue, strengthReps]);
 
   useEffect(() => {
@@ -277,6 +285,7 @@ export function DailyPlanHabitRow({
       clearStrengthCircuitStorage(habit.id, planDate);
       setStrengthResetKey((key) => key + 1);
       setStrengthRoundComplete(false);
+      setStrengthExercisesDone(0);
     }
     setExpanded(true);
   };
@@ -300,6 +309,21 @@ export function DailyPlanHabitRow({
     habit.type !== "abstinence" && habit.current_goal > 0
       ? Math.min(100, (progressValue / habit.current_goal) * 100)
       : 0;
+  const strengthProgressPercent = goalReached
+    ? 100
+    : Math.min(100, (strengthExercisesDone / STRENGTH_WORKOUT_REPS_PER_ROUND) * 100);
+  const displayProgressPercent = isStrengthWorkout
+    ? strengthProgressPercent
+    : isBooks
+      ? effectiveProgressPercent
+      : progressPercent;
+  const displayProgressValue = isStrengthWorkout
+    ? goalReached
+      ? STRENGTH_WORKOUT_REPS_PER_ROUND
+      : strengthExercisesDone
+    : isBooks
+      ? effectiveProgressValue
+      : progressValue;
   const progressLabelValue = isBooks
     ? String(booksDailyProgress)
     : hasSessionProgress
@@ -311,6 +335,10 @@ export function DailyPlanHabitRow({
           ),
         )
     : String(currentValue);
+  const strengthProgressLabel = `${displayProgressValue} / ${STRENGTH_WORKOUT_REPS_PER_ROUND} упражн.`;
+  const progressLabelText = isStrengthWorkout
+    ? strengthProgressLabel
+    : `${progressLabelValue} / ${habit.current_goal} ${formatUnit(habit.unit)}`;
   const cardHint = isStrengthWorkout && !goalReached
     ? { text: "Нажмите «Упражнения»", variant: "hint" as const }
     : formatCardHint({
@@ -486,16 +514,16 @@ export function DailyPlanHabitRow({
               className="home__plan-item-progress-track"
               role="progressbar"
               aria-valuemin={0}
-              aria-valuemax={habit.current_goal}
-              aria-valuenow={Math.floor(isBooks ? effectiveProgressValue : progressValue)}
+              aria-valuemax={isStrengthWorkout ? STRENGTH_WORKOUT_REPS_PER_ROUND : habit.current_goal}
+              aria-valuenow={Math.floor(displayProgressValue)}
             >
               <span
                 className="home__plan-item-progress-fill"
-                style={{ width: `${isBooks ? effectiveProgressPercent : progressPercent}%` }}
+                style={{ width: `${displayProgressPercent}%` }}
               />
             </div>
             <p className="home__task-progress">
-              {progressLabelValue} / {habit.current_goal} {formatUnit(habit.unit)}
+              {progressLabelText}
               {isBooks && reading ? ` · стр. ${reading.last_read_page}` : ""}
             </p>
           </div>
@@ -653,12 +681,15 @@ export function DailyPlanHabitRow({
                 habitId={habit.id}
                 planDate={planDate}
                 currentValue={currentValue}
+                dailyGoalMinutes={habit.current_goal}
                 repsPerExercise={strengthReps}
                 isPending={isPending}
                 resetKey={strengthResetKey}
                 onRoundComplete={() => {
                   setStrengthRoundComplete(true);
+                  setStrengthExercisesDone(STRENGTH_WORKOUT_REPS_PER_ROUND);
                 }}
+                onProgressChange={setStrengthExercisesDone}
                 onRepComplete={async (nextValue) => {
                   setActionError(null);
                   try {

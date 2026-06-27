@@ -6,6 +6,10 @@ type VideoWithWebkitFullscreen = HTMLVideoElement & {
   webkitEnterFullscreen?: () => void;
 };
 
+type DocumentWithWebkitFullscreen = Document & {
+  webkitFullscreenElement?: Element | null;
+};
+
 async function openVideoFullscreen(video: HTMLVideoElement): Promise<void> {
   const webkitVideo = video as VideoWithWebkitFullscreen;
   if (typeof webkitVideo.webkitEnterFullscreen === "function") {
@@ -16,6 +20,17 @@ async function openVideoFullscreen(video: HTMLVideoElement): Promise<void> {
   if (video.requestFullscreen) {
     await video.requestFullscreen();
   }
+}
+
+function isVideoFullscreen(video: HTMLVideoElement): boolean {
+  const doc = document as DocumentWithWebkitFullscreen;
+  const fullscreenElement = document.fullscreenElement ?? doc.webkitFullscreenElement;
+  return fullscreenElement === video;
+}
+
+function resumePreviewPlayback(video: HTMLVideoElement) {
+  video.playbackRate = EXERCISE_DEMO_PLAYBACK_RATE;
+  void video.play().catch(() => {});
 }
 
 export function ExerciseDemoVideo({
@@ -38,14 +53,41 @@ export function ExerciseDemoVideo({
     video.playbackRate = EXERCISE_DEMO_PLAYBACK_RATE;
 
     const tryPlay = () => {
-      void video.play().catch(() => {});
+      if (!active) {
+        return;
+      }
+      resumePreviewPlayback(video);
+    };
+
+    const handleFullscreenChange = () => {
+      if (!active || isVideoFullscreen(video)) {
+        return;
+      }
+      requestAnimationFrame(() => {
+        resumePreviewPlayback(video);
+      });
+    };
+
+    const handleWebkitEndFullscreen = () => {
+      if (!active) {
+        return;
+      }
+      requestAnimationFrame(() => {
+        resumePreviewPlayback(video);
+      });
     };
 
     video.addEventListener("canplay", tryPlay);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    video.addEventListener("webkitendfullscreen", handleWebkitEndFullscreen);
     tryPlay();
 
     return () => {
       video.removeEventListener("canplay", tryPlay);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+      video.removeEventListener("webkitendfullscreen", handleWebkitEndFullscreen);
     };
   }, [src, active]);
 
