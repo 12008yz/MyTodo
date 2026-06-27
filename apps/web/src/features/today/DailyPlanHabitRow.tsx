@@ -718,19 +718,6 @@ export function DailyPlanHabitRow({
                 </button>
               </div>
             ) : null}
-            {side === "light" && status !== "success" && status !== "fail" ? (
-              <button
-                type="button"
-                className="home__plan-drawer-btn"
-                disabled={isPending}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  void runCheckin({ habit_id: habit.id, status: "skipped" });
-                }}
-              >
-                Пропустить сегодня
-              </button>
-            ) : null}
           </div>
         </CollapsibleReveal>
       </article>
