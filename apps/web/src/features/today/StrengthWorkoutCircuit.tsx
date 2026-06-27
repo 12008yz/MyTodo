@@ -13,22 +13,45 @@ type StrengthWorkoutCircuitProps = {
   onCircuitComplete: (nextValue: number) => Promise<void>;
 };
 
+const EXERCISE_IDS = new Set(STRENGTH_WORKOUT_EXERCISES.map((exercise) => exercise.id));
+
 function circuitStorageKey(habitId: string, planDate: string): string {
   return `mytodo_strength_circuit:${habitId}:${planDate}`;
 }
 
-function readStoredActiveIndex(habitId: string, planDate: string): number {
+function readStoredCompletedIds(habitId: string, planDate: string): Set<string> {
   if (typeof window === "undefined") {
-    return 0;
+    return new Set();
   }
 
   const raw = sessionStorage.getItem(circuitStorageKey(habitId, planDate));
-  const parsed = raw == null ? 0 : Number(raw);
-  if (!Number.isInteger(parsed) || parsed < 0 || parsed >= STRENGTH_WORKOUT_EXERCISES.length) {
-    return 0;
+  if (raw == null) {
+    return new Set();
   }
 
-  return parsed;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return new Set();
+    }
+
+    return new Set(
+      parsed.filter(
+        (id): id is string => typeof id === "string" && EXERCISE_IDS.has(id),
+      ),
+    );
+  } catch {
+    const legacyIndex = Number(raw);
+    if (
+      Number.isInteger(legacyIndex) &&
+      legacyIndex > 0 &&
+      legacyIndex <= STRENGTH_WORKOUT_EXERCISES.length
+    ) {
+      return new Set(STRENGTH_WORKOUT_EXERCISES.slice(0, legacyIndex).map((item) => item.id));
+    }
+
+    return new Set();
+  }
 }
 
 function CheckIcon({ className }: { className?: string }) {
@@ -53,6 +76,22 @@ function CheckIcon({ className }: { className?: string }) {
 }
 
 const EXERCISE_DEMO_PLAYBACK_RATE = 1.3;
+
+type VideoWithWebkitFullscreen = HTMLVideoElement & {
+  webkitEnterFullscreen?: () => void;
+};
+
+async function openVideoFullscreen(video: HTMLVideoElement): Promise<void> {
+  const webkitVideo = video as VideoWithWebkitFullscreen;
+  if (typeof webkitVideo.webkitEnterFullscreen === "function") {
+    webkitVideo.webkitEnterFullscreen();
+    return;
+  }
+
+  if (video.requestFullscreen) {
+    await video.requestFullscreen();
+  }
+}
 
 function ExerciseDemoVideo({ src, label }: { src: string; label: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -80,14 +119,22 @@ function ExerciseDemoVideo({ src, label }: { src: string; label: string }) {
   return (
     <video
       ref={videoRef}
-      className="home__strength-exercise-demo-gif"
+      className="home__strength-exercise-demo-gif home__strength-exercise-demo-gif--video"
       src={src}
       preload="auto"
       autoPlay
       loop
       muted
       playsInline
-      aria-label={label}
+      aria-label={`${label}. Нажмите, чтобы открыть на весь экран`}
+      onClick={(event) => {
+        event.stopPropagation();
+        const video = videoRef.current;
+        if (!video) {
+          return;
+        }
+        void openVideoFullscreen(video);
+      }}
     />
   );
 }
@@ -100,13 +147,15 @@ export function StrengthWorkoutCircuit({
   isPending,
   onCircuitComplete,
 }: StrengthWorkoutCircuitProps) {
-  const [activeIndex, setActiveIndex] = useState(() => readStoredActiveIndex(habitId, planDate));
+  const [completedInRound, setCompletedInRound] = useState(() =>
+    readStoredCompletedIds(habitId, planDate),
+  );
   const [circuitMessage, setCircuitMessage] = useState<string | null>(null);
   const [goalJustReached, setGoalJustReached] = useState(false);
   const [demoExerciseId, setDemoExerciseId] = useState<string | null>(null);
 
   useEffect(() => {
-    setActiveIndex(readStoredActiveIndex(habitId, planDate));
+    setCompletedInRound(readStoredCompletedIds(habitId, planDate));
     setCircuitMessage(null);
     setGoalJustReached(false);
     setDemoExerciseId(null);
@@ -117,24 +166,19 @@ export function StrengthWorkoutCircuit({
       return;
     }
 
-    sessionStorage.setItem(circuitStorageKey(habitId, planDate), String(activeIndex));
-  }, [activeIndex, habitId, planDate]);
+    sessionStorage.setItem(
+      circuitStorageKey(habitId, planDate),
+      JSON.stringify([...completedInRound]),
+    );
+  }, [completedInRound, habitId, planDate]);
 
-  const handleExerciseDone = async () => {
-    const nextIndex = activeIndex + 1;
-    if (nextIndex < STRENGTH_WORKOUT_EXERCISES.length) {
-      setActiveIndex(nextIndex);
-      setCircuitMessage(null);
-      setGoalJustReached(false);
-      return;
-    }
-
+  const finalizeRound = async (completedSnapshot: Set<string>) => {
     const nextValue = currentValue + STRENGTH_WORKOUT_TARGET_MINUTES;
     const reachedGoal = nextValue >= currentGoal;
 
     try {
       await onCircuitComplete(nextValue);
-      setActiveIndex(0);
+      setCompletedInRound(new Set());
       setGoalJustReached(reachedGoal);
       setCircuitMessage(
         reachedGoal
@@ -142,23 +186,42 @@ export function StrengthWorkoutCircuit({
           : "Круг завершён. Можно сделать ещё один.",
       );
     } catch {
+      setCompletedInRound(completedSnapshot);
       setCircuitMessage(null);
       setGoalJustReached(false);
     }
   };
 
+  const handleExerciseDone = (exerciseId: string) => {
+    setCircuitMessage(null);
+    setGoalJustReached(false);
+
+    setCompletedInRound((prev) => {
+      if (prev.has(exerciseId)) {
+        return prev;
+      }
+
+      const nextCompleted = new Set(prev);
+      nextCompleted.add(exerciseId);
+
+      if (nextCompleted.size === STRENGTH_WORKOUT_EXERCISES.length) {
+        void finalizeRound(nextCompleted);
+      }
+
+      return nextCompleted;
+    });
+  };
+
   return (
     <div className="home__strength-circuit">
       <p className="home__strength-circuit-intro">
-        Выполняйте упражнения по очереди — по 1 разу каждое. Один круг ≈{" "}
+        Сделайте каждое упражнение по 1 разу — в любом порядке. Один круг ≈{" "}
         {STRENGTH_WORKOUT_TARGET_MINUTES} мин.
       </p>
 
       <ol className="home__strength-exercises">
         {STRENGTH_WORKOUT_EXERCISES.map((exercise, index) => {
-          const isDone = index < activeIndex;
-          const isCurrent = index === activeIndex;
-          const isLocked = index > activeIndex;
+          const isDone = completedInRound.has(exercise.id);
           const isDemoOpen = demoExerciseId === exercise.id;
 
           return (
@@ -167,8 +230,6 @@ export function StrengthWorkoutCircuit({
               className={[
                 "home__strength-exercise",
                 isDone ? "home__strength-exercise--done" : "",
-                isCurrent ? "home__strength-exercise--current" : "",
-                isLocked ? "home__strength-exercise--locked" : "",
                 isDemoOpen ? "home__strength-exercise--demo-open" : "",
               ]
                 .filter(Boolean)
@@ -213,14 +274,14 @@ export function StrengthWorkoutCircuit({
                     )}
                   </div>
                 ) : null}
-                {isCurrent ? (
+                {!isDone ? (
                   <button
                     type="button"
                     className="home__plan-drawer-btn home__plan-drawer-btn--primary home__strength-exercise-btn"
                     disabled={isPending}
                     onClick={(event) => {
                       event.stopPropagation();
-                      void handleExerciseDone();
+                      void handleExerciseDone(exercise.id);
                     }}
                   >
                     Сделал (1 раз)

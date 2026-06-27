@@ -256,7 +256,7 @@ export function DailyPlanHabitRow({
         )
     : String(currentValue);
   const cardHint = isStrengthWorkout && !goalReached
-    ? { text: "Нажмите «Упражнения» и выполните круг по очереди", variant: "hint" as const }
+    ? { text: "Нажмите «Упражнения» и выполните круг", variant: "hint" as const }
     : formatCardHint({
         habit,
         block,

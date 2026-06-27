@@ -1572,6 +1572,10 @@
   background: #f8fafc;
 }
 
+.home__strength-exercise-demo-gif--video {
+  cursor: pointer;
+}
+
 .home__strength-exercise-desc {
   margin: calc(4 * var(--s)) 0 0;
   font-size: calc(12 * var(--s));
