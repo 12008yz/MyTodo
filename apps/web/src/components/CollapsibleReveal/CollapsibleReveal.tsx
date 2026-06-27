@@ -6,6 +6,8 @@ import {
 } from "../../utils/scrollPanelIntoView";
 import "./CollapsibleReveal.css";
 
+export type CollapsibleScrollBehavior = "sync" | "end" | "none";
+
 export type CollapsibleRevealProps = {
   open: boolean;
   children: ReactNode;
@@ -16,6 +18,12 @@ export type CollapsibleRevealProps = {
   scrollAnchorRef?: RefObject<HTMLElement | null>;
   /** Skip animation when a parent transition is already running */
   immediate?: boolean;
+  /**
+   * sync — scroll in lockstep with height (onboarding panels).
+   * end — scroll once after open (smoother inside scrollable home cards).
+   * none — no scroll adjustment.
+   */
+  scrollBehavior?: CollapsibleScrollBehavior;
 };
 
 const DURATION_OPEN_MS = 420;
@@ -42,6 +50,7 @@ function runInstant(
   open: boolean,
   scrollParent: HTMLElement | null,
   panelHeight: number,
+  scrollBehavior: CollapsibleScrollBehavior,
   onExpanded?: () => void,
   onCollapsed?: () => void,
 ) {
@@ -52,7 +61,7 @@ function runInstant(
     outer.style.height = "auto";
     inner.style.opacity = "1";
     inner.style.transform = "translateY(0)";
-    if (scrollParent) {
+    if (scrollParent && scrollBehavior !== "none") {
       const delta = measureScrollDeltaForPanel(scrollParent, outer, panelHeight);
       applyScrollDelta(scrollParent, delta);
     }
@@ -71,6 +80,7 @@ function animateOpen(
   inner: HTMLDivElement,
   signal: AbortSignal,
   scrollParent: HTMLElement | null,
+  scrollBehavior: CollapsibleScrollBehavior,
   onExpanded?: () => void,
 ): Promise<void> {
   outer.style.height = "0px";
@@ -85,12 +95,14 @@ function animateOpen(
     return Promise.resolve();
   }
 
-  const scrollDelta =
-    scrollParent != null
-      ? measureScrollDeltaForPanel(scrollParent, outer, targetHeight)
-      : 0;
   const startScroll = scrollParent?.scrollTop ?? 0;
   const startTime = performance.now();
+  const syncScroll = scrollParent != null && scrollBehavior === "sync";
+  const endScroll = scrollParent != null && scrollBehavior === "end";
+  const scrollDelta =
+    syncScroll || endScroll
+      ? measureScrollDeltaForPanel(scrollParent!, outer, targetHeight)
+      : 0;
 
   return new Promise((resolve) => {
     let frame = 0;
@@ -101,18 +113,20 @@ function animateOpen(
       inner.style.opacity = "1";
       inner.style.transform = "translateY(0)";
 
-      if (scrollParent) {
+      if (scrollParent && scrollBehavior !== "none") {
         const targetScroll = startScroll + scrollDelta;
         scrollParent.scrollTop = targetScroll;
-        outer.style.height = "auto";
-        scrollParent.scrollTop = targetScroll;
-      } else {
-        outer.style.height = "auto";
       }
 
-      clearInlineStyles(inner);
-      onExpanded?.();
-      resolve();
+      requestAnimationFrame(() => {
+        outer.style.height = "auto";
+        if (scrollParent && scrollBehavior !== "none") {
+          scrollParent.scrollTop = startScroll + scrollDelta;
+        }
+        clearInlineStyles(inner);
+        onExpanded?.();
+        resolve();
+      });
     };
 
     const step = (now: number) => {
@@ -128,7 +142,7 @@ function animateOpen(
       inner.style.opacity = String(e);
       inner.style.transform = `translateY(-${CONTENT_OFFSET_PX * (1 - e)}px)`;
 
-      if (scrollParent) {
+      if (syncScroll && scrollParent) {
         scrollParent.scrollTop = startScroll + scrollDelta * e;
       }
 
@@ -163,8 +177,9 @@ function animateClose(
     const finish = () => {
       cancelAnimationFrame(frame);
       outer.style.height = "0px";
-      inner.style.opacity = "";
-      inner.style.transform = "";
+      outer.style.overflow = "hidden";
+      inner.style.opacity = "0";
+      inner.style.transform = `translateY(-${CONTENT_OFFSET_PX}px)`;
       resolve();
     };
 
@@ -202,6 +217,7 @@ export function CollapsibleReveal({
   onCollapsed,
   immediate = false,
   scrollAnchorRef,
+  scrollBehavior = "sync",
 }: CollapsibleRevealProps) {
   const [rendered, setRendered] = useState(open);
   const outerRef = useRef<HTMLDivElement>(null);
@@ -255,7 +271,6 @@ export function CollapsibleReveal({
     const finish = () => {
       if (runIdRef.current !== runId) return;
       storedHeightRef.current = 0;
-      setRendered(false);
       requestAnimationFrame(() => {
         if (runIdRef.current !== runId) return;
         onCollapsedRef.current?.();
@@ -263,7 +278,7 @@ export function CollapsibleReveal({
     };
 
     if (reduced) {
-      runInstant(outer, inner, false, null, 0, undefined, finish);
+      runInstant(outer, inner, false, null, 0, scrollBehavior, undefined, finish);
       return () => controller.abort();
     }
 
@@ -282,25 +297,27 @@ export function CollapsibleReveal({
     const controller = new AbortController();
     const reduced = prefersReducedMotion() || immediate;
 
-    const anchor = scrollAnchorRef?.current ?? outer.closest<HTMLElement>(".onboarding__habit-item");
+    const anchor =
+      scrollAnchorRef?.current ??
+      outer.closest<HTMLElement>(".onboarding__habit-item, .home__plan-item");
     const scrollParent = anchor ? getScrollParent(anchor) : null;
     const panelHeight = inner.offsetHeight;
 
     if (reduced) {
-      runInstant(outer, inner, true, scrollParent, panelHeight, () => {
+      runInstant(outer, inner, true, scrollParent, panelHeight, scrollBehavior, () => {
         if (runIdRef.current !== runId) return;
         onExpandedRef.current?.();
       });
       return () => controller.abort();
     }
 
-    void animateOpen(outer, inner, controller.signal, scrollParent, () => {
+    void animateOpen(outer, inner, controller.signal, scrollParent, scrollBehavior, () => {
       if (runIdRef.current !== runId) return;
       onExpandedRef.current?.();
     });
 
     return () => controller.abort();
-  }, [immediate, open, rendered, scrollAnchorRef]);
+  }, [immediate, open, rendered, scrollAnchorRef, scrollBehavior]);
 
   if (!rendered) {
     return null;

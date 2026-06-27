@@ -171,6 +171,7 @@ export function DailyPlanHabitRow({
   const queryClient = useQueryClient();
   const [actionError, setActionError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [expandedLook, setExpandedLook] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [bookPickerOpen, setBookPickerOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<SelectedBook | null>(null);
@@ -252,6 +253,12 @@ export function DailyPlanHabitRow({
 
     setStrengthRoundComplete(isStrengthCircuitRoundComplete(habit.id, planDate, strengthReps));
   }, [habit.id, planDate, isStrengthWorkout, strengthResetKey, currentValue, strengthReps]);
+
+  useEffect(() => {
+    if (expanded) {
+      setExpandedLook(true);
+    }
+  }, [expanded]);
 
   const handleStrengthExercisesClick = () => {
     if (strengthRoundComplete) {
@@ -399,7 +406,7 @@ export function DailyPlanHabitRow({
       <article
         className={[
           "home__plan-item",
-          expanded ? "home__plan-item--expanded" : "",
+          expandedLook ? "home__plan-item--expanded" : "",
           hasActiveFocus ? "home__plan-item--focus-active" : "",
           resumeSession ? "home__plan-item--session-paused" : "",
           goalReached ? "home__plan-item--completed" : "",
@@ -567,6 +574,8 @@ export function DailyPlanHabitRow({
 
         <CollapsibleReveal
           open={expanded}
+          scrollBehavior="none"
+          onCollapsed={() => setExpandedLook(false)}
           className="home__plan-item-drawer"
           contentClassName="home__plan-item-drawer-inner"
         >

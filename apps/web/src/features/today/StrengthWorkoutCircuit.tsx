@@ -134,7 +134,15 @@ async function openVideoFullscreen(video: HTMLVideoElement): Promise<void> {
   }
 }
 
-function ExerciseDemoVideo({ src, label }: { src: string; label: string }) {
+function ExerciseDemoVideo({
+  src,
+  label,
+  active,
+}: {
+  src: string;
+  label: string;
+  active: boolean;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -155,14 +163,14 @@ function ExerciseDemoVideo({ src, label }: { src: string; label: string }) {
     return () => {
       video.removeEventListener("canplay", tryPlay);
     };
-  }, [src]);
+  }, [src, active]);
 
   return (
     <video
       ref={videoRef}
       className="home__strength-exercise-demo-gif home__strength-exercise-demo-gif--video"
       src={src}
-      preload="auto"
+      preload={active ? "auto" : "none"}
       autoPlay
       loop
       muted
@@ -268,7 +276,7 @@ export function StrengthWorkoutCircuit({
               onClick={(event) => {
                 event.stopPropagation();
                 const target = event.target as HTMLElement;
-                if (target.closest(".home__strength-exercise-btn")) {
+                if (target.closest(".home__strength-exercise-btn, video")) {
                   return;
                 }
                 toggleExerciseDemo(exercise.id);
@@ -296,24 +304,43 @@ export function StrengthWorkoutCircuit({
                 <p className="home__strength-exercise-reps">
                   {isDone ? repsPerExercise : reps} / {repsPerExercise}
                 </p>
-                {isDemoOpen ? (
-                  <div className="home__strength-exercise-demo">
-                    {exercise.demoGifUrl.endsWith(".mp4") ? (
-                      <ExerciseDemoVideo
-                        src={exercise.demoGifUrl}
-                        label={`Техника: ${exercise.name}`}
-                      />
-                    ) : (
-                      <img
-                        className="home__strength-exercise-demo-gif"
-                        src={exercise.demoGifUrl}
-                        alt={`Техника: ${exercise.name}`}
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    )}
+                <div
+                  className={[
+                    "home__strength-exercise-demo-shell",
+                    isDemoOpen ? "home__strength-exercise-demo-shell--open" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  <div className="home__strength-exercise-demo-shell-inner">
+                    <div
+                      className={[
+                        "home__strength-exercise-demo",
+                        exercise.demoGifUrl.endsWith(".mp4")
+                          ? "home__strength-exercise-demo--video"
+                          : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
+                      {exercise.demoGifUrl.endsWith(".mp4") ? (
+                        <ExerciseDemoVideo
+                          src={exercise.demoGifUrl}
+                          label={`Техника: ${exercise.name}`}
+                          active={isDemoOpen}
+                        />
+                      ) : (
+                        <img
+                          className="home__strength-exercise-demo-gif"
+                          src={exercise.demoGifUrl}
+                          alt={`Техника: ${exercise.name}`}
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      )}
+                    </div>
                   </div>
-                ) : null}
+                </div>
                 {!isDone ? (
                   <button
                     type="button"

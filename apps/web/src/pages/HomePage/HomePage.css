@@ -1147,10 +1147,7 @@
   border: calc(1.5 * var(--s)) solid transparent;
   box-shadow: 0 calc(4 * var(--s)) calc(24 * var(--s)) rgba(0, 0, 0, 0.05);
   cursor: pointer;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.15s ease;
+  transition: transform 0.15s ease;
 }
 
 .home__plan-item:active {
@@ -1165,6 +1162,10 @@
     0 0 0 calc(1 * var(--s)) rgba(95, 51, 225, 0.08);
 }
 
+.home__plan-item--expanded:active {
+  transform: none;
+}
+
 .home__plan-item--focus-active {
   border-color: rgba(21, 112, 239, 0.35);
   box-shadow:
@@ -1177,7 +1178,8 @@
 }
 
 .home__plan-item-drawer.collapsible-reveal {
-  margin-top: calc(2 * var(--s));
+  min-height: 0;
+  flex-shrink: 0;
 }
 
 .home__plan-item-drawer .collapsible-reveal__inner {
@@ -1186,6 +1188,8 @@
 
 .home__plan-item-drawer-inner {
   border-top: calc(1 * var(--s)) solid rgba(95, 51, 225, 0.12);
+  scroll-margin-top: calc(8 * var(--s));
+  scroll-margin-bottom: calc(96 * var(--s));
 }
 
 .home__plan-item-drawer-body {
@@ -1618,24 +1622,65 @@
   color: var(--color-secondary);
 }
 
+.home__strength-exercise-demo-shell {
+  display: grid;
+  grid-template-rows: 0fr;
+  padding-top: 0;
+  transition:
+    grid-template-rows 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    padding-top 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home__strength-exercise-demo-shell--open {
+  grid-template-rows: 1fr;
+  padding-top: calc(10 * var(--s));
+}
+
+.home__strength-exercise-demo-shell-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
 .home__strength-exercise-demo {
-  margin-top: calc(10 * var(--s));
-  border-radius: calc(10 * var(--s));
+  border-radius: calc(12 * var(--s));
   overflow: hidden;
   background: #fff;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
+.home__strength-exercise-demo--video {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: calc(12 * var(--s)) calc(10 * var(--s));
+  background:
+    radial-gradient(ellipse 85% 70% at 50% 42%, rgba(59, 130, 246, 0.14) 0%, transparent 68%),
+    linear-gradient(165deg, #1c2030 0%, #0b0d12 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 calc(8 * var(--s)) calc(24 * var(--s)) rgba(15, 23, 42, 0.18);
+}
+
 .home__strength-exercise-demo-gif {
   display: block;
   width: 100%;
-  max-height: min(52vw, 220px);
+  height: min(52vw, 220px);
+  aspect-ratio: 16 / 9;
   object-fit: contain;
   background: #f8fafc;
 }
 
 .home__strength-exercise-demo-gif--video {
+  width: auto;
+  max-width: min(46vw, 188px);
+  height: auto;
+  max-height: min(62vw, 272px);
+  aspect-ratio: auto;
+  object-fit: contain;
+  background: transparent;
+  border-radius: calc(8 * var(--s));
   cursor: pointer;
+  filter: drop-shadow(0 calc(10 * var(--s)) calc(22 * var(--s)) rgba(0, 0, 0, 0.45));
 }
 
 .home__strength-exercise-desc {
@@ -2145,8 +2190,21 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
+.home__plan-list-layer[data-side="dark"] .home__strength-exercise-demo--video {
+  background:
+    radial-gradient(ellipse 85% 70% at 50% 42%, rgba(167, 139, 250, 0.16) 0%, transparent 68%),
+    linear-gradient(165deg, #141622 0%, #07080c 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.09),
+    0 calc(8 * var(--s)) calc(24 * var(--s)) rgba(0, 0, 0, 0.35);
+}
+
 .home__plan-list-layer[data-side="dark"] .home__strength-exercise-demo-gif {
   background: rgba(0, 0, 0, 0.2);
+}
+
+.home__plan-list-layer[data-side="dark"] .home__strength-exercise-demo-gif--video {
+  background: transparent;
 }
 
 .home__plan-list-layer[data-side="dark"] .home__strength-exercise {
@@ -2266,8 +2324,13 @@
   .home__plan-summary,
   .home__plan-progress,
   .home__demo-banner,
+  .home__strength-exercise-demo-shell,
   .home {
     transition: none;
+  }
+
+  .home__strength-exercise-demo-shell--open {
+    grid-template-rows: 1fr;
   }
 }
 

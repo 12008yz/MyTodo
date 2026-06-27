@@ -59,6 +59,7 @@ function getScrollTarget(element: HTMLElement): HTMLElement {
   return (
     element.querySelector<HTMLElement>("input, textarea, select") ??
     element.querySelector<HTMLElement>(".onboarding__setup-block") ??
+    element.querySelector<HTMLElement>(".home__strength-exercise--demo-open") ??
     element.querySelector<HTMLElement>(".collapsible-reveal") ??
     element
   );
