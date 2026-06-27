@@ -1,5 +1,5 @@
 // Bump EXERCISE_CACHE when files in /public/exercises/ change (keep in sync with strength-workout.ts).
-const EXERCISE_CACHE = "mytodo-exercises-v2";
+const EXERCISE_CACHE = "mytodo-exercises-v3";
 const EXERCISE_URLS = [
   "/exercises/squat.mp4",
   "/exercises/pushups.mp4",

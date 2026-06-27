@@ -7,7 +7,7 @@ export type StrengthWorkoutExercise = {
 };
 
 /** Bump when replacing files under /public/exercises/ (also update sw.js cache name). */
-export const EXERCISE_MEDIA_CACHE_VERSION = 2;
+export const EXERCISE_MEDIA_CACHE_VERSION = 3;
 
 /** Minutes credited when an exercise is marked done (one «Сделал» = all reps). */
 export const STRENGTH_WORKOUT_MINUTES_PER_REP = 1;
