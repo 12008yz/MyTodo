@@ -7,7 +7,7 @@ export type StrengthWorkoutExercise = {
 };
 
 /** Bump when replacing files under /public/exercises/ (also update sw.js cache name). */
-export const EXERCISE_MEDIA_CACHE_VERSION = 1;
+export const EXERCISE_MEDIA_CACHE_VERSION = 2;
 
 /** Bodyweight circuit — one rep per exercise per round (~5 min). */
 export const STRENGTH_WORKOUT_EXERCISES: readonly StrengthWorkoutExercise[] = [

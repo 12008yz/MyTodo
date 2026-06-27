@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   STRENGTH_WORKOUT_EXERCISES,
   STRENGTH_WORKOUT_TARGET_MINUTES,
@@ -49,6 +49,42 @@ function CheckIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
       />
     </svg>
+  );
+}
+
+function ExerciseDemoVideo({ src, label }: { src: string; label: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) {
+      return;
+    }
+
+    const tryPlay = () => {
+      void video.play().catch(() => {});
+    };
+
+    video.addEventListener("canplay", tryPlay);
+    tryPlay();
+
+    return () => {
+      video.removeEventListener("canplay", tryPlay);
+    };
+  }, [src]);
+
+  return (
+    <video
+      ref={videoRef}
+      className="home__strength-exercise-demo-gif"
+      src={src}
+      preload="auto"
+      autoPlay
+      loop
+      muted
+      playsInline
+      aria-label={label}
+    />
   );
 }
 
@@ -158,15 +194,9 @@ export function StrengthWorkoutCircuit({
                 {isDemoOpen ? (
                   <div className="home__strength-exercise-demo">
                     {exercise.demoGifUrl.endsWith(".mp4") ? (
-                      <video
-                        className="home__strength-exercise-demo-gif"
+                      <ExerciseDemoVideo
                         src={exercise.demoGifUrl}
-                        preload="metadata"
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        aria-label={`Техника: ${exercise.name}`}
+                        label={`Техника: ${exercise.name}`}
                       />
                     ) : (
                       <img

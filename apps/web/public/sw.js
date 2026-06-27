@@ -1,5 +1,5 @@
 // Bump EXERCISE_CACHE when files in /public/exercises/ change (keep in sync with strength-workout.ts).
-const EXERCISE_CACHE = "mytodo-exercises-v1";
+const EXERCISE_CACHE = "mytodo-exercises-v2";
 const EXERCISE_URLS = [
   "/exercises/squat.mp4",
   "/exercises/pushups.mp4",
@@ -42,6 +42,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Mobile Safari streams video via Range requests; cache-first breaks without Content-Range.
+  if (request.headers.has("range")) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   event.respondWith(
     caches.open(EXERCISE_CACHE).then(async (cache) => {
       const cached = await cache.match(request);
@@ -50,7 +56,7 @@ self.addEventListener("fetch", (event) => {
       }
 
       const response = await fetch(request);
-      if (response.ok) {
+      if (response.ok && response.status === 200) {
         void cache.put(request, response.clone());
       }
       return response;

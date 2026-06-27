@@ -23,7 +23,7 @@ describe("strength workout constants", () => {
   });
 
   it("uses a versioned SW cache name (keep in sync with public/sw.js)", () => {
-    expect(`mytodo-exercises-v${EXERCISE_MEDIA_CACHE_VERSION}`).toBe("mytodo-exercises-v1");
+    expect(`mytodo-exercises-v${EXERCISE_MEDIA_CACHE_VERSION}`).toBe("mytodo-exercises-v2");
   });
 
   it("targets one short circuit per round", () => {

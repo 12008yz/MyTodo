@@ -27,6 +27,7 @@ function exerciseCacheHeaders(): Plugin {
 export default defineConfig({
   plugins: [react(), exerciseCacheHeaders()],
   server: {
+    host: true,
     port: 5173,
     proxy: {
       "/api": {

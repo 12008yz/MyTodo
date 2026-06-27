@@ -25,7 +25,7 @@ export function prefetchExerciseMedia(): void {
     link.href = url;
     document.head.appendChild(link);
 
-    void fetch(url, { cache: "force-cache" }).catch(() => {
+    void fetch(url).catch(() => {
       prefetchedUrls.delete(url);
     });
   }
