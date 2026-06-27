@@ -7,6 +7,7 @@ import {
   EXERCISE_MEDIA_CACHE_VERSION,
   EXERCISE_MEDIA_PATHS,
   PLANK_DEMO_URL,
+  WARMUP_DEMO_URL,
   STRENGTH_WORKOUT_BASE_MINUTES,
   STRENGTH_WORKOUT_EXERCISES,
   STRENGTH_WORKOUT_INITIAL_REPS,
@@ -32,14 +33,14 @@ describe("strength workout constants", () => {
       "pullups",
     ]);
     expect(STRENGTH_WORKOUT_EXERCISES.map((item) => item.demoGifUrl)).toEqual(
-      EXERCISE_MEDIA_PATHS.filter((path) => path !== "/exercises/plank.mp4").map((path) =>
-        exerciseDemoUrl(path),
-      ),
+      EXERCISE_MEDIA_PATHS.filter(
+        (path) => path !== "/exercises/plank.mp4" && path !== "/exercises/warmup.mp4",
+      ).map((path) => exerciseDemoUrl(path)),
     );
   });
 
   it("uses a versioned SW cache name (keep in sync with public/sw.js)", () => {
-    expect(`mytodo-exercises-v${EXERCISE_MEDIA_CACHE_VERSION}`).toBe("mytodo-exercises-v5");
+    expect(`mytodo-exercises-v${EXERCISE_MEDIA_CACHE_VERSION}`).toBe("mytodo-exercises-v6");
   });
 
   it("keeps public/sw.js in sync with EXERCISE_MEDIA_CACHE_VERSION", () => {
@@ -66,6 +67,7 @@ describe("strength workout constants", () => {
       EXERCISE_MEDIA_PATHS.map((path) => exerciseDemoUrl(path)),
     );
     expect(PLANK_DEMO_URL).toBe(exerciseDemoUrl("/exercises/plank.mp4"));
+    expect(WARMUP_DEMO_URL).toBe(exerciseDemoUrl("/exercises/warmup.mp4"));
   });
 
   it("starts at five reps per exercise", () => {

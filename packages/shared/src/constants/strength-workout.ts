@@ -7,7 +7,7 @@ export type StrengthWorkoutExercise = {
 };
 
 /** Bump when replacing files under /public/exercises/ (also update sw.js cache name). */
-export const EXERCISE_MEDIA_CACHE_VERSION = 5;
+export const EXERCISE_MEDIA_CACHE_VERSION = 6;
 
 /** All bundled exercise demo files under /public/exercises/. */
 export const EXERCISE_MEDIA_PATHS = [
@@ -16,6 +16,7 @@ export const EXERCISE_MEDIA_PATHS = [
   "/exercises/lunges.mp4",
   "/exercises/pullups.mp4",
   "/exercises/plank.mp4",
+  "/exercises/warmup.mp4",
 ] as const;
 
 /** Minutes credited when an exercise is marked done (one «Сделал» = all reps). */
@@ -84,6 +85,8 @@ export function isExerciseDemoVideo(url: string): boolean {
 }
 
 export const PLANK_DEMO_URL = exerciseDemoUrl("/exercises/plank.mp4");
+
+export const WARMUP_DEMO_URL = exerciseDemoUrl("/exercises/warmup.mp4");
 
 export function listExerciseDemoUrls(): readonly string[] {
   return EXERCISE_MEDIA_PATHS.map((path) => exerciseDemoUrl(path));

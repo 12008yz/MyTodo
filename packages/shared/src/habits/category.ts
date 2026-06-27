@@ -35,6 +35,18 @@ export function isPlankHabit(habit: {
   return habit.template_id === "plank" || habit.name?.trim() === "Планка";
 }
 
+export function isWarmupHabit(habit: {
+  category_key?: HabitCategoryKey | null;
+  name?: string | null;
+}): boolean {
+  const name = habit.name?.trim();
+  return (
+    habit.category_key === "stretching" ||
+    name === "Разминка" ||
+    name === "Растяжка"
+  );
+}
+
 /** Habits without pomodoro sessions or minute progress bars on Today. */
 export function isNonSessionLightCategory(
   categoryKey: HabitCategoryKey | null | undefined,

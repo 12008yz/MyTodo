@@ -4,6 +4,7 @@ import {
   isNonSessionLightCategory,
   isNutritionCategoryKey,
   isPlankHabit,
+  isWarmupHabit,
   isStrengthWorkoutCategoryKey,
   isStrengthWorkoutHabit,
 } from "./category.js";
@@ -35,5 +36,12 @@ describe("habit category helpers", () => {
     expect(isPlankHabit({ template_id: "plank" })).toBe(true);
     expect(isPlankHabit({ name: "Планка" })).toBe(true);
     expect(isPlankHabit({ name: "Бег", template_id: "running" })).toBe(false);
+  });
+
+  it("detects warmup habit", () => {
+    expect(isWarmupHabit({ category_key: "stretching" })).toBe(true);
+    expect(isWarmupHabit({ name: "Разминка" })).toBe(true);
+    expect(isWarmupHabit({ name: "Растяжка" })).toBe(true);
+    expect(isWarmupHabit({ name: "Бег", category_key: "walking" })).toBe(false);
   });
 });

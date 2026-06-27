@@ -73,6 +73,7 @@ const NAME_TO_ACTIVITY: Record<string, LightActivityId> = {
   [FOREIGN_LANGUAGE_HABIT_NAME]: "mindfulness-language",
   "Дневник благодарности": "mindfulness-gratitude",
   "Силовая тренировка": "strength-workout",
+  "Разминка": "strength-stretch",
   "Растяжка": "strength-stretch",
   "Программирование": "creator-programming",
   "Творческий проект": "creator-creative",
@@ -447,7 +448,7 @@ export function formatHabitComfortLabel(habit: HabitIdentity): string {
     case "strength-plank":
       return "от 20 сек/день";
     case "strength-stretch":
-      return "1–2 мин/день";
+      return "5 мин/день";
     case "energy-walk":
       return "от 10 мин/день";
     case "energy-early":

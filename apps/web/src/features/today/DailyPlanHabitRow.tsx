@@ -4,9 +4,11 @@ import {
   isEarlyRiseCategoryKey,
   isNonSessionLightCategory,
   isPlankHabit,
+  isWarmupHabit,
   isStrengthWorkoutHabit,
   resolveStrengthProgressionLevel,
   strengthRepsPerExercise,
+  STRETCH_TARGET_MINUTES,
 } from "@mytodo/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClientApiError, selectHabitBook } from "../../lib/api";
@@ -48,6 +50,7 @@ import {
 import { isBooksHabit } from "./isBooksHabit";
 import { StrengthWorkoutCircuit, clearStrengthCircuitStorage, isStrengthCircuitRoundComplete } from "./StrengthWorkoutCircuit";
 import { PlankTechniqueDemo } from "./PlankTechniqueDemo";
+import { WarmupTechniqueDemo } from "./WarmupTechniqueDemo";
 import { prefetchExerciseMedia } from "../../lib/exercise-media";
 
 function PlanInfoIcon({ className }: { className?: string }) {
@@ -150,7 +153,7 @@ function resolveBadge(
 function isInteractiveTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
-    Boolean(target.closest("button, a, input, label, .home__strength-circuit, .home__plank-technique-wrap, .home__plank-technique, video"))
+    Boolean(target.closest("button, a, input, label, .home__strength-circuit, .home__plank-technique-wrap, .home__plank-technique, .home__warmup-technique-wrap, .home__warmup-technique, video"))
   );
 }
 
@@ -181,6 +184,7 @@ export function DailyPlanHabitRow({
   const isBooks = isBooksHabit(habit);
   const isStrengthWorkout = isStrengthWorkoutHabit(habit);
   const isPlank = isPlankHabit(habit);
+  const isWarmup = isWarmupHabit(habit);
   const strengthReps = strengthRepsPerExercise(
     resolveStrengthProgressionLevel(habit.baseline_value, habit.current_goal),
   );
@@ -224,10 +228,10 @@ export function DailyPlanHabitRow({
   }, [habit.id, reading, isBooks]);
 
   useEffect(() => {
-    if ((isStrengthWorkout || isPlank) && expanded) {
+    if ((isStrengthWorkout || isPlank || isWarmup) && expanded) {
       prefetchExerciseMedia();
     }
-  }, [expanded, isStrengthWorkout, isPlank]);
+  }, [expanded, isStrengthWorkout, isPlank, isWarmup]);
 
   const isPending = checkinMutation.isPending;
   const timer = hasTimerField(habit) ? habit.timer : null;
@@ -597,6 +601,8 @@ export function DailyPlanHabitRow({
                   ? "Цель — проснуться не позже указанного времени. После 3 успешных дней подъём сдвинется на 5 минут раньше."
                   : isPlank
                     ? "Посмотрите технику ниже, затем нажмите «Начать» — будет короткий отсчёт и таймер планки."
+                  : isWarmup
+                    ? `Посмотрите технику разминки ниже, затем нажмите «Начать» для таймера на ${STRETCH_TARGET_MINUTES} минут.`
                   : isBooks
                     ? selectedBook
                       ? isBookFinished
@@ -644,6 +650,7 @@ export function DailyPlanHabitRow({
               />
             ) : null}
             {isPlank ? <PlankTechniqueDemo /> : null}
+            {isWarmup ? <WarmupTechniqueDemo /> : null}
             {isBooks && selectedBook && (selectedBookRemainingEstimate || isBookFinished) ? (
               <div className="home__plan-item-book-plan-block">
                 <p className="home__plan-item-book-plan-detail">

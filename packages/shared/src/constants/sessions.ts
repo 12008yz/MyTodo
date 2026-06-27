@@ -32,9 +32,9 @@ export const PLANK_START_SECONDS = 20;
 /** Countdown before plank timer starts — time to get into position. */
 export const PLANK_PREP_SECONDS = 3;
 
-/** Stretching — 1–2 min per day (target 2). */
-export const STRETCH_MIN_MINUTES = 1;
-export const STRETCH_TARGET_MINUTES = 2;
+/** Warm-up — 5 min per day. */
+export const STRETCH_MIN_MINUTES = 5;
+export const STRETCH_TARGET_MINUTES = 5;
 
 /** Bodyweight circuit — four exercises, one minute each (~4 min). */
 export const STRENGTH_WORKOUT_TARGET_MINUTES = 4;

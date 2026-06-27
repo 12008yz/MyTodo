@@ -1,11 +1,12 @@
 // Keep in sync with EXERCISE_MEDIA_CACHE_VERSION in packages/shared/src/constants/strength-workout.ts.
-const EXERCISE_CACHE = "mytodo-exercises-v5";
+const EXERCISE_CACHE = "mytodo-exercises-v6";
 const EXERCISE_URLS = [
-  "/exercises/squat.mp4?v=5",
-  "/exercises/pushups.mp4?v=5",
-  "/exercises/lunges.mp4?v=5",
-  "/exercises/pullups.mp4?v=5",
-  "/exercises/plank.mp4?v=5",
+  "/exercises/squat.mp4?v=6",
+  "/exercises/pushups.mp4?v=6",
+  "/exercises/lunges.mp4?v=6",
+  "/exercises/pullups.mp4?v=6",
+  "/exercises/plank.mp4?v=6",
+  "/exercises/warmup.mp4?v=6",
 ];
 
 self.addEventListener("install", (event) => {

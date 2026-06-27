@@ -74,6 +74,7 @@ export {
   isNonSessionLightCategory,
   isNutritionCategoryKey,
   isPlankHabit,
+  isWarmupHabit,
   isStrengthWorkoutCategoryKey,
   isStrengthWorkoutHabit,
 } from "./habits/category.js";
@@ -211,6 +212,7 @@ export {
   EXERCISE_MEDIA_CACHE_VERSION,
   EXERCISE_MEDIA_PATHS,
   PLANK_DEMO_URL,
+  WARMUP_DEMO_URL,
   exerciseDemoUrl,
   isExerciseDemoVideo,
   listExerciseDemoUrls,

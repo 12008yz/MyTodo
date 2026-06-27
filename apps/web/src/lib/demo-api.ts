@@ -575,7 +575,7 @@ const SHOWCASE_CUSTOM_LIGHT: ReadonlyArray<{
   { name: "Иностранный язык", unit: "minutes", baseline: 15, categoryKey: "language" },
   { name: "Дневник благодарности", unit: "minutes", baseline: 5, categoryKey: "gratitude" },
   { name: "Силовая тренировка", unit: "minutes", baseline: 4, categoryKey: "strength_workout" },
-  { name: "Растяжка", unit: "minutes", baseline: 10, categoryKey: "stretching" },
+  { name: "Разминка", unit: "minutes", baseline: 10, categoryKey: "stretching" },
   { name: "Программирование", unit: "minutes", baseline: 30, categoryKey: "programming" },
   { name: "Творческий проект", unit: "minutes", baseline: 20, categoryKey: "creative_project" },
   { name: "Ходьба на свежем воздухе", unit: "minutes", baseline: 20, categoryKey: "walking" },

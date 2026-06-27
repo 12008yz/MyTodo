@@ -29,6 +29,7 @@ const HABIT_NAME_ICONS: Record<string, string> = {
   [FOREIGN_LANGUAGE_HABIT_NAME]: HABIT_CATEGORY_ICONS.language,
   "Дневник благодарности": HABIT_CATEGORY_ICONS.gratitude,
   "Силовая тренировка": HABIT_CATEGORY_ICONS.strength_workout,
+  "Разминка": HABIT_CATEGORY_ICONS.stretching,
   "Растяжка": HABIT_CATEGORY_ICONS.stretching,
   "Программирование": HABIT_CATEGORY_ICONS.programming,
   "Творческий проект": HABIT_CATEGORY_ICONS.creative_project,
