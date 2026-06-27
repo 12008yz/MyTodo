@@ -1438,6 +1438,164 @@
   color: var(--color-secondary);
 }
 
+.home__strength-circuit {
+  display: flex;
+  flex-direction: column;
+  gap: calc(12 * var(--s));
+}
+
+.home__strength-circuit-intro {
+  margin: 0;
+  font-size: calc(12 * var(--s));
+  line-height: 1.5;
+  color: var(--color-secondary);
+}
+
+.home__strength-exercises {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(10 * var(--s));
+}
+
+.home__strength-exercise {
+  display: flex;
+  gap: calc(10 * var(--s));
+  padding: calc(10 * var(--s));
+  border-radius: calc(12 * var(--s));
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.home__strength-exercise--current {
+  background: rgba(59, 130, 246, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.18);
+}
+
+.home__strength-exercise--done {
+  opacity: 0.72;
+}
+
+.home__strength-exercise--locked {
+  opacity: 0.5;
+}
+
+.home__strength-exercise-marker {
+  flex: 0 0 calc(28 * var(--s));
+  width: calc(28 * var(--s));
+  height: calc(28 * var(--s));
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(12 * var(--s));
+  font-weight: 700;
+  color: var(--color-text);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.home__strength-exercise--current .home__strength-exercise-marker {
+  background: rgba(59, 130, 246, 0.16);
+  color: rgb(37, 99, 235);
+}
+
+.home__strength-exercise--done .home__strength-exercise-marker {
+  background: rgba(34, 197, 94, 0.16);
+  color: rgb(22, 163, 74);
+}
+
+.home__strength-exercise-check {
+  display: block;
+}
+
+.home__strength-exercise-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.home__strength-exercise-name {
+  margin: 0;
+  font-size: calc(13 * var(--s));
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--color-text);
+}
+
+.home__strength-exercise-name-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(8 * var(--s));
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: calc(13 * var(--s));
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.home__strength-exercise-name-btn:hover {
+  color: rgb(37, 99, 235);
+}
+
+.home__strength-exercise-name-hint {
+  flex: 0 0 auto;
+  font-size: calc(11 * var(--s));
+  font-weight: 600;
+  color: rgb(37, 99, 235);
+}
+
+.home__strength-exercise--demo-open .home__strength-exercise-name-hint {
+  color: var(--color-secondary);
+}
+
+.home__strength-exercise-demo {
+  margin-top: calc(10 * var(--s));
+  border-radius: calc(10 * var(--s));
+  overflow: hidden;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.home__strength-exercise-demo-gif {
+  display: block;
+  width: 100%;
+  max-height: min(52vw, 220px);
+  object-fit: contain;
+  background: #f8fafc;
+}
+
+.home__strength-exercise-desc {
+  margin: calc(4 * var(--s)) 0 0;
+  font-size: calc(12 * var(--s));
+  line-height: 1.45;
+  color: var(--color-secondary);
+}
+
+.home__strength-exercise-btn {
+  margin-top: calc(10 * var(--s));
+  width: 100%;
+}
+
+.home__strength-circuit-message {
+  margin: 0;
+  font-size: calc(12 * var(--s));
+  line-height: 1.45;
+  color: var(--color-secondary);
+}
+
+.home__strength-circuit-message--success {
+  color: rgb(22, 163, 74);
+  font-weight: 600;
+}
+
 .home__book-picker-panel {
   max-height: min(80vh, calc(560 * var(--s)));
   overflow: auto;
@@ -1864,6 +2022,57 @@
 
 .home__plan-list-layer[data-side="dark"] .home__plan-item-drawer-text {
   color: rgba(245, 245, 247, 0.62);
+}
+
+.home__plan-list-layer[data-side="dark"] .home__strength-circuit-intro,
+.home__plan-list-layer[data-side="dark"] .home__strength-exercise-desc,
+.home__plan-list-layer[data-side="dark"] .home__strength-circuit-message {
+  color: rgba(245, 245, 247, 0.62);
+}
+
+.home__plan-list-layer[data-side="dark"] .home__strength-exercise-name,
+.home__plan-list-layer[data-side="dark"] .home__strength-exercise-name-btn {
+  color: #f5f5f7;
+}
+
+.home__plan-list-layer[data-side="dark"] .home__strength-exercise-name-btn:hover {
+  color: #c4b5fd;
+}
+
+.home__plan-list-layer[data-side="dark"] .home__strength-exercise-name-hint {
+  color: #a78bfa;
+}
+
+.home__plan-list-layer[data-side="dark"] .home__strength-exercise-demo {
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.home__plan-list-layer[data-side="dark"] .home__strength-exercise-demo-gif {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.home__plan-list-layer[data-side="dark"] .home__strength-exercise {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.home__plan-list-layer[data-side="dark"] .home__strength-exercise--current {
+  background: rgba(167, 139, 250, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.24);
+}
+
+.home__plan-list-layer[data-side="dark"] .home__strength-exercise-marker {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f5f7;
+}
+
+.home__plan-list-layer[data-side="dark"] .home__strength-exercise--current .home__strength-exercise-marker {
+  background: rgba(167, 139, 250, 0.2);
+  color: #ddd6fe;
+}
+
+.home__plan-list-layer[data-side="dark"] .home__strength-circuit-message--success {
+  color: #86efac;
 }
 
 .home__plan-list-layer[data-side="dark"] .home__plan-item {

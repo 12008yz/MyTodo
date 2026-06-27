@@ -26,7 +26,6 @@ export type HabitUnit = (typeof HABIT_UNITS)[number];
 
 export const HABIT_TEMPLATE_IDS = [
   "books",
-  "pushups",
   "running",
   "plank",
   "smoking",
@@ -90,18 +89,6 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     growthStep: 1,
     progressionIntervalDays: LIGHT_GROWTH_INTERVAL_DAYS,
     icon: "/habits/light/books.png",
-    phase: "reduction",
-  },
-  pushups: {
-    id: "pushups",
-    name: "Отжимания",
-    side: "light",
-    type: "target",
-    progressionDirection: "increase",
-    unit: "reps",
-    growthStep: 1,
-    progressionIntervalDays: LIGHT_GROWTH_INTERVAL_DAYS,
-    icon: "💪",
     phase: "reduction",
   },
   running: {

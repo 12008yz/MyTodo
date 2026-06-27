@@ -66,8 +66,6 @@ export type SessionPlanProfile = {
   maxMin: number;
 };
 
-type AgeBand = "teen" | "young" | "adult" | "mature" | "senior";
-
 const NAME_TO_ACTIVITY: Record<string, LightActivityId> = {
   [MEDITATION_HABIT_NAME]: "mindfulness-meditation",
   [FOREIGN_LANGUAGE_HABIT_NAME]: "mindfulness-language",
@@ -85,7 +83,6 @@ const TEMPLATE_TO_ACTIVITY: Partial<Record<HabitTemplateId, LightActivityId>> = 
   books: "mindfulness-books",
   running: "strength-running",
   plank: "strength-plank",
-  pushups: "strength-workout",
 };
 
 const CATEGORY_TO_ACTIVITY: Record<HabitCategoryKey, LightActivityId> = {
@@ -101,12 +98,6 @@ const CATEGORY_TO_ACTIVITY: Record<HabitCategoryKey, LightActivityId> = {
   healthy_nutrition: "energy-nutrition",
 };
 
-/** ACSM-style conservative push-up test ceiling (sedentary / below-average). */
-const BEGINNER_PUSHUP_POOR_MAX: Record<"male" | "female", Record<AgeBand, number>> = {
-  male: { teen: 12, young: 16, adult: 11, mature: 9, senior: 4 },
-  female: { teen: 6, young: 9, adult: 7, mature: 4, senior: 1 },
-};
-
 export const DEFAULT_COMFORT_PROFILE: CalibrationProfile = {
   dailyBudgetMin: 60,
   age: 30,
@@ -115,14 +106,6 @@ export const DEFAULT_COMFORT_PROFILE: CalibrationProfile = {
   heightCm: 175,
 };
 
-function clamp(n: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, n));
-}
-
-function roundTo(n: number, step: number): number {
-  return Math.round(n / step) * step;
-}
-
 export function computeBmi(weightKg: number, heightCm: number): number {
   if (heightCm <= 0 || weightKg <= 0) {
     return 22;
@@ -130,18 +113,6 @@ export function computeBmi(weightKg: number, heightCm: number): number {
 
   const heightM = heightCm / 100;
   return weightKg / (heightM * heightM);
-}
-
-function getAgeBand(age: number): AgeBand {
-  if (age < 18) return "teen";
-  if (age < 30) return "young";
-  if (age < 50) return "adult";
-  if (age < 65) return "mature";
-  return "senior";
-}
-
-function getGenderKey(gender: CalibrationProfile["gender"]): "male" | "female" {
-  return gender === "female" ? "female" : "male";
 }
 
 export function booksSessionMinutesForPages(pages: number): number {
@@ -180,20 +151,8 @@ export function resolveLightActivityId(habit: HabitIdentity): LightActivityId {
   return "generic-light";
 }
 
-function beginnerPushupDailyTarget(profile: CalibrationProfile): number {
-  const gender = getGenderKey(profile.gender);
-  const band = getAgeBand(profile.age);
-  const poorMax = BEGINNER_PUSHUP_POOR_MAX[gender][band];
-  const scaled = Math.round(poorMax * 0.75);
-  return clamp(roundTo(Math.max(scaled, 6), 2), 6, 30);
-}
-
-function isPushupsOnlyHabit(habit: HabitIdentity): boolean {
-  return habit.templateId === "pushups";
-}
-
 function isStrengthWorkoutCircuit(habit: HabitIdentity): boolean {
-  return resolveLightActivityId(habit) === "strength-workout" && !isPushupsOnlyHabit(habit);
+  return resolveLightActivityId(habit) === "strength-workout";
 }
 
 /** Recommended daily target expressed in minutes of effort (for budget estimates). */
@@ -204,9 +163,6 @@ export function recommendDailyMinutesForHabit(
   const activityId = resolveLightActivityId(habit);
 
   if (activityId === "strength-workout") {
-    if (isPushupsOnlyHabit(habit)) {
-      return (beginnerPushupDailyTarget(profile) * PUSHUP_SECONDS_PER_REP) / 60;
-    }
     return STRENGTH_WORKOUT_TARGET_MINUTES;
   }
 

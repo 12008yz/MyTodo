@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DailyPlan, DailyPlanBlock, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
-import { isNonSessionLightCategory, PLANK_PREP_SECONDS } from "@mytodo/shared";
+import { isNonSessionLightCategory, isStrengthWorkoutHabit, PLANK_PREP_SECONDS } from "@mytodo/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClientApiError } from "../../lib/api";
 import { FocusScreen } from "../sessions/FocusScreen";
@@ -247,7 +247,9 @@ function HabitListLayer({
               focusLocked={Boolean(focusHabitId && !hasActiveFocus)}
               wakeTime={wakeTime}
               onStart={
-                habit.type !== "abstinence" && !isNonSessionLightCategory(habit.category_key)
+                habit.type !== "abstinence" &&
+                !isNonSessionLightCategory(habit.category_key) &&
+                !isStrengthWorkoutHabit(habit)
                   ? (overrides) => onStart(habit, block, overrides)
                   : undefined
               }
@@ -688,7 +690,12 @@ export function DailyPlanList({
         ...(light.isLoading ? [] : light.habits),
         ...(dark.isLoading ? [] : dark.habits),
       ]
-        .filter((habit) => habit.type !== "abstinence" && !isNonSessionLightCategory(habit.category_key))
+        .filter(
+          (habit) =>
+            habit.type !== "abstinence" &&
+            !isNonSessionLightCategory(habit.category_key) &&
+            !isStrengthWorkoutHabit(habit),
+        )
         .map((habit) => habit.id)
         .sort()
         .join(","),

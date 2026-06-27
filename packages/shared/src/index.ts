@@ -73,6 +73,8 @@ export {
   isEarlyRiseCategoryKey,
   isNonSessionLightCategory,
   isNutritionCategoryKey,
+  isStrengthWorkoutCategoryKey,
+  isStrengthWorkoutHabit,
 } from "./habits/category.js";
 export {
   authTokensSchema,
@@ -203,6 +205,10 @@ export {
   SESSION_MIN_MIN,
   SESSION_TARGET_MIN,
 } from "./constants/sessions.js";
+export {
+  STRENGTH_WORKOUT_EXERCISES,
+  type StrengthWorkoutExercise,
+} from "./constants/strength-workout.js";
 export {
   pomodoroActiveResponseSchema,
   pomodoroCompleteResponseSchema,

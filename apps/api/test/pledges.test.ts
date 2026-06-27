@@ -165,7 +165,7 @@ describe("Pledges", () => {
       method: "POST",
       url: "/api/v1/habits",
       headers,
-      payload: { template_id: "pushups", baseline_value: 10 },
+      payload: { template_id: "running", baseline_value: 10 },
     });
     const habit2 = habitResponseSchema.parse(JSON.parse(habit2Response.body));
 

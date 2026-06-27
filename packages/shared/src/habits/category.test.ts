@@ -3,6 +3,8 @@ import {
   isEarlyRiseCategoryKey,
   isNonSessionLightCategory,
   isNutritionCategoryKey,
+  isStrengthWorkoutCategoryKey,
+  isStrengthWorkoutHabit,
 } from "./category.js";
 
 describe("habit category helpers", () => {
@@ -17,5 +19,14 @@ describe("habit category helpers", () => {
     expect(isNonSessionLightCategory("healthy_nutrition")).toBe(true);
     expect(isNonSessionLightCategory("meditation")).toBe(false);
     expect(isNonSessionLightCategory(null)).toBe(false);
+  });
+
+  it("detects strength workout category", () => {
+    expect(isStrengthWorkoutCategoryKey("strength_workout")).toBe(true);
+    expect(isStrengthWorkoutCategoryKey("stretching")).toBe(false);
+    expect(isNonSessionLightCategory("strength_workout")).toBe(false);
+    expect(isStrengthWorkoutHabit({ category_key: "strength_workout" })).toBe(true);
+    expect(isStrengthWorkoutHabit({ name: "Силовая тренировка" })).toBe(true);
+    expect(isStrengthWorkoutHabit({ name: "Бег", category_key: "walking" })).toBe(false);
   });
 });

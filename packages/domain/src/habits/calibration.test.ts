@@ -104,16 +104,6 @@ describe("workload", () => {
     expect(goal).toBe(5);
   });
 
-  it("recommends beginner-friendly push-up volume", () => {
-    const goal = recommendLightGoal(
-      { name: "Отжимания", unit: "reps", templateId: "pushups" },
-      profile,
-      0,
-    );
-    expect(goal).toBeGreaterThanOrEqual(6);
-    expect(goal).toBeLessThanOrEqual(20);
-  });
-
   it("uses entered baseline for comfort minutes total", () => {
     const beginner = estimateHabitsComfortMinutesWithSetup([
       {
@@ -209,8 +199,8 @@ describe("calibrateHabit", () => {
   it("keeps baseline when it is higher than recommendation", () => {
     const result = calibrateHabit({
       kind: "template",
-      templateId: "pushups",
-      template: HABIT_TEMPLATES.pushups,
+      templateId: "running",
+      template: HABIT_TEMPLATES.running,
       baselineValue: 2000,
       profile,
       activeLightHabitsIncludingNew: 1,

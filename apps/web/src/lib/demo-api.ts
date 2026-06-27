@@ -56,7 +56,7 @@ const DEMO_STORAGE_KEY = "mytodo_demo_state";
 const DEMO_ACCESS_TOKEN = "demo-access-token";
 const DEMO_REFRESH_TOKEN = "demo-refresh-token";
 /** Bump when showcase seed changes — existing localStorage is refreshed on login. */
-const DEMO_STATE_VERSION = 3;
+const DEMO_STATE_VERSION = 4;
 
 type DemoReadingProgress = HabitReadingProgress;
 
@@ -526,7 +526,6 @@ function makeCheckin(
 
 const SHOWCASE_TEMPLATE_BASELINES: Record<HabitTemplateId, number> = {
   books: 5,
-  pushups: 10,
   running: 20,
   plank: 30,
   smoking: 15,
@@ -620,7 +619,6 @@ function buildShowcaseHabits(user: UserProfile, createdAt: string): HabitRespons
 
   byTemplate("books")!.current_goal = 5;
   byTemplate("running")!.current_goal = 30;
-  byTemplate("pushups")!.current_goal = 15;
   byTemplate("smoking")!.current_goal = 12;
   byTemplate("social_media")!.current_goal = 30;
 

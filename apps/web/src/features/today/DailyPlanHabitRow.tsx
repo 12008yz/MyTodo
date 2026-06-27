@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import type { DailyPlanBlock, HabitReadingProgress, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
-import { isEarlyRiseCategoryKey, isNonSessionLightCategory } from "@mytodo/shared";
+import {
+  isEarlyRiseCategoryKey,
+  isNonSessionLightCategory,
+  isStrengthWorkoutHabit,
+} from "@mytodo/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClientApiError, selectHabitBook } from "../../lib/api";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
@@ -39,6 +43,7 @@ import {
   type StartSessionOverrides,
 } from "../sessions/sessionPlan";
 import { isBooksHabit } from "./isBooksHabit";
+import { StrengthWorkoutCircuit } from "./StrengthWorkoutCircuit";
 
 function PlanInfoIcon({ className }: { className?: string }) {
   return (
@@ -165,6 +170,7 @@ export function DailyPlanHabitRow({
   const [selectedBook, setSelectedBook] = useState<SelectedBook | null>(null);
   const status = habit.checkin?.status;
   const isBooks = isBooksHabit(habit);
+  const isStrengthWorkout = isStrengthWorkoutHabit(habit);
   const reading = habitReading(habit);
   const isEarlyRise = isEarlyRiseCategoryKey(habit.category_key);
   const isNonSessionHabit = isNonSessionLightCategory(habit.category_key);
@@ -208,7 +214,10 @@ export function DailyPlanHabitRow({
   const timer = hasTimerField(habit) ? habit.timer : null;
   const goalReached = status === "success";
   const canStartSession =
-    !isNonSessionHabit && habit.type !== "abstinence" && Boolean(onStart);
+    !isNonSessionHabit &&
+    !isStrengthWorkout &&
+    habit.type !== "abstinence" &&
+    Boolean(onStart);
   const isExtraSessionMode =
     goalReached && canStartSession && !hasActiveFocus && !resumeSession && !isRecoveringSessions && block?.status !== "active";
   const defaultExtraSessionPlan = useMemo(
@@ -219,7 +228,10 @@ export function DailyPlanHabitRow({
   const startDisabled =
     sessionBusy || focusLocked || hasActiveFocus || !canStartSession;
   const canQuickAdd =
-    habit.type === "target" && status !== "skipped" && !isNonSessionHabit;
+    habit.type === "target" &&
+    status !== "skipped" &&
+    !isNonSessionHabit &&
+    !isStrengthWorkout;
   const sessionProgress = getLiveSessionProgress(habit.unit, sessionElapsedSeconds);
   const hasSessionProgress = sessionProgress > 0;
   const progressValue = hasSessionProgress ? currentValue + sessionProgress : currentValue;
@@ -236,14 +248,16 @@ export function DailyPlanHabitRow({
           ),
         )
     : String(currentValue);
-  const cardHint = formatCardHint({
-    habit,
-    block,
-    goalReached,
-    resumeSession: Boolean(resumeSession),
-    hasActiveFocus,
-    wakeTime,
-  });
+  const cardHint = isStrengthWorkout && !goalReached
+    ? { text: "Нажмите «Упражнения» и выполните круг по очереди", variant: "hint" as const }
+    : formatCardHint({
+        habit,
+        block,
+        goalReached,
+        resumeSession: Boolean(resumeSession),
+        hasActiveFocus,
+        wakeTime,
+      });
 
   const runCheckin = async (payload: Parameters<typeof checkinMutation.mutateAsync>[0]) => {
     setActionError(null);
@@ -420,6 +434,20 @@ export function DailyPlanHabitRow({
         ) : null}
 
         <div className="home__task-actions">
+          {isStrengthWorkout ? (
+            <button
+              type="button"
+              className="home__task-btn home__task-btn--start"
+              disabled={isPending || sessionBusy}
+              onClick={(event) => {
+                event.stopPropagation();
+                setExpanded(true);
+              }}
+            >
+              {goalReached ? "Ещё круг" : "Упражнения"}
+            </button>
+          ) : null}
+
           {canStartSession ? (
             <button
               type="button"
@@ -508,25 +536,54 @@ export function DailyPlanHabitRow({
           <div className="home__plan-item-drawer-body">
             <p className="home__plan-item-drawer-title">
               <PlanInfoIcon className="home__plan-item-drawer-icon" />
-              Подробнее
+              {isStrengthWorkout ? "Круговая тренировка" : "Подробнее"}
             </p>
-            <p className="home__plan-item-drawer-text">
-              {isEarlyRise
-                ? "Цель — проснуться не позже указанного времени. После 3 успешных дней подъём сдвинется на 5 минут раньше."
-                : isBooks
-                  ? selectedBook
-                    ? isBookFinished
-                      ? `«${selectedBook.title}» прочитана. Можно выбрать следующую книгу.`
-                      : `Читаешь «${selectedBook.title}». Ниже — сколько дней осталось по нашей системе.`
-                    : "Выбери книгу из рекомендаций — покажем срок чтения и остаток по мере прогресса."
-                : block
-                ? block.unit === "seconds"
-                  ? `Следующая сессия: ${block.expected_yield} ${formatUnit(block.unit)}.`
-                  : `Следующая сессия: ${block.duration_min} мин. Ожидаемый результат — ~${block.expected_yield} ${formatUnit(block.unit)}.`
-                : goalReached
-                  ? "Цель на сегодня выполнена. Можно добавить сверх плана или начать ещё одну сессию."
-                  : "Нажмите «Начать», чтобы запустить таймер фокуса."}
-            </p>
+            {isStrengthWorkout ? null : (
+              <p className="home__plan-item-drawer-text">
+                {isEarlyRise
+                  ? "Цель — проснуться не позже указанного времени. После 3 успешных дней подъём сдвинется на 5 минут раньше."
+                  : isBooks
+                    ? selectedBook
+                      ? isBookFinished
+                        ? `«${selectedBook.title}» прочитана. Можно выбрать следующую книгу.`
+                        : `Читаешь «${selectedBook.title}». Ниже — сколько дней осталось по нашей системе.`
+                      : "Выбери книгу из рекомендаций — покажем срок чтения и остаток по мере прогресса."
+                    : block
+                      ? block.unit === "seconds"
+                        ? `Следующая сессия: ${block.expected_yield} ${formatUnit(block.unit)}.`
+                        : `Следующая сессия: ${block.duration_min} мин. Ожидаемый результат — ~${block.expected_yield} ${formatUnit(block.unit)}.`
+                      : goalReached
+                        ? "Цель на сегодня выполнена. Можно добавить сверх плана или начать ещё одну сессию."
+                        : "Нажмите «Начать», чтобы запустить таймер фокуса."}
+              </p>
+            )}
+            {isStrengthWorkout ? (
+              <StrengthWorkoutCircuit
+                habitId={habit.id}
+                planDate={planDate}
+                currentValue={currentValue}
+                currentGoal={habit.current_goal}
+                isPending={isPending}
+                onCircuitComplete={async (nextValue) => {
+                  setActionError(null);
+                  try {
+                    await checkinMutation.mutateAsync({
+                      habit_id: habit.id,
+                      value: nextValue,
+                    });
+                  } catch (err) {
+                    setActionError(
+                      err instanceof ClientApiError
+                        ? err.message
+                        : err instanceof Error
+                          ? err.message
+                          : "Не удалось сохранить",
+                    );
+                    throw err;
+                  }
+                }}
+              />
+            ) : null}
             {isBooks && selectedBook && (selectedBookRemainingEstimate || isBookFinished) ? (
               <div className="home__plan-item-book-plan-block">
                 <p className="home__plan-item-book-plan-detail">
