@@ -293,7 +293,18 @@ export class CheckinService {
       );
     }
 
-    const status = resolveCheckinStatus(this.toCheckinHabit(habit), { value: body.value });
+    if (body.books_timer_expired && habit.templateId !== "books") {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
+        "books_timer_expired is only allowed for books habits",
+      );
+    }
+
+    const status = resolveCheckinStatus(this.toCheckinHabit(habit), {
+      value: body.value,
+      booksTimerExpired: body.books_timer_expired,
+    });
     return { status, value: body.value };
   }
 
@@ -335,7 +346,7 @@ export class CheckinService {
   private async saveCheckin(
     habitId: string,
     date: string,
-    status: "success" | "fail" | "skipped",
+    status: "success" | "fail" | "skipped" | "pending",
     value: number | null,
   ) {
     const now = new Date();
@@ -398,6 +409,7 @@ export class CheckinService {
       type: habit.type as "target" | "limit" | "abstinence",
       side: habit.side as "light" | "dark",
       currentGoal: Number(habit.currentGoal),
+      templateId: habit.templateId,
     };
   }
 

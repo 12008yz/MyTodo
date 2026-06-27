@@ -89,6 +89,21 @@ describe("closeDayForHabit", () => {
     });
   });
 
+  it("resolves pending books checkin as fail when the daily goal is not met", () => {
+    const books: HabitForDayClose = {
+      ...lightTarget(5),
+      templateId: "books",
+    };
+
+    expect(closeDayForHabit(books, { status: "pending", value: 3 })).toEqual({
+      status: "fail",
+      value: 3,
+      upsertCheckin: true,
+      nextGoal: 5,
+      nextSuccessDaysAtGoal: 0,
+    });
+  });
+
   it("skips pledge habit in silence mode", () => {
     expect(
       closeDayForHabit(lightTarget(10), null, {

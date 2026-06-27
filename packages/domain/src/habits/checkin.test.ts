@@ -24,6 +24,13 @@ const abstinence: HabitForCheckin = {
   currentGoal: 0,
 };
 
+const booksHabit = (currentGoal: number): HabitForCheckin => ({
+  type: "target",
+  side: "light",
+  currentGoal,
+  templateId: "books",
+});
+
 describe("resolveCheckinStatus", () => {
   it("marks light target success when value meets goal", () => {
     expect(resolveCheckinStatus(lightTarget(10), { value: 10 })).toBe("success");
@@ -49,6 +56,25 @@ describe("resolveCheckinStatus", () => {
 
   it("returns fail for abstinence relapse", () => {
     expect(resolveCheckinStatus(abstinence, { status: "fail" })).toBe("fail");
+  });
+
+  it("keeps books reading in progress until the daily goal is met", () => {
+    expect(resolveCheckinStatus(booksHabit(5), { value: 3 })).toBe("pending");
+    expect(resolveCheckinStatus(booksHabit(5), { value: 0 })).toBe("pending");
+  });
+
+  it("marks books reading as fail only after the timer expires with zero pages", () => {
+    expect(
+      resolveCheckinStatus(booksHabit(5), { value: 0, booksTimerExpired: true }),
+    ).toBe("fail");
+    expect(
+      resolveCheckinStatus(booksHabit(5), { value: 3, booksTimerExpired: true }),
+    ).toBe("pending");
+  });
+
+  it("marks books reading success when the daily goal is reached", () => {
+    expect(resolveCheckinStatus(booksHabit(5), { value: 5 })).toBe("success");
+    expect(resolveCheckinStatus(booksHabit(5), { value: 8 })).toBe("success");
   });
 });
 

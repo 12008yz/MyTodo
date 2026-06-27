@@ -130,7 +130,7 @@ describe("Pledges", () => {
       method: "POST",
       url: "/api/v1/checkins",
       headers,
-      payload: { habit_id: habit.id, value: 0 },
+      payload: { habit_id: habit.id, value: 0, books_timer_expired: true },
     });
 
     const [pledge] = await db.select().from(pledges);
@@ -158,7 +158,7 @@ describe("Pledges", () => {
       method: "POST",
       url: "/api/v1/checkins",
       headers,
-      payload: { habit_id: habit.id, value: 0 },
+      payload: { habit_id: habit.id, value: 0, books_timer_expired: true },
     });
 
     const habit2Response = await app.inject({

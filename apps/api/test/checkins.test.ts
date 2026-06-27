@@ -456,14 +456,68 @@ describe("Checkins", () => {
     expect(response.statusCode).toBe(400);
   });
 
-  it("records light habit fail with unchanged preview_next_goal", async () => {
-    const auth = await createOnboardedUser("light-fail@example.com");
+  it("records books reading as in progress before the daily goal is met", async () => {
+    const auth = await createOnboardedUser("books-partial@example.com");
     const habit = await createLightHabit(auth.access_token);
 
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/checkins",
       headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: {
+        habit_id: habit.id,
+        date: "2026-06-18",
+        value: 3,
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
+    expect(checkin.status).toBe("pending");
+    expect(checkin.preview_next_goal).toBe(habit.current_goal);
+  });
+
+  it("records books reading fail when the timer expires without pages", async () => {
+    const auth = await createOnboardedUser("books-timer@example.com");
+    const habit = await createLightHabit(auth.access_token);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: {
+        habit_id: habit.id,
+        date: "2026-06-18",
+        value: 0,
+        books_timer_expired: true,
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
+    expect(checkin.status).toBe("fail");
+    expect(checkin.preview_next_goal).toBe(habit.current_goal);
+  });
+
+  it("records light habit fail with unchanged preview_next_goal", async () => {
+    const auth = await createOnboardedUser("light-fail@example.com");
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+
+    const habitResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers,
+      payload: {
+        template_id: "running",
+        baseline_value: 10,
+      },
+    });
+    const habit = habitResponseSchema.parse(JSON.parse(habitResponse.body));
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins",
+      headers,
       payload: {
         habit_id: habit.id,
         date: "2026-06-18",
@@ -474,7 +528,7 @@ describe("Checkins", () => {
     expect(response.statusCode).toBe(201);
     const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
     expect(checkin.status).toBe("fail");
-    expect(checkin.preview_next_goal).toBe(5);
+    expect(checkin.preview_next_goal).toBe(habit.current_goal);
   });
 
   it("returns 409 when batch omits updated_at for an existing checkin", async () => {
