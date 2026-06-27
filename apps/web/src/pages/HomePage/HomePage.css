@@ -1752,6 +1752,82 @@
   font-weight: 700;
 }
 
+.home__value-prompt--book-picker {
+  --book-picker-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --book-picker-ease-in: cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 120;
+}
+
+.home__value-prompt--book-picker-enter {
+  animation: book-picker-backdrop-in 0.44s var(--book-picker-ease-out) both;
+}
+
+.home__value-prompt--book-picker-exit {
+  animation: book-picker-backdrop-out 0.36s var(--book-picker-ease-in) both;
+  pointer-events: none;
+}
+
+.home__value-prompt--book-picker-enter .home__value-prompt-panel {
+  animation: book-picker-panel-in 0.5s var(--book-picker-ease-out) 0.07s both;
+}
+
+.home__value-prompt--book-picker-exit .home__value-prompt-panel {
+  animation: book-picker-panel-out 0.34s var(--book-picker-ease-in) both;
+}
+
+@keyframes book-picker-backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes book-picker-backdrop-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes book-picker-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(28 * var(--s))) scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes book-picker-panel-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(calc(16 * var(--s))) scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home__value-prompt--book-picker-enter,
+  .home__value-prompt--book-picker-exit,
+  .home__value-prompt--book-picker-enter .home__value-prompt-panel,
+  .home__value-prompt--book-picker-exit .home__value-prompt-panel {
+    animation: none;
+  }
+}
+
 .home__book-picker-panel {
   max-height: min(80vh, calc(560 * var(--s)));
   overflow: auto;

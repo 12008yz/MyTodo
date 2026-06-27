@@ -1,10 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { BOOK_RECOMMENDATIONS, type BookRecommendation } from "./bookRecommendations";
 import {
   buildGeneralBookEstimate,
   formatHabitBookReadingTime,
 } from "./bookReadingPlan";
 import type { SelectedBook } from "./bookSelection";
+
+const BOOK_PICKER_EXIT_MS = 360;
+
+function bookPickerExitMs(): number {
+  if (typeof window === "undefined") {
+    return BOOK_PICKER_EXIT_MS;
+  }
+
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : BOOK_PICKER_EXIT_MS;
+}
+
+function getHomePortalRoot(): HTMLElement {
+  return document.querySelector(".home") ?? document.body;
+}
 
 type BookPickerModalProps = {
   isOpen: boolean;
@@ -20,9 +35,62 @@ export function BookPickerModal({
   onSelect,
 }: BookPickerModalProps) {
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [exiting, setExiting] = useState(false);
+  const [openEpoch, setOpenEpoch] = useState(0);
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useLayoutEffect(() => {
+    setPortalRoot(getHomePortalRoot());
+  }, []);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (exitTimerRef.current) {
+      clearTimeout(exitTimerRef.current);
+      exitTimerRef.current = null;
+    }
+
+    if (isOpen) {
+      setMounted(true);
+      setExiting(false);
+      setOpenEpoch((epoch) => epoch + 1);
+      return;
+    }
+
+    if (mounted) {
+      setExiting(true);
+    }
+  }, [isOpen, mounted]);
+
+  useEffect(() => {
+    if (!exiting) {
+      return;
+    }
+
+    const duration = bookPickerExitMs();
+    if (duration === 0) {
+      setMounted(false);
+      setExiting(false);
+      return;
+    }
+
+    exitTimerRef.current = setTimeout(() => {
+      setMounted(false);
+      setExiting(false);
+      exitTimerRef.current = null;
+    }, duration);
+
+    return () => {
+      if (exitTimerRef.current) {
+        clearTimeout(exitTimerRef.current);
+        exitTimerRef.current = null;
+      }
+    };
+  }, [exiting]);
+
+  useEffect(() => {
+    if (!mounted) {
       return;
     }
 
@@ -36,7 +104,7 @@ export function BookPickerModal({
     return () => {
       home.classList.remove("home--scroll-locked");
     };
-  }, [isOpen]);
+  }, [mounted]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -44,7 +112,7 @@ export function BookPickerModal({
     }
   }, [isOpen]);
 
-  if (!isOpen) {
+  if (!mounted || !portalRoot) {
     return null;
   }
 
@@ -61,8 +129,17 @@ export function BookPickerModal({
     onClose();
   };
 
-  return (
-    <div className="home__value-prompt" role="presentation" onClick={onClose}>
+  return createPortal(
+    <div
+      key={openEpoch}
+      className={[
+        "home__value-prompt",
+        "home__value-prompt--book-picker",
+        exiting ? "home__value-prompt--book-picker-exit" : "home__value-prompt--book-picker-enter",
+      ].join(" ")}
+      role="presentation"
+      onClick={onClose}
+    >
       <div
         className="home__value-prompt-panel home__book-picker-panel"
         role="dialog"
@@ -126,6 +203,7 @@ export function BookPickerModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    portalRoot,
   );
 }
