@@ -191,6 +191,10 @@ export class DayCloseService {
         successDaysAtGoal: result.nextSuccessDaysAtGoal,
       };
 
+      if (result.nextBaselineValue !== undefined) {
+        habitUpdate.baselineValue = String(result.nextBaselineValue);
+      }
+
       if (result.nextPhase) {
         habitUpdate.phase = result.nextPhase;
       }
@@ -318,6 +322,9 @@ export class DayCloseService {
       progressionDirection: habit.progressionDirection as HabitForDayClose["progressionDirection"],
       progressionIntervalDays: habit.progressionIntervalDays,
       successDaysAtGoal: habit.successDaysAtGoal,
+      categoryKey: habit.categoryKey,
+      name: habit.name,
+      baselineValue: Number(habit.baselineValue),
       phase: habit.phase,
       templateId: habit.templateId,
       minGoal: habit.templateId === "social_media" ? SOCIAL_MEDIA_MIN_GOAL : undefined,

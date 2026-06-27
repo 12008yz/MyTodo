@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import {
   STRENGTH_WORKOUT_EXERCISES,
-  STRENGTH_WORKOUT_TARGET_MINUTES,
+  STRENGTH_WORKOUT_MINUTES_PER_REP,
 } from "@mytodo/shared";
 
 type StrengthWorkoutCircuitProps = {
   habitId: string;
   planDate: string;
   currentValue: number;
-  currentGoal: number;
+  repsPerExercise: number;
   isPending: boolean;
-  onCircuitComplete: (nextValue: number) => Promise<void>;
+  resetKey: number;
+  onRepComplete: (nextValue: number) => Promise<void>;
+  onRoundComplete?: () => void;
 };
+
+type ExerciseRepCounts = Record<string, number>;
 
 const EXERCISE_IDS = new Set(STRENGTH_WORKOUT_EXERCISES.map((exercise) => exercise.id));
 
@@ -19,39 +23,76 @@ function circuitStorageKey(habitId: string, planDate: string): string {
   return `mytodo_strength_circuit:${habitId}:${planDate}`;
 }
 
-function readStoredCompletedIds(habitId: string, planDate: string): Set<string> {
+export function clearStrengthCircuitStorage(habitId: string, planDate: string): void {
   if (typeof window === "undefined") {
-    return new Set();
+    return;
+  }
+
+  sessionStorage.removeItem(circuitStorageKey(habitId, planDate));
+}
+
+function isRoundComplete(counts: ExerciseRepCounts, repsPerExercise: number): boolean {
+  return STRENGTH_WORKOUT_EXERCISES.every(
+    (exercise) => (counts[exercise.id] ?? 0) >= repsPerExercise,
+  );
+}
+
+export function isStrengthCircuitRoundComplete(
+  habitId: string,
+  planDate: string,
+  repsPerExercise: number,
+): boolean {
+  return isRoundComplete(readStoredRepCounts(habitId, planDate, repsPerExercise), repsPerExercise);
+}
+
+function emptyRepCounts(): ExerciseRepCounts {
+  return {};
+}
+
+function readStoredRepCounts(
+  habitId: string,
+  planDate: string,
+  repsPerExercise: number,
+): ExerciseRepCounts {
+  if (typeof window === "undefined") {
+    return emptyRepCounts();
   }
 
   const raw = sessionStorage.getItem(circuitStorageKey(habitId, planDate));
   if (raw == null) {
-    return new Set();
+    return emptyRepCounts();
   }
 
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      return new Set();
+    if (parsed != null && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const counts: ExerciseRepCounts = {};
+      for (const [id, value] of Object.entries(parsed)) {
+        if (!EXERCISE_IDS.has(id)) {
+          continue;
+        }
+        const reps = Number(value);
+        if (Number.isInteger(reps) && reps > 0) {
+          counts[id] = Math.min(reps, repsPerExercise);
+        }
+      }
+      return counts;
     }
 
-    return new Set(
-      parsed.filter(
-        (id): id is string => typeof id === "string" && EXERCISE_IDS.has(id),
-      ),
-    );
+    if (Array.isArray(parsed)) {
+      const counts: ExerciseRepCounts = {};
+      for (const id of parsed) {
+        if (typeof id === "string" && EXERCISE_IDS.has(id)) {
+          counts[id] = repsPerExercise;
+        }
+      }
+      return counts;
+    }
   } catch {
-    const legacyIndex = Number(raw);
-    if (
-      Number.isInteger(legacyIndex) &&
-      legacyIndex > 0 &&
-      legacyIndex <= STRENGTH_WORKOUT_EXERCISES.length
-    ) {
-      return new Set(STRENGTH_WORKOUT_EXERCISES.slice(0, legacyIndex).map((item) => item.id));
-    }
-
-    return new Set();
+    return emptyRepCounts();
   }
+
+  return emptyRepCounts();
 }
 
 function CheckIcon({ className }: { className?: string }) {
@@ -143,85 +184,71 @@ export function StrengthWorkoutCircuit({
   habitId,
   planDate,
   currentValue,
-  currentGoal,
+  repsPerExercise,
   isPending,
-  onCircuitComplete,
+  resetKey,
+  onRepComplete,
+  onRoundComplete,
 }: StrengthWorkoutCircuitProps) {
-  const [completedInRound, setCompletedInRound] = useState(() =>
-    readStoredCompletedIds(habitId, planDate),
+  const [repCounts, setRepCounts] = useState(() =>
+    readStoredRepCounts(habitId, planDate, repsPerExercise),
   );
-  const [circuitMessage, setCircuitMessage] = useState<string | null>(null);
-  const [goalJustReached, setGoalJustReached] = useState(false);
   const [demoExerciseId, setDemoExerciseId] = useState<string | null>(null);
 
   useEffect(() => {
-    setCompletedInRound(readStoredCompletedIds(habitId, planDate));
-    setCircuitMessage(null);
-    setGoalJustReached(false);
+    setRepCounts(readStoredRepCounts(habitId, planDate, repsPerExercise));
     setDemoExerciseId(null);
-  }, [habitId, planDate, currentValue]);
+  }, [habitId, planDate, resetKey, repsPerExercise]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
 
-    sessionStorage.setItem(
-      circuitStorageKey(habitId, planDate),
-      JSON.stringify([...completedInRound]),
-    );
-  }, [completedInRound, habitId, planDate]);
+    sessionStorage.setItem(circuitStorageKey(habitId, planDate), JSON.stringify(repCounts));
+  }, [repCounts, habitId, planDate]);
 
-  const finalizeRound = async (completedSnapshot: Set<string>) => {
-    const nextValue = currentValue + STRENGTH_WORKOUT_TARGET_MINUTES;
-    const reachedGoal = nextValue >= currentGoal;
+  const handleExerciseDone = async (exerciseId: string) => {
+    const currentReps = repCounts[exerciseId] ?? 0;
+    if (currentReps >= repsPerExercise || isPending) {
+      return;
+    }
+
+    const previousCounts = repCounts;
+    const nextCounts = {
+      ...repCounts,
+      [exerciseId]: repsPerExercise,
+    };
+    setRepCounts(nextCounts);
+
+    const nextValue = currentValue + STRENGTH_WORKOUT_MINUTES_PER_REP;
+    const roundComplete = isRoundComplete(nextCounts, repsPerExercise);
 
     try {
-      await onCircuitComplete(nextValue);
-      setCompletedInRound(new Set());
-      setGoalJustReached(reachedGoal);
-      setCircuitMessage(
-        reachedGoal
-          ? "Круг завершён — цель на сегодня выполнена."
-          : "Круг завершён. Можно сделать ещё один.",
-      );
+      await onRepComplete(nextValue);
+      if (roundComplete) {
+        onRoundComplete?.();
+      }
     } catch {
-      setCompletedInRound(completedSnapshot);
-      setCircuitMessage(null);
-      setGoalJustReached(false);
+      setRepCounts(previousCounts);
     }
   };
 
-  const handleExerciseDone = (exerciseId: string) => {
-    setCircuitMessage(null);
-    setGoalJustReached(false);
-
-    setCompletedInRound((prev) => {
-      if (prev.has(exerciseId)) {
-        return prev;
-      }
-
-      const nextCompleted = new Set(prev);
-      nextCompleted.add(exerciseId);
-
-      if (nextCompleted.size === STRENGTH_WORKOUT_EXERCISES.length) {
-        void finalizeRound(nextCompleted);
-      }
-
-      return nextCompleted;
-    });
+  const toggleExerciseDemo = (exerciseId: string) => {
+    setDemoExerciseId((current) => (current === exerciseId ? null : exerciseId));
   };
 
   return (
-    <div className="home__strength-circuit">
-      <p className="home__strength-circuit-intro">
-        Сделайте каждое упражнение по 1 разу — в любом порядке. Один круг ≈{" "}
-        {STRENGTH_WORKOUT_TARGET_MINUTES} мин.
-      </p>
-
+    <div
+      className="home__strength-circuit"
+      onClick={(event) => {
+        event.stopPropagation();
+      }}
+    >
       <ol className="home__strength-exercises">
         {STRENGTH_WORKOUT_EXERCISES.map((exercise, index) => {
-          const isDone = completedInRound.has(exercise.id);
+          const reps = repCounts[exercise.id] ?? 0;
+          const isDone = reps >= repsPerExercise;
           const isDemoOpen = demoExerciseId === exercise.id;
 
           return (
@@ -234,28 +261,41 @@ export function StrengthWorkoutCircuit({
               ]
                 .filter(Boolean)
                 .join(" ")}
+              role="button"
+              tabIndex={0}
+              aria-expanded={isDemoOpen}
+              aria-label={`${exercise.name}. ${isDemoOpen ? "Скрыть" : "Как сделать"}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                const target = event.target as HTMLElement;
+                if (target.closest(".home__strength-exercise-btn")) {
+                  return;
+                }
+                toggleExerciseDemo(exercise.id);
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") {
+                  return;
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                toggleExerciseDemo(exercise.id);
+              }}
             >
               <div className="home__strength-exercise-marker" aria-hidden="true">
                 {isDone ? <CheckIcon className="home__strength-exercise-check" /> : index + 1}
               </div>
               <div className="home__strength-exercise-body">
-                <button
-                  type="button"
-                  className="home__strength-exercise-name-btn"
-                  aria-expanded={isDemoOpen}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setDemoExerciseId((current) =>
-                      current === exercise.id ? null : exercise.id,
-                    );
-                  }}
-                >
+                <div className="home__strength-exercise-name-btn">
                   {exercise.name}
                   <span className="home__strength-exercise-name-hint">
-                    {isDemoOpen ? "Скрыть" : "Как делать"}
+                    {isDemoOpen ? "Скрыть" : "Как сделать"}
                   </span>
-                </button>
+                </div>
                 <p className="home__strength-exercise-desc">{exercise.description}</p>
+                <p className="home__strength-exercise-reps">
+                  {isDone ? repsPerExercise : reps} / {repsPerExercise}
+                </p>
                 {isDemoOpen ? (
                   <div className="home__strength-exercise-demo">
                     {exercise.demoGifUrl.endsWith(".mp4") ? (
@@ -284,7 +324,7 @@ export function StrengthWorkoutCircuit({
                       void handleExerciseDone(exercise.id);
                     }}
                   >
-                    Сделал (1 раз)
+                    Сделал
                   </button>
                 ) : null}
               </div>
@@ -292,19 +332,6 @@ export function StrengthWorkoutCircuit({
           );
         })}
       </ol>
-
-      {circuitMessage ? (
-        <p
-          className={[
-            "home__strength-circuit-message",
-            goalJustReached ? "home__strength-circuit-message--success" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-        >
-          {circuitMessage}
-        </p>
-      ) : null}
     </div>
   );
 }

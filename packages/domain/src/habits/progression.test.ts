@@ -113,4 +113,40 @@ describe("computeNextGoal", () => {
     expect(computeNextGoal(abstinence, "success")).toBe(0);
     expect(computeNextGoal(abstinence, "fail")).toBe(0);
   });
+
+  it("increases strength workout reps every interval and minutes every two levels", () => {
+    const strength: HabitForProgression = {
+      ...lightTarget(4),
+      categoryKey: "strength_workout",
+      baselineValue: 0,
+      growthStep: 1,
+      progressionIntervalDays: 3,
+      successDaysAtGoal: 0,
+    };
+
+    expect(applyDayProgression({ ...strength, successDaysAtGoal: 0 }, "success")).toEqual({
+      nextGoal: 4,
+      nextSuccessDaysAtGoal: 1,
+    });
+    expect(applyDayProgression({ ...strength, successDaysAtGoal: 1 }, "success")).toEqual({
+      nextGoal: 4,
+      nextSuccessDaysAtGoal: 2,
+    });
+    expect(applyDayProgression({ ...strength, successDaysAtGoal: 2 }, "success")).toEqual({
+      nextGoal: 4,
+      nextSuccessDaysAtGoal: 0,
+      nextBaselineValue: 1,
+    });
+
+    const levelOne: HabitForProgression = {
+      ...strength,
+      baselineValue: 1,
+      successDaysAtGoal: 2,
+    };
+    expect(applyDayProgression(levelOne, "success")).toEqual({
+      nextGoal: 5,
+      nextSuccessDaysAtGoal: 0,
+      nextBaselineValue: 2,
+    });
+  });
 });

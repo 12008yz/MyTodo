@@ -36,8 +36,8 @@ export const PLANK_PREP_SECONDS = 3;
 export const STRETCH_MIN_MINUTES = 1;
 export const STRETCH_TARGET_MINUTES = 2;
 
-/** Bodyweight circuit — 4 exercises, 1 set each (~5 min). */
-export const STRENGTH_WORKOUT_TARGET_MINUTES = 5;
+/** Bodyweight circuit — four exercises, one minute each (~4 min). */
+export const STRENGTH_WORKOUT_TARGET_MINUTES = 4;
 
 /** Outdoor walk — starts from 10 min. */
 export const WALKING_MIN_MINUTES = 10;

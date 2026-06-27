@@ -4,6 +4,8 @@ import {
   isEarlyRiseCategoryKey,
   isNonSessionLightCategory,
   isStrengthWorkoutHabit,
+  resolveStrengthProgressionLevel,
+  strengthRepsPerExercise,
 } from "@mytodo/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClientApiError, selectHabitBook } from "../../lib/api";
@@ -43,7 +45,7 @@ import {
   type StartSessionOverrides,
 } from "../sessions/sessionPlan";
 import { isBooksHabit } from "./isBooksHabit";
-import { StrengthWorkoutCircuit } from "./StrengthWorkoutCircuit";
+import { StrengthWorkoutCircuit, clearStrengthCircuitStorage, isStrengthCircuitRoundComplete } from "./StrengthWorkoutCircuit";
 import { prefetchExerciseMedia } from "../../lib/exercise-media";
 
 function PlanInfoIcon({ className }: { className?: string }) {
@@ -144,7 +146,10 @@ function resolveBadge(
 }
 
 function isInteractiveTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && Boolean(target.closest("button, a, input, label"));
+  return (
+    target instanceof HTMLElement &&
+    Boolean(target.closest("button, a, input, label, .home__strength-circuit, video"))
+  );
 }
 
 export function DailyPlanHabitRow({
@@ -172,6 +177,9 @@ export function DailyPlanHabitRow({
   const status = habit.checkin?.status;
   const isBooks = isBooksHabit(habit);
   const isStrengthWorkout = isStrengthWorkoutHabit(habit);
+  const strengthReps = strengthRepsPerExercise(
+    resolveStrengthProgressionLevel(habit.baseline_value, habit.current_goal),
+  );
   const reading = habitReading(habit);
   const isEarlyRise = isEarlyRiseCategoryKey(habit.category_key);
   const isNonSessionHabit = isNonSessionLightCategory(habit.category_key);
@@ -232,6 +240,28 @@ export function DailyPlanHabitRow({
     [habit, block],
   );
   const [extraSessionOpen, setExtraSessionOpen] = useState(false);
+  const [strengthResetKey, setStrengthResetKey] = useState(0);
+  const [strengthRoundComplete, setStrengthRoundComplete] = useState(() =>
+    isStrengthWorkout ? isStrengthCircuitRoundComplete(habit.id, planDate, strengthReps) : false,
+  );
+  useEffect(() => {
+    if (!isStrengthWorkout) {
+      setStrengthRoundComplete(false);
+      return;
+    }
+
+    setStrengthRoundComplete(isStrengthCircuitRoundComplete(habit.id, planDate, strengthReps));
+  }, [habit.id, planDate, isStrengthWorkout, strengthResetKey, currentValue, strengthReps]);
+
+  const handleStrengthExercisesClick = () => {
+    if (strengthRoundComplete) {
+      clearStrengthCircuitStorage(habit.id, planDate);
+      setStrengthResetKey((key) => key + 1);
+      setStrengthRoundComplete(false);
+    }
+    setExpanded(true);
+  };
+
   const startDisabled =
     sessionBusy || focusLocked || hasActiveFocus || !canStartSession;
   const canQuickAdd =
@@ -256,7 +286,7 @@ export function DailyPlanHabitRow({
         )
     : String(currentValue);
   const cardHint = isStrengthWorkout && !goalReached
-    ? { text: "Нажмите «Упражнения» и выполните круг", variant: "hint" as const }
+    ? { text: "Нажмите «Упражнения»", variant: "hint" as const }
     : formatCardHint({
         habit,
         block,
@@ -448,10 +478,10 @@ export function DailyPlanHabitRow({
               disabled={isPending || sessionBusy}
               onClick={(event) => {
                 event.stopPropagation();
-                setExpanded(true);
+                handleStrengthExercisesClick();
               }}
             >
-              {goalReached ? "Ещё круг" : "Упражнения"}
+              {strengthRoundComplete ? "Ещё круг" : "Упражнения"}
             </button>
           ) : null}
 
@@ -545,7 +575,11 @@ export function DailyPlanHabitRow({
               <PlanInfoIcon className="home__plan-item-drawer-icon" />
               {isStrengthWorkout ? "Круговая тренировка" : "Подробнее"}
             </p>
-            {isStrengthWorkout ? null : (
+            {isStrengthWorkout ? (
+              <p className="home__plan-item-drawer-text home__strength-circuit-intro">
+                Каждое упражнение — по {strengthReps} раз. Со временем будем увеличивать.
+              </p>
+            ) : (
               <p className="home__plan-item-drawer-text">
                 {isEarlyRise
                   ? "Цель — проснуться не позже указанного времени. После 3 успешных дней подъём сдвинется на 5 минут раньше."
@@ -569,9 +603,13 @@ export function DailyPlanHabitRow({
                 habitId={habit.id}
                 planDate={planDate}
                 currentValue={currentValue}
-                currentGoal={habit.current_goal}
+                repsPerExercise={strengthReps}
                 isPending={isPending}
-                onCircuitComplete={async (nextValue) => {
+                resetKey={strengthResetKey}
+                onRoundComplete={() => {
+                  setStrengthRoundComplete(true);
+                }}
+                onRepComplete={async (nextValue) => {
                   setActionError(null);
                   try {
                     await checkinMutation.mutateAsync({

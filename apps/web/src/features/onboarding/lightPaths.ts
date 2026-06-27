@@ -386,7 +386,7 @@ export function getDefaultLightBaseline(habit: SelectedHabit): string {
     return "0";
   }
   if (habit.activityId === "strength-workout") {
-    return "5";
+    return "4";
   }
   return "0";
 }
@@ -494,7 +494,7 @@ export function getLightHabitSummary(habit: SelectedHabit, wakeTime?: string): s
       return "1 мин/день";
     }
     if (habit.activityId === "strength-workout") {
-      return "5 мин/день";
+      return "4 мин/день";
     }
     return "Рост понемногу";
   }

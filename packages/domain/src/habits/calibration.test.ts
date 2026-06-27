@@ -90,8 +90,8 @@ describe("workload", () => {
     expect(senior).toBe(10);
   });
 
-  it("recommends strength workout circuit at 5 min", () => {
-    expect(recommendDailyMinutes("strength-workout", profile)).toBe(5);
+  it("recommends strength workout circuit at 4 min for level 0", () => {
+    expect(recommendDailyMinutes("strength-workout", profile)).toBe(4);
     const goal = recommendLightGoal(
       {
         name: "Силовая тренировка",
@@ -101,7 +101,20 @@ describe("workload", () => {
       profile,
       0,
     );
-    expect(goal).toBe(5);
+    expect(goal).toBe(4);
+  });
+
+  it("recommends strength workout minutes from progression level", () => {
+    const habit = {
+      name: "Силовая тренировка",
+      unit: "minutes" as const,
+      categoryKey: "strength_workout" as const,
+    };
+
+    expect(recommendLightGoal(habit, profile, 1)).toBe(4);
+    expect(recommendLightGoal(habit, profile, 2)).toBe(5);
+    expect(recommendLightGoal(habit, profile, 3)).toBe(5);
+    expect(recommendLightGoal(habit, profile, 4, 6)).toBe(6);
   });
 
   it("uses entered baseline for comfort minutes total", () => {
@@ -310,6 +323,24 @@ describe("calibrateHabit", () => {
     expect(result.currentGoal).toBe(20);
     expect(result.growthStep).toBe(5);
     expect(result.progressionIntervalDays).toBe(3);
+  });
+
+  it("calibrates strength workout at level 0 with four-minute daily goal", () => {
+    const result = calibrateHabit({
+      kind: "custom",
+      name: "Силовая тренировка",
+      unit: "minutes",
+      baselineValue: 4,
+      categoryKey: "strength_workout",
+      profile,
+      activeLightHabitsIncludingNew: 1,
+    });
+
+    expect(result.currentGoal).toBe(4);
+    expect(result.baselineValue).toBe(0);
+    expect(result.growthStep).toBe(1);
+    expect(result.progressionIntervalDays).toBe(3);
+    expect(result.categoryKey).toBe("strength_workout");
   });
 
   it("calibrates plank starting at 20 seconds", () => {

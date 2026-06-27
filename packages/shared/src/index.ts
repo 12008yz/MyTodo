@@ -208,6 +208,15 @@ export {
 export {
   STRENGTH_WORKOUT_EXERCISES,
   EXERCISE_MEDIA_CACHE_VERSION,
+  STRENGTH_WORKOUT_MINUTES_PER_REP,
+  STRENGTH_WORKOUT_INITIAL_REPS,
+  STRENGTH_WORKOUT_REPS_PER_EXERCISE,
+  STRENGTH_WORKOUT_REPS_PER_ROUND,
+  STRENGTH_WORKOUT_BASE_MINUTES,
+  STRENGTH_WORKOUT_REPS_BEFORE_MINUTE_BUMP,
+  resolveStrengthProgressionLevel,
+  strengthRepsPerExercise,
+  strengthDailyGoalMinutes,
   type StrengthWorkoutExercise,
 } from "./constants/strength-workout.js";
 export {

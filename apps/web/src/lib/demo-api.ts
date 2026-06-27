@@ -8,8 +8,11 @@ import {
   computeDailyBudgetMin,
   HABIT_TEMPLATE_IDS,
   HABIT_TEMPLATES,
+  isStrengthWorkoutHabit,
   resolveHabitDisplayName,
   resolveHabitIcon,
+  resolveStrengthProgressionLevel,
+  strengthDailyGoalMinutes,
   type CustomHabitUnit,
   type HabitCategoryKey,
   type HabitTemplateId,
@@ -160,6 +163,30 @@ function normalizeDemoHabitGoals(state: DemoState): DemoState {
   const habits = state.habits.map((habit) => {
     if (habit.side !== "light" || !habit.is_active) {
       return habit;
+    }
+
+    if (isStrengthWorkoutHabit(habit)) {
+      const migratedHabit =
+        habit.baseline_value === 4 && habit.current_goal === 4
+          ? { ...habit, baseline_value: 0 }
+          : habit;
+      const expectedGoal = strengthDailyGoalMinutes(
+        resolveStrengthProgressionLevel(
+          migratedHabit.baseline_value,
+          migratedHabit.current_goal,
+        ),
+      );
+      if (
+        migratedHabit.baseline_value === habit.baseline_value &&
+        migratedHabit.current_goal === expectedGoal
+      ) {
+        return migratedHabit;
+      }
+
+      return {
+        ...migratedHabit,
+        current_goal: expectedGoal,
+      };
     }
 
     const recommendedGoal = recalculateLightGoal(
@@ -487,6 +514,9 @@ function toDemoProgressionHabit(habit: HabitResponse) {
     progressionDirection: habit.progression_direction,
     progressionIntervalDays: habit.progression_interval_days,
     successDaysAtGoal: habit.success_days_at_goal,
+    categoryKey: habit.category_key,
+    name: habit.name,
+    baselineValue: habit.baseline_value,
     minGoal: habit.template_id === "social_media" ? SOCIAL_MEDIA_MIN_GOAL : undefined,
   };
 }
@@ -544,7 +574,7 @@ const SHOWCASE_CUSTOM_LIGHT: ReadonlyArray<{
   { name: "Медитация", unit: "minutes", baseline: 10, categoryKey: "meditation" },
   { name: "Иностранный язык", unit: "minutes", baseline: 15, categoryKey: "language" },
   { name: "Дневник благодарности", unit: "minutes", baseline: 5, categoryKey: "gratitude" },
-  { name: "Силовая тренировка", unit: "minutes", baseline: 20, categoryKey: "strength_workout" },
+  { name: "Силовая тренировка", unit: "minutes", baseline: 4, categoryKey: "strength_workout" },
   { name: "Растяжка", unit: "minutes", baseline: 10, categoryKey: "stretching" },
   { name: "Программирование", unit: "minutes", baseline: 30, categoryKey: "programming" },
   { name: "Творческий проект", unit: "minutes", baseline: 20, categoryKey: "creative_project" },

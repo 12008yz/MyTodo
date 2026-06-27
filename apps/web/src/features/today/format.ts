@@ -1,5 +1,10 @@
 import type { DailyPlanBlock, HabitUnit, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
-import { isEarlyRiseCategoryKey } from "@mytodo/shared";
+import {
+  isEarlyRiseCategoryKey,
+  isStrengthWorkoutHabit,
+  resolveStrengthProgressionLevel,
+  strengthRepsPerExercise,
+} from "@mytodo/shared";
 import { formatEarlyRiseTargetWakeTime } from "@mytodo/domain";
 
 const UNIT_LABELS: Record<HabitUnit, string> = {
@@ -118,6 +123,34 @@ export function formatCardHint(params: {
         text: `Цель выполнена · завтра: ${formatEarlyRiseTargetWakeTime(wakeTime, habit.preview_next_goal)}`,
         variant: "success",
       };
+    }
+
+    if (isStrengthWorkoutHabit(habit)) {
+      const level = resolveStrengthProgressionLevel(habit.baseline_value, habit.current_goal);
+      const currentReps = strengthRepsPerExercise(level);
+      const daysAtGoal = habit.success_days_at_goal + 1;
+      const repsWillIncrease =
+        habit.progression_interval_days > 1 &&
+        daysAtGoal >= habit.progression_interval_days;
+      const nextReps = repsWillIncrease ? strengthRepsPerExercise(level + 1) : currentReps;
+
+      if (repsWillIncrease && nextReps > currentReps) {
+        const minuteBump =
+          habit.preview_next_goal > habit.current_goal
+            ? ` и ${habit.preview_next_goal} мин`
+            : "";
+        return {
+          text: `Цель выполнена · завтра: ${nextReps} повторений${minuteBump}`,
+          variant: "success",
+        };
+      }
+
+      if (habit.preview_next_goal > habit.current_goal) {
+        return {
+          text: `Цель выполнена · завтра: ${habit.preview_next_goal} ${unit}`,
+          variant: "success",
+        };
+      }
     }
 
     if (habit.preview_next_goal > habit.current_goal) {

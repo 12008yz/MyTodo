@@ -22,6 +22,8 @@ import {
   STRETCH_TARGET_MINUTES,
   STRENGTH_WORKOUT_TARGET_MINUTES,
   WALKING_MIN_MINUTES,
+  resolveStrengthProgressionLevel,
+  strengthDailyGoalMinutes,
   type CustomHabitUnit,
   type HabitCategoryKey,
   type HabitTemplateId,
@@ -230,6 +232,7 @@ export function recommendLightGoal(
   habit: HabitIdentity,
   profile: CalibrationProfile,
   baselineValue: number,
+  currentGoalMinutes?: number,
 ): number {
   const activityId = resolveLightActivityId(habit);
 
@@ -242,7 +245,9 @@ export function recommendLightGoal(
   }
 
   if (isStrengthWorkoutCircuit(habit)) {
-    return Math.max(baselineValue, STRENGTH_WORKOUT_TARGET_MINUTES);
+    return strengthDailyGoalMinutes(
+      resolveStrengthProgressionLevel(baselineValue, currentGoalMinutes),
+    );
   }
 
   if (activityId === "mindfulness-books") {

@@ -24,6 +24,7 @@ export type DayCloseResult = {
   upsertCheckin: boolean;
   nextGoal: number;
   nextSuccessDaysAtGoal: number;
+  nextBaselineValue?: number;
   nextPhase?: string;
   setLastRelapseAt?: boolean;
 };
@@ -125,8 +126,9 @@ export function closeDayForHabit(
     status,
     value,
     upsertCheckin,
-    nextGoal,
+    nextGoal: progression.nextGoal,
     nextSuccessDaysAtGoal: progression.nextSuccessDaysAtGoal,
+    nextBaselineValue: progression.nextBaselineValue,
     ...smokingPhaseUpdate(habit, status, nextGoal),
   };
 }

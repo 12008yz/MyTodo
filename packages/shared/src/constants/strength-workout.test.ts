@@ -2,7 +2,16 @@ import { describe, expect, it } from "vitest";
 import { STRENGTH_WORKOUT_TARGET_MINUTES } from "./sessions.js";
 import {
   EXERCISE_MEDIA_CACHE_VERSION,
+  STRENGTH_WORKOUT_BASE_MINUTES,
   STRENGTH_WORKOUT_EXERCISES,
+  STRENGTH_WORKOUT_INITIAL_REPS,
+  STRENGTH_WORKOUT_MINUTES_PER_REP,
+  STRENGTH_WORKOUT_REPS_BEFORE_MINUTE_BUMP,
+  STRENGTH_WORKOUT_REPS_PER_EXERCISE,
+  STRENGTH_WORKOUT_REPS_PER_ROUND,
+  resolveStrengthProgressionLevel,
+  strengthDailyGoalMinutes,
+  strengthRepsPerExercise,
 } from "./strength-workout.js";
 
 describe("strength workout constants", () => {
@@ -26,7 +35,50 @@ describe("strength workout constants", () => {
     expect(`mytodo-exercises-v${EXERCISE_MEDIA_CACHE_VERSION}`).toBe("mytodo-exercises-v2");
   });
 
-  it("targets one short circuit per round", () => {
-    expect(STRENGTH_WORKOUT_TARGET_MINUTES).toBe(5);
+  it("starts at five reps per exercise", () => {
+    expect(STRENGTH_WORKOUT_INITIAL_REPS).toBe(5);
+    expect(STRENGTH_WORKOUT_REPS_PER_EXERCISE).toBe(5);
+    expect(strengthRepsPerExercise(0)).toBe(5);
+  });
+
+  it("credits one minute per completed exercise toward the daily goal", () => {
+    expect(STRENGTH_WORKOUT_MINUTES_PER_REP).toBe(1);
+    expect(STRENGTH_WORKOUT_REPS_PER_ROUND).toBe(4);
+    expect(
+      STRENGTH_WORKOUT_MINUTES_PER_REP * STRENGTH_WORKOUT_REPS_PER_ROUND,
+    ).toBe(STRENGTH_WORKOUT_TARGET_MINUTES);
+    expect(STRENGTH_WORKOUT_EXERCISES).toHaveLength(STRENGTH_WORKOUT_REPS_PER_ROUND);
+  });
+
+  it("targets one short circuit per round at level 0", () => {
+    expect(STRENGTH_WORKOUT_BASE_MINUTES).toBe(4);
+    expect(strengthDailyGoalMinutes(0)).toBe(STRENGTH_WORKOUT_TARGET_MINUTES);
+  });
+
+  it("keeps four minutes for levels 0 and 1, then adds a minute every two levels", () => {
+    expect(strengthRepsPerExercise(0)).toBe(5);
+    expect(strengthDailyGoalMinutes(0)).toBe(4);
+    expect(strengthRepsPerExercise(1)).toBe(6);
+    expect(strengthDailyGoalMinutes(1)).toBe(4);
+    expect(strengthRepsPerExercise(2)).toBe(7);
+    expect(strengthDailyGoalMinutes(2)).toBe(5);
+    expect(strengthRepsPerExercise(3)).toBe(8);
+    expect(strengthDailyGoalMinutes(3)).toBe(5);
+    expect(strengthRepsPerExercise(4)).toBe(9);
+    expect(strengthDailyGoalMinutes(4)).toBe(6);
+    expect(STRENGTH_WORKOUT_REPS_BEFORE_MINUTE_BUMP).toBe(2);
+  });
+
+  it("treats legacy baseline minutes as level 0", () => {
+    expect(resolveStrengthProgressionLevel(4)).toBe(0);
+    expect(resolveStrengthProgressionLevel(4, 4)).toBe(0);
+    expect(resolveStrengthProgressionLevel(0)).toBe(0);
+    expect(resolveStrengthProgressionLevel(2)).toBe(2);
+  });
+
+  it("distinguishes level 4 from legacy baseline 4 using current goal", () => {
+    expect(resolveStrengthProgressionLevel(4, 6)).toBe(4);
+    expect(strengthRepsPerExercise(resolveStrengthProgressionLevel(4, 6))).toBe(9);
+    expect(strengthDailyGoalMinutes(resolveStrengthProgressionLevel(4, 6))).toBe(6);
   });
 });

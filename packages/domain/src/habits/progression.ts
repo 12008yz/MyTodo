@@ -1,3 +1,8 @@
+import {
+  resolveStrengthProgressionLevel,
+  strengthDailyGoalMinutes,
+} from "@mytodo/shared";
+
 export type DayStatus = "success" | "fail" | "skipped";
 
 export type HabitForProgression = {
@@ -12,12 +17,26 @@ export type HabitForProgression = {
   progressionIntervalDays?: number;
   /** Consecutive successful days counted toward the next goal change. */
   successDaysAtGoal?: number;
+  /** Custom light habits — drives strength-workout rep progression when set. */
+  categoryKey?: string | null;
+  /** Strength workout by legacy name when category_key is missing. */
+  name?: string | null;
+  /** Strength workout stores progression level here (legacy: 4 = level 0). */
+  baselineValue?: number;
 };
 
 export type ProgressionResult = {
   nextGoal: number;
   nextSuccessDaysAtGoal: number;
+  nextBaselineValue?: number;
 };
+
+function isStrengthWorkoutProgression(habit: HabitForProgression): boolean {
+  return (
+    habit.categoryKey === "strength_workout" ||
+    habit.name?.trim() === "Силовая тренировка"
+  );
+}
 
 export function applyDayProgression(
   habit: HabitForProgression,
@@ -44,6 +63,19 @@ export function applyDayProgression(
   if (isIncrease || isDecrease) {
     const nextSuccessDays = successDays + 1;
     if (nextSuccessDays >= interval) {
+      if (isIncrease && isStrengthWorkoutProgression(habit)) {
+        const level = resolveStrengthProgressionLevel(
+          habit.baselineValue ?? 0,
+          habit.currentGoal,
+        );
+        const nextLevel = level + 1;
+        return {
+          nextGoal: strengthDailyGoalMinutes(nextLevel),
+          nextSuccessDaysAtGoal: 0,
+          nextBaselineValue: nextLevel,
+        };
+      }
+
       if (isIncrease) {
         return {
           nextGoal: habit.currentGoal + habit.growthStep,

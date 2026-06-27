@@ -3,6 +3,7 @@ import {
   EARLY_RISE_SHIFT_MIN,
   LIGHT_GROWTH_INTERVAL_DAYS,
   resolveHabitIcon,
+  strengthDailyGoalMinutes,
   type CustomHabitUnit,
   type HabitCategoryKey,
   type HabitTemplate,
@@ -87,9 +88,10 @@ export function recalculateLightGoal(
   baselineValue: number,
   habit: HabitIdentity,
   profile: CalibrationProfile,
-  _activeLightHabitsCount: number,
+  activeLightHabitsCount: number,
+  currentGoalMinutes?: number,
 ): number {
-  return goalFromHabitIdentity(habit, profile, baselineValue);
+  return recommendLightGoal(habit, profile, baselineValue, currentGoalMinutes);
 }
 
 export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
@@ -170,11 +172,41 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
   }
 
   const { name, unit, baselineValue, categoryKey, profile, icon } = input;
-  const currentGoal = goalFromHabitIdentity(
-    { name, unit, templateId: null, categoryKey: categoryKey ?? null },
-    profile,
-    baselineValue,
-  );
+  const habitIdentity: HabitIdentity = {
+    name,
+    unit,
+    templateId: null,
+    categoryKey: categoryKey ?? null,
+  };
+  const isStrengthWorkout = resolveLightActivityId(habitIdentity) === "strength-workout";
+
+  if (isStrengthWorkout) {
+    const level = 0;
+    const meta = customHabitMeta(unit);
+    return {
+      name,
+      ...meta,
+      baselineValue: level,
+      currentGoal: strengthDailyGoalMinutes(level),
+      growthStep: 1,
+      progressionIntervalDays: LIGHT_GROWTH_INTERVAL_DAYS,
+      successDaysAtGoal: 0,
+      lastRelapseAt: null,
+      allowsWeeklySkip: true,
+      isCustom: true,
+      icon:
+        icon ??
+        resolveHabitIcon({
+          category_key: categoryKey ?? "strength_workout",
+          name,
+          side: "light",
+        }),
+      templateId: null,
+      categoryKey: categoryKey ?? "strength_workout",
+    };
+  }
+
+  const currentGoal = goalFromHabitIdentity(habitIdentity, profile, baselineValue);
   const meta = customHabitMeta(unit);
   const isEarlyRise = categoryKey === "early_rise" || resolveLightActivityId({ name, unit }) === "energy-early";
 
