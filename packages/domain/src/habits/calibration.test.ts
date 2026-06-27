@@ -256,6 +256,8 @@ describe("calibrateHabit", () => {
 
     expect(result.currentGoal).toBe(5);
     expect(result.baselineValue).toBe(5);
+    expect(result.growthStep).toBe(2);
+    expect(result.progressionIntervalDays).toBe(2);
   });
 
   it("keeps baseline when it is higher than recommendation", () => {

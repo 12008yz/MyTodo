@@ -175,7 +175,7 @@ describe("Day close worker", () => {
     expect(Number(snapshot?.goalValue)).toBe(habit.current_goal);
   });
 
-  it("increases light habit goal after third successful day close", async () => {
+  it("increases light habit goal after interval of successful day closes", async () => {
     const { auth, user } = await createOnboardedUser("light-third-close@example.com");
     const headers = { authorization: `Bearer ${auth.access_token}` };
 

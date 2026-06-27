@@ -1,6 +1,10 @@
-import { BOOKS_START_PAGES, LIGHT_GROWTH_INTERVAL_DAYS } from "@mytodo/shared";
+import {
+  BOOKS_GROWTH_STEP,
+  BOOKS_PROGRESSION_INTERVAL_DAYS,
+  BOOKS_START_PAGES,
+} from "@mytodo/shared";
 
-/** Сколько дней уйдёт на книгу при ежедневной цели с ростом +1 каждые 3 успешных дня. */
+/** Сколько дней уйдёт на книгу при ежедневной цели с ростом +2 каждые 2 успешных дня. */
 export function estimateDaysAtHabitGoal(params: {
   pageCount: number;
   startPagesPerDay: number;
@@ -11,8 +15,8 @@ export function estimateDaysAtHabitGoal(params: {
   const {
     pageCount,
     startPagesPerDay,
-    growthStep = 1,
-    intervalDays = LIGHT_GROWTH_INTERVAL_DAYS,
+    growthStep = BOOKS_GROWTH_STEP,
+    intervalDays = BOOKS_PROGRESSION_INTERVAL_DAYS,
     successDaysAtGoal = 0,
   } = params;
 
@@ -77,8 +81,8 @@ export function buildGeneralBookEstimate(pageCount: number): HabitBookEstimate {
   return buildHabitBookEstimate({
     pageCount,
     currentGoal: BOOKS_START_PAGES,
-    growthStep: 1,
-    intervalDays: LIGHT_GROWTH_INTERVAL_DAYS,
+    growthStep: BOOKS_GROWTH_STEP,
+    intervalDays: BOOKS_PROGRESSION_INTERVAL_DAYS,
     successDaysAtGoal: 0,
   });
 }

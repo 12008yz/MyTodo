@@ -212,10 +212,11 @@ describe("Checkins", () => {
     const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
     expect(checkin.status).toBe("success");
     expect(checkin.preview_next_goal).toBe(habit.current_goal);
-    expect(habit.progression_interval_days).toBe(3);
+    expect(habit.growth_step).toBe(2);
+    expect(habit.progression_interval_days).toBe(2);
   });
 
-  it("increases light preview_next_goal after third successful day", async () => {
+  it("increases light preview_next_goal after interval of successful days", async () => {
     const auth = await createOnboardedUser("light-third@example.com");
     const habit = await createLightHabit(auth.access_token);
     const headers = { authorization: `Bearer ${auth.access_token}` };

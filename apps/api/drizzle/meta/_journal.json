@@ -176,6 +176,13 @@
       "when": 1782771600000,
       "tag": "0025_reading_day_start",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1782775200000,
+      "tag": "0026_books_progression",
+      "breakpoints": true
     }
   ]
 }

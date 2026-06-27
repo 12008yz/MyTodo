@@ -62,6 +62,10 @@ export const LIGHT_GROWTH_INTERVAL_DAYS = 3;
 export const CUSTOM_MINUTES_STEP = 5;
 /** Habit planning: ~2 min per page (0.5 pages/min). */
 export const BOOKS_PAGES_PER_MIN = 0.5;
+/** After N successful days at current goal, daily page target increases by this step. */
+export const BOOKS_GROWTH_STEP = 2;
+/** Successful days at current page goal before the daily target grows. */
+export const BOOKS_PROGRESSION_INTERVAL_DAYS = 2;
 export const PUSHUP_SECONDS_PER_REP = 2;
 
 export type HabitTemplate = {
@@ -86,8 +90,8 @@ export const HABIT_TEMPLATES: Record<HabitTemplateId, HabitTemplate> = {
     type: "target",
     progressionDirection: "increase",
     unit: "pages",
-    growthStep: 1,
-    progressionIntervalDays: LIGHT_GROWTH_INTERVAL_DAYS,
+    growthStep: BOOKS_GROWTH_STEP,
+    progressionIntervalDays: BOOKS_PROGRESSION_INTERVAL_DAYS,
     icon: "/habits/light/books.png",
     phase: "reduction",
   },
