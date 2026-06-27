@@ -225,6 +225,9 @@ export {
   resolveStrengthProgressionLevel,
   strengthRepsPerExercise,
   strengthDailyGoalMinutes,
+  strengthProgressionLevelFromReps,
+  strengthProgressionLevelFromOnboardingBaseline,
+  formatStrengthWorkoutOnboardingDescription,
   type StrengthWorkoutExercise,
 } from "./constants/strength-workout.js";
 export {

@@ -4,6 +4,7 @@ import {
   LIGHT_GROWTH_INTERVAL_DAYS,
   resolveHabitIcon,
   strengthDailyGoalMinutes,
+  strengthProgressionLevelFromOnboardingBaseline,
   type CustomHabitUnit,
   type HabitCategoryKey,
   type HabitTemplate,
@@ -181,7 +182,7 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
   const isStrengthWorkout = resolveLightActivityId(habitIdentity) === "strength-workout";
 
   if (isStrengthWorkout) {
-    const level = 0;
+    const level = strengthProgressionLevelFromOnboardingBaseline(baselineValue);
     const meta = customHabitMeta(unit);
     return {
       name,

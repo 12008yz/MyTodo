@@ -166,27 +166,16 @@ function normalizeDemoHabitGoals(state: DemoState): DemoState {
     }
 
     if (isStrengthWorkoutHabit(habit)) {
-      const migratedHabit =
-        habit.baseline_value === 4 && habit.current_goal === 4
-          ? { ...habit, baseline_value: 0 }
-          : habit;
-      const expectedGoal = strengthDailyGoalMinutes(
-        resolveStrengthProgressionLevel(
-          migratedHabit.baseline_value,
-          migratedHabit.current_goal,
-        ),
+      const level = resolveStrengthProgressionLevel(
+        habit.baseline_value === 4 && habit.current_goal === 4 ? 0 : habit.baseline_value,
+        habit.current_goal,
       );
-      if (
-        migratedHabit.baseline_value === habit.baseline_value &&
-        migratedHabit.current_goal === expectedGoal
-      ) {
-        return migratedHabit;
+      const expectedGoal = strengthDailyGoalMinutes(level);
+      if (habit.baseline_value === level && habit.current_goal === expectedGoal) {
+        return habit;
       }
 
-      return {
-        ...migratedHabit,
-        current_goal: expectedGoal,
-      };
+      return { ...habit, baseline_value: level, current_goal: expectedGoal };
     }
 
     const recommendedGoal = recalculateLightGoal(

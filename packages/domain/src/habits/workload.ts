@@ -24,6 +24,7 @@ import {
   WALKING_MIN_MINUTES,
   resolveStrengthProgressionLevel,
   strengthDailyGoalMinutes,
+  strengthProgressionLevelFromOnboardingBaseline,
   type CustomHabitUnit,
   type HabitCategoryKey,
   type HabitTemplateId,
@@ -398,6 +399,11 @@ export function estimateHabitComfortMinutesWithSetup(
     Number.isFinite(baselineValue) &&
     baselineValue >= 0
   ) {
+    if (isStrengthWorkoutCircuit(habit)) {
+      const level = strengthProgressionLevelFromOnboardingBaseline(baselineValue);
+      return strengthDailyGoalMinutes(level);
+    }
+
     return habitGoalToComfortMinutes(habit.unit, baselineValue);
   }
 
@@ -479,6 +485,12 @@ export function formatHabitComfortLabelWithSetup(
     Number.isFinite(baselineValue) &&
     baselineValue >= 0
   ) {
+    if (isStrengthWorkoutCircuit(habit)) {
+      const level = strengthProgressionLevelFromOnboardingBaseline(baselineValue);
+      const minutes = strengthDailyGoalMinutes(level);
+      return `${Math.floor(baselineValue)} повт. × 4 (~${minutes} мин)`;
+    }
+
     const minutes = habitGoalToComfortMinutes(habit.unit, baselineValue);
 
     if (habit.unit === "pages") {

@@ -1,9 +1,18 @@
-import { HABIT_TEMPLATES, type HabitCategoryKey, type HabitTemplateId } from "@mytodo/shared";
 import {
-  estimateHabitsComfortMinutesWithSetup,
+  formatStrengthWorkoutOnboardingDescription,
+  HABIT_TEMPLATES,
+  strengthDailyGoalMinutes,
+  strengthProgressionLevelFromOnboardingBaseline,
+  STRENGTH_WORKOUT_INITIAL_REPS,
+  type HabitCategoryKey,
+  type HabitTemplateId,
+} from "@mytodo/shared";
+import {
+  estimateHabitComfortMinutesWithSetup,
   formatEarlyRiseTargetWakeTime,
   formatHabitComfortLabel,
   formatHabitComfortLabelWithSetup,
+  roundComfortMinutesTotal,
   type HabitComfortSetup,
   type HabitIdentity,
 } from "@mytodo/domain";
@@ -129,8 +138,8 @@ export const LIGHT_ACTIVITIES: LightActivity[] = [
     pathId: "strength",
     kind: "custom",
     label: "Силовая тренировка",
-    hint: "Минут в день",
-    description: "Упражнения под твой вес, рост и возраст",
+    hint: "Повторений в подходе",
+    description: formatStrengthWorkoutOnboardingDescription(),
     name: "Силовая тренировка",
     unit: "minutes",
     categoryKey: "strength_workout",
@@ -272,6 +281,10 @@ export function getBaselineHint(habit: SelectedHabit): string {
 }
 
 export function getAmountQuestion(habit: SelectedHabit, practicesNow: boolean): string {
+  if (habit.activityId === "strength-workout" && practicesNow) {
+    return "Сколько повторений делаешь в каждом упражнении?";
+  }
+
   const unit = habit.kind === "template"
     ? HABIT_TEMPLATES[habit.templateId].unit
     : habit.unit;
@@ -386,7 +399,7 @@ export function getDefaultLightBaseline(habit: SelectedHabit): string {
     return "0";
   }
   if (habit.activityId === "strength-workout") {
-    return "4";
+    return "0";
   }
   return "0";
 }
@@ -460,9 +473,21 @@ export function getHabitComfortLabel(habit: SelectedHabit): string {
 }
 
 export function estimateLightHabitsComfortMinutes(habits: SelectedHabit[]): number {
-  return estimateHabitsComfortMinutesWithSetup(
-    habits.filter(isLightSetupComplete).map(selectedHabitToComfortSetup),
-  );
+  const total = habits.filter(isLightSetupComplete).reduce((sum, habit) => {
+    if (
+      habit.activityId === "strength-workout" &&
+      habit.practicesNow === true &&
+      isLightBaselineValid(habit.baseline)
+    ) {
+      const reps = Number(habit.baseline.replace(",", "."));
+      const level = strengthProgressionLevelFromOnboardingBaseline(reps);
+      return sum + strengthDailyGoalMinutes(level);
+    }
+
+    return sum + estimateHabitComfortMinutesWithSetup(selectedHabitToComfortSetup(habit));
+  }, 0);
+
+  return roundComfortMinutesTotal(total);
 }
 
 export function getEarlyRiseSummary(habit: SelectedHabit, wakeTime: string): string {
@@ -494,12 +519,18 @@ export function getLightHabitSummary(habit: SelectedHabit, wakeTime?: string): s
       return "1 мин/день";
     }
     if (habit.activityId === "strength-workout") {
-      return "4 мин/день";
+      return `${STRENGTH_WORKOUT_INITIAL_REPS} повт. · 4 мин/день`;
     }
     return "Рост понемногу";
   }
 
   if (habit.practicesNow === true && isLightBaselineValid(habit.baseline)) {
+    if (habit.activityId === "strength-workout") {
+      const reps = Number(habit.baseline.replace(",", "."));
+      const level = strengthProgressionLevelFromOnboardingBaseline(reps);
+      return `${reps} повт. · ${strengthDailyGoalMinutes(level)} мин/день`;
+    }
+
     const unit =
       habit.kind === "template"
         ? HABIT_TEMPLATES[habit.templateId].unit
@@ -571,6 +602,9 @@ export function validateLightHabits(habits: SelectedHabit[]): string | null {
     if (!isLightSetupComplete(habit)) {
       if (habit.practicesNow === undefined) {
         return `Ответь, занимаешься ли сейчас «${getHabitDisplayName(habit)}»`;
+      }
+      if (habit.activityId === "strength-workout") {
+        return `Укажи, сколько повторений делаешь в «${getHabitDisplayName(habit)}»`;
       }
       return `Укажи, сколько занимаешься «${getHabitDisplayName(habit)}»`;
     }

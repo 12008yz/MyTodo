@@ -20,6 +20,9 @@ import {
   listExerciseDemoUrls,
   resolveStrengthProgressionLevel,
   strengthDailyGoalMinutes,
+  strengthProgressionLevelFromReps,
+  strengthProgressionLevelFromOnboardingBaseline,
+  formatStrengthWorkoutOnboardingDescription,
   strengthRepsPerExercise,
 } from "./strength-workout.js";
 
@@ -93,6 +96,8 @@ describe("strength workout constants", () => {
   it("keeps four minutes for levels 0 and 1, then adds a minute every two levels", () => {
     expect(strengthRepsPerExercise(0)).toBe(5);
     expect(strengthDailyGoalMinutes(0)).toBe(4);
+    expect(strengthDailyGoalMinutes(-1)).toBe(3);
+    expect(strengthDailyGoalMinutes(-2)).toBe(3);
     expect(strengthRepsPerExercise(1)).toBe(6);
     expect(strengthDailyGoalMinutes(1)).toBe(4);
     expect(strengthRepsPerExercise(2)).toBe(7);
@@ -107,6 +112,7 @@ describe("strength workout constants", () => {
   it("treats legacy baseline minutes as level 0", () => {
     expect(resolveStrengthProgressionLevel(4)).toBe(0);
     expect(resolveStrengthProgressionLevel(4, 4)).toBe(0);
+    expect(resolveStrengthProgressionLevel(4, 3)).toBe(-1);
     expect(resolveStrengthProgressionLevel(0)).toBe(0);
     expect(resolveStrengthProgressionLevel(2)).toBe(2);
   });
@@ -115,5 +121,35 @@ describe("strength workout constants", () => {
     expect(resolveStrengthProgressionLevel(4, 6)).toBe(4);
     expect(strengthRepsPerExercise(resolveStrengthProgressionLevel(4, 6))).toBe(9);
     expect(strengthDailyGoalMinutes(resolveStrengthProgressionLevel(4, 6))).toBe(6);
+  });
+
+  it("recovers level when onboarding reps were stored in baseline_value", () => {
+    expect(resolveStrengthProgressionLevel(15, 15)).toBe(10);
+    expect(resolveStrengthProgressionLevel(15, 9)).toBe(10);
+    expect(strengthRepsPerExercise(resolveStrengthProgressionLevel(15, 9))).toBe(15);
+    expect(resolveStrengthProgressionLevel(10, 9)).toBe(10);
+    expect(strengthRepsPerExercise(resolveStrengthProgressionLevel(10, 9))).toBe(15);
+    expect(resolveStrengthProgressionLevel(10)).toBe(10);
+    expect(resolveStrengthProgressionLevel(10, undefined)).toBe(10);
+    expect(resolveStrengthProgressionLevel(3, 3)).toBe(-2);
+    expect(strengthRepsPerExercise(resolveStrengthProgressionLevel(3, 3))).toBe(3);
+    expect(resolveStrengthProgressionLevel(1, 4)).toBe(1);
+  });
+
+  it("maps onboarding reps to progression level", () => {
+    expect(strengthProgressionLevelFromReps(5)).toBe(0);
+    expect(strengthProgressionLevelFromReps(4)).toBe(-1);
+    expect(strengthProgressionLevelFromReps(3)).toBe(-2);
+    expect(strengthProgressionLevelFromReps(10)).toBe(5);
+    expect(strengthProgressionLevelFromOnboardingBaseline(0)).toBe(0);
+    expect(strengthProgressionLevelFromOnboardingBaseline(3)).toBe(-2);
+    expect(strengthProgressionLevelFromOnboardingBaseline(10)).toBe(5);
+    expect(strengthRepsPerExercise(strengthProgressionLevelFromOnboardingBaseline(3))).toBe(3);
+  });
+
+  it("formats onboarding exercise list", () => {
+    expect(formatStrengthWorkoutOnboardingDescription()).toBe(
+      "В круге: приседания, отжимания, выпады и подтягивания.",
+    );
   });
 });

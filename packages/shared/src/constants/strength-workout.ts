@@ -42,37 +42,93 @@ export function resolveStrengthProgressionLevel(
   baselineValue: number,
   currentGoalMinutes?: number,
 ): number {
-  if (!Number.isFinite(baselineValue) || baselineValue < 0) {
+  if (!Number.isFinite(baselineValue)) {
     return 0;
   }
 
-  // Legacy onboarding stored daily minutes (4) at level 0. Level 4 also uses baseline 4,
-  // but then current_goal is already above the starting four minutes.
-  if (
-    baselineValue === STRENGTH_WORKOUT_BASE_MINUTES &&
-    currentGoalMinutes != null &&
-    currentGoalMinutes > STRENGTH_WORKOUT_BASE_MINUTES
-  ) {
-    return STRENGTH_WORKOUT_BASE_MINUTES;
-  }
-
+  // Legacy: baseline 4 meant level 0 (four-minute beginner) or progression level 4.
   if (baselineValue === STRENGTH_WORKOUT_BASE_MINUTES) {
+    if (currentGoalMinutes != null && currentGoalMinutes > STRENGTH_WORKOUT_BASE_MINUTES) {
+      return STRENGTH_WORKOUT_BASE_MINUTES;
+    }
+    if (
+      currentGoalMinutes != null &&
+      strengthDailyGoalMinutes(strengthProgressionLevelFromReps(baselineValue)) ===
+        currentGoalMinutes
+    ) {
+      return strengthProgressionLevelFromReps(baselineValue);
+    }
     return 0;
+  }
+
+  // Low rep counts stored directly (legacy) — e.g. baseline 3 with goal 3.
+  if (
+    baselineValue > 0 &&
+    baselineValue < STRENGTH_WORKOUT_INITIAL_REPS &&
+    currentGoalMinutes === baselineValue
+  ) {
+    return strengthProgressionLevelFromReps(baselineValue);
+  }
+
+  // High rep counts stored directly (legacy) — e.g. baseline 15 means 15 reps, not level 15.
+  if (baselineValue >= STRENGTH_WORKOUT_INITIAL_REPS) {
+    const levelFromReps = strengthProgressionLevelFromReps(baselineValue);
+    if (levelFromReps < baselineValue) {
+      const goalForRepsLevel = strengthDailyGoalMinutes(levelFromReps);
+      const looksLikeRawOnboardingReps =
+        currentGoalMinutes === baselineValue ||
+        currentGoalMinutes === goalForRepsLevel;
+
+      if (looksLikeRawOnboardingReps) {
+        return levelFromReps;
+      }
+    }
   }
 
   return Math.floor(baselineValue);
 }
 
 export function strengthRepsPerExercise(level: number): number {
-  return STRENGTH_WORKOUT_INITIAL_REPS + Math.max(0, level);
+  return Math.max(1, STRENGTH_WORKOUT_INITIAL_REPS + level);
 }
 
 export function strengthDailyGoalMinutes(level: number): number {
-  const safeLevel = Math.max(0, level);
-  return (
+  const minutes =
     STRENGTH_WORKOUT_BASE_MINUTES +
-    Math.floor(safeLevel / STRENGTH_WORKOUT_REPS_BEFORE_MINUTE_BUMP)
-  );
+    Math.floor(level / STRENGTH_WORKOUT_REPS_BEFORE_MINUTE_BUMP);
+  return Math.max(1, minutes);
+}
+
+/** Maps reps per exercise (onboarding input) to stored progression level. */
+export function strengthProgressionLevelFromReps(reps: number): number {
+  if (!Number.isFinite(reps) || reps <= 0) {
+    return 0;
+  }
+  return Math.floor(reps) - STRENGTH_WORKOUT_INITIAL_REPS;
+}
+
+/** Converts onboarding baseline (reps) to progression level. */
+export function strengthProgressionLevelFromOnboardingBaseline(baselineValue: number): number {
+  if (!Number.isFinite(baselineValue) || baselineValue < 0) {
+    return 0;
+  }
+  if (baselineValue === 0) {
+    return 0;
+  }
+  return strengthProgressionLevelFromReps(baselineValue);
+}
+
+/** Short copy for onboarding — lists circuit exercises. */
+export function formatStrengthWorkoutOnboardingDescription(): string {
+  const names = STRENGTH_WORKOUT_EXERCISES.map((item) => item.name.toLowerCase());
+  const last = names.at(-1);
+  if (!last || names.length === 0) {
+    return "";
+  }
+  if (names.length === 1) {
+    return `В круге: ${last}.`;
+  }
+  return `В круге: ${names.slice(0, -1).join(", ")} и ${last}.`;
 }
 
 /** Cache-busted URL for exercise demo media (bump EXERCISE_MEDIA_CACHE_VERSION when files change). */

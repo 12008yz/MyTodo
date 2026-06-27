@@ -3,6 +3,8 @@ import {
   FOREIGN_LANGUAGE_HABIT_NAME,
   HABIT_TEMPLATES,
   MEDITATION_HABIT_NAME,
+  resolveStrengthProgressionLevel,
+  strengthRepsPerExercise,
 } from "@mytodo/shared";
 import { calibrateHabit, recalculateLightGoal } from "./calibration.js";
 import {
@@ -14,6 +16,7 @@ import {
   recommendDailyMinutes,
   recommendLightGoal,
   resolveLightActivityId,
+  formatHabitComfortLabelWithSetup,
 } from "./workload.js";
 
 const profile = {
@@ -115,6 +118,52 @@ describe("workload", () => {
     expect(recommendLightGoal(habit, profile, 2)).toBe(5);
     expect(recommendLightGoal(habit, profile, 3)).toBe(5);
     expect(recommendLightGoal(habit, profile, 4, 6)).toBe(6);
+    expect(recommendLightGoal(habit, profile, 10)).toBe(9);
+  });
+
+  it("estimates strength workout comfort from onboarding reps", () => {
+    const habit = {
+      name: "Силовая тренировка",
+      unit: "minutes" as const,
+      categoryKey: "strength_workout" as const,
+    };
+
+    expect(
+      estimateHabitsComfortMinutesWithSetup([
+        { habit, practicesNow: true, baselineValue: 4 },
+      ]),
+    ).toBe(3);
+    expect(
+      estimateHabitsComfortMinutesWithSetup([
+        { habit, practicesNow: true, baselineValue: 3 },
+      ]),
+    ).toBe(3);
+    expect(
+      estimateHabitsComfortMinutesWithSetup([
+        { habit, practicesNow: true, baselineValue: 10 },
+      ]),
+    ).toBe(6);
+    expect(
+      formatHabitComfortLabelWithSetup({
+        habit,
+        practicesNow: true,
+        baselineValue: 4,
+      }),
+    ).toBe("4 повт. × 4 (~3 мин)");
+    expect(
+      formatHabitComfortLabelWithSetup({
+        habit,
+        practicesNow: true,
+        baselineValue: 3,
+      }),
+    ).toBe("3 повт. × 4 (~3 мин)");
+    expect(
+      formatHabitComfortLabelWithSetup({
+        habit,
+        practicesNow: true,
+        baselineValue: 10,
+      }),
+    ).toBe("10 повт. × 4 (~6 мин)");
   });
 
   it("uses entered baseline for comfort minutes total", () => {
@@ -325,7 +374,7 @@ describe("calibrateHabit", () => {
     expect(result.progressionIntervalDays).toBe(3);
   });
 
-  it("calibrates strength workout at level 0 with four-minute daily goal", () => {
+  it("calibrates four onboarding reps below default five", () => {
     const result = calibrateHabit({
       kind: "custom",
       name: "Силовая тренировка",
@@ -336,11 +385,98 @@ describe("calibrateHabit", () => {
       activeLightHabitsIncludingNew: 1,
     });
 
-    expect(result.currentGoal).toBe(4);
-    expect(result.baselineValue).toBe(0);
-    expect(result.growthStep).toBe(1);
-    expect(result.progressionIntervalDays).toBe(3);
+    expect(result.baselineValue).toBe(-1);
+    expect(result.currentGoal).toBe(3);
+    expect(
+      strengthRepsPerExercise(
+        resolveStrengthProgressionLevel(result.baselineValue, result.currentGoal),
+      ),
+    ).toBe(4);
+  });
+
+  it("calibrates three onboarding reps as entered", () => {
+    const result = calibrateHabit({
+      kind: "custom",
+      name: "Силовая тренировка",
+      unit: "minutes",
+      baselineValue: 3,
+      categoryKey: "strength_workout",
+      profile,
+      activeLightHabitsIncludingNew: 1,
+    });
+
+    expect(result.baselineValue).toBe(-2);
+    expect(result.currentGoal).toBe(3);
+    expect(
+      strengthRepsPerExercise(
+        resolveStrengthProgressionLevel(result.baselineValue, result.currentGoal),
+      ),
+    ).toBe(3);
+  });
+
+  it("calibrates strength workout from onboarding reps", () => {
+    const result = calibrateHabit({
+      kind: "custom",
+      name: "Силовая тренировка",
+      unit: "minutes",
+      baselineValue: 10,
+      categoryKey: "strength_workout",
+      profile,
+      activeLightHabitsIncludingNew: 1,
+    });
+
+    expect(result.baselineValue).toBe(5);
+    expect(result.currentGoal).toBe(6);
+  });
+
+  it("calibrates 15 onboarding reps to level 10 with nine-minute goal", () => {
+    const result = calibrateHabit({
+      kind: "custom",
+      name: "Силовая тренировка",
+      unit: "minutes",
+      baselineValue: 15,
+      categoryKey: "strength_workout",
+      profile,
+      activeLightHabitsIncludingNew: 1,
+    });
+
+    expect(result.baselineValue).toBe(10);
+    expect(result.currentGoal).toBe(9);
+    expect(
+      strengthRepsPerExercise(
+        resolveStrengthProgressionLevel(result.baselineValue, result.currentGoal),
+      ),
+    ).toBe(15);
+  });
+
+  it("calibrates strength workout from reps without category key", () => {
+    const result = calibrateHabit({
+      kind: "custom",
+      name: "Силовая тренировка",
+      unit: "minutes",
+      baselineValue: 15,
+      profile,
+      activeLightHabitsIncludingNew: 1,
+    });
+
+    expect(result.baselineValue).toBe(10);
+    expect(result.currentGoal).toBe(9);
     expect(result.categoryKey).toBe("strength_workout");
+  });
+
+  it("calibrates strength workout beginner baseline at level 0", () => {
+    const result = calibrateHabit({
+      kind: "custom",
+      name: "Силовая тренировка",
+      unit: "minutes",
+      baselineValue: 0,
+      categoryKey: "strength_workout",
+      profile,
+      activeLightHabitsIncludingNew: 1,
+    });
+
+    expect(result.baselineValue).toBe(0);
+    expect(result.currentGoal).toBe(4);
   });
 
   it("calibrates plank starting at 20 seconds", () => {
