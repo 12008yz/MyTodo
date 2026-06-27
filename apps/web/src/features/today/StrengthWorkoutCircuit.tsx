@@ -52,6 +52,8 @@ function CheckIcon({ className }: { className?: string }) {
   );
 }
 
+const EXERCISE_DEMO_PLAYBACK_RATE = 1.3;
+
 function ExerciseDemoVideo({ src, label }: { src: string; label: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -60,6 +62,8 @@ function ExerciseDemoVideo({ src, label }: { src: string; label: string }) {
     if (!video) {
       return;
     }
+
+    video.playbackRate = EXERCISE_DEMO_PLAYBACK_RATE;
 
     const tryPlay = () => {
       void video.play().catch(() => {});
