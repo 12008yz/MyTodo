@@ -10,7 +10,7 @@ import {
   isDateInRange,
   type DayCheckin,
 } from "@mytodo/domain";
-import { AWARENESS_SESSION_MIN, isNutritionHabit, resolveHabitDisplayName, type HabitTemplateId, type HabitUnit } from "@mytodo/shared";
+import { AWARENESS_SESSION_MIN, isNutritionHabit, resolveHabitDisplayName, type HabitCategoryKey, type HabitTemplateId, type HabitUnit } from "@mytodo/shared";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Database } from "../db/index.js";
 import { checkins, habits, type Habit, type User } from "../db/schema/index.js";
@@ -168,8 +168,8 @@ export class TodayService {
           unit: (habit.unit ?? "minutes") as HabitUnit,
           current_goal: Number(habit.currentGoal),
           checkin_value: checkin?.value == null ? 0 : Number(checkin.value),
-          template_id: habit.templateId,
-          category_key: habit.categoryKey,
+          template_id: habit.templateId as HabitTemplateId | null,
+          category_key: habit.categoryKey as HabitCategoryKey | null,
         };
       });
 

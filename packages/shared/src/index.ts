@@ -251,6 +251,7 @@ export {
   STRENGTH_WORKOUT_TARGET_MINUTES,
   WALKING_MIN_MINUTES,
   maxLightHabitsForBudget,
+  computeSessionCompletionMinutes,
   sessionBudgetMinutes,
   sessionTotalSeconds,
   SESSION_MAX_MIN,

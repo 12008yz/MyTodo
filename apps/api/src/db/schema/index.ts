@@ -455,7 +455,7 @@ export const pledges = pgTable(
     ),
     charityFundCheck: check(
       "pledges_charity_fund_check",
-      sql`${table.charity_fund} IN ('oncology', 'children', 'animals')`,
+      sql`${table.charityFund} IN ('oncology', 'children', 'animals')`,
     ),
   }),
 );

@@ -205,7 +205,7 @@ export class PledgeService {
     return processed;
   }
 
-  private async completePledge(pledge: Pledge, now: Date): Promise<void> {
+  private async completePledge(pledge: Pledge, _now: Date): Promise<void> {
     const periodEnd = addDays(pledge.startedAt, PLEDGE_PERIOD_DAYS - 1);
     const records = await this.db
       .select({ date: dailyStats.date, status: dailyStats.status })

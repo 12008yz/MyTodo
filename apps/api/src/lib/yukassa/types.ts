@@ -29,6 +29,7 @@ export type CreateRecurringPaymentInput = {
   paymentMethodId: string;
   description: string;
   idempotenceKey: string;
+  extraMetadata?: Record<string, string>;
 };
 
 export type YukassaWebhookEvent = {

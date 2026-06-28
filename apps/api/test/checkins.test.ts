@@ -242,6 +242,47 @@ describe("Checkins", () => {
     expect(checkin.preview_next_goal).toBe(habit.current_goal + habit.growth_step);
   });
 
+  it("keeps meditation preview_next_goal at 1 minute after successful check-in", async () => {
+    const auth = await createOnboardedUser("meditation-checkin@example.com");
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+
+    const habitResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers,
+      payload: {
+        name: "Медитация",
+        unit: "minutes",
+        baseline_value: 10,
+        category_key: "meditation",
+      },
+    });
+    const habit = habitResponseSchema.parse(JSON.parse(habitResponse.body));
+    expect(habit.current_goal).toBe(1);
+    expect(habit.growth_step).toBe(0);
+
+    await db
+      .update(habits)
+      .set({ successDaysAtGoal: 2 })
+      .where(eq(habits.id, habit.id));
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins",
+      headers,
+      payload: {
+        habit_id: habit.id,
+        date: "2026-06-20",
+        value: habit.current_goal,
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
+    expect(checkin.status).toBe("success");
+    expect(checkin.preview_next_goal).toBe(1);
+  });
+
   it("records light habit success without changing current_goal", async () => {
     const auth = await createOnboardedUser();
     const habit = await createLightHabit(auth.access_token);

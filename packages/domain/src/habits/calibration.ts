@@ -2,6 +2,7 @@ import {
   CUSTOM_MINUTES_STEP,
   EARLY_RISE_SHIFT_MIN,
   LIGHT_GROWTH_INTERVAL_DAYS,
+  MEDITATION_DAILY_GOAL_MIN,
   resolveHabitIcon,
   strengthDailyGoalMinutes,
   strengthProgressionLevelFromOnboardingBaseline,
@@ -212,15 +213,17 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
   const isEarlyRise = categoryKey === "early_rise" || resolveLightActivityId({ name, unit }) === "energy-early";
   const isNutrition =
     categoryKey === "healthy_nutrition" || resolveLightActivityId({ name, unit }) === "energy-nutrition";
+  const isMeditation =
+    categoryKey === "meditation" || resolveLightActivityId({ name, unit }) === "mindfulness-meditation";
 
   return {
     name,
     ...meta,
-    baselineValue,
+    baselineValue: isMeditation ? MEDITATION_DAILY_GOAL_MIN : baselineValue,
     currentGoal,
     growthStep: isEarlyRise
       ? EARLY_RISE_SHIFT_MIN
-      : isNutrition
+      : isNutrition || isMeditation
         ? 0
         : growthStepForCustomUnit(unit),
     progressionIntervalDays: LIGHT_GROWTH_INTERVAL_DAYS,

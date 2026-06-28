@@ -2,6 +2,8 @@ import {
   resolveStrengthProgressionLevel,
   strengthDailyGoalMinutes,
   isNutritionCategoryKey,
+  MEDITATION_DAILY_GOAL_MIN,
+  MEDITATION_HABIT_NAME,
   NUTRITION_HABIT_NAME,
 } from "@mytodo/shared";
 
@@ -47,12 +49,23 @@ function isNutritionProgression(habit: HabitForProgression): boolean {
   );
 }
 
+function isMeditationProgression(habit: HabitForProgression): boolean {
+  return (
+    habit.categoryKey === "meditation" ||
+    habit.name?.trim() === MEDITATION_HABIT_NAME
+  );
+}
+
 export function applyDayProgression(
   habit: HabitForProgression,
   dayStatus: DayStatus,
 ): ProgressionResult {
   if (isNutritionProgression(habit)) {
     return { nextGoal: 0, nextSuccessDaysAtGoal: 0 };
+  }
+
+  if (isMeditationProgression(habit)) {
+    return { nextGoal: MEDITATION_DAILY_GOAL_MIN, nextSuccessDaysAtGoal: 0 };
   }
 
   const interval = habit.progressionIntervalDays ?? 1;

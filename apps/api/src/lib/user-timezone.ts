@@ -1,6 +1,6 @@
 import { shouldApplyPendingTimezone } from "@mytodo/domain";
 import { eq } from "drizzle-orm";
-import type { Database, DbExecutor } from "../db/index.js";
+import type { DbExecutor } from "../db/index.js";
 import { users, type User } from "../db/schema/index.js";
 
 export async function applyPendingTimezoneIfDue(

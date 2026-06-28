@@ -615,7 +615,6 @@ export function DailyPlanList({
       }
 
       setIsEnding(true);
-      const elapsedValue = Math.max(timer.elapsedMin, 0);
       const currentFocus = focusState;
       setFocusState(null);
       setBackgroundSessions((prev) => {
@@ -668,7 +667,7 @@ export function DailyPlanList({
           currentFocus.habit.id,
           currentFocus.sessionBlockId,
           currentFocus.isPlanBlock,
-          { value: elapsedValue, endedEarly },
+          { value: currentFocus.plannedMin, endedEarly },
         );
         setIsEnding(false);
         return;

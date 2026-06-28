@@ -104,6 +104,25 @@ describe("Habits", () => {
     expect(meditationResponse.statusCode).toBe(201);
     const meditation = habitResponseSchema.parse(JSON.parse(meditationResponse.body));
     expect(meditation.current_goal).toBe(1);
+    expect(meditation.growth_step).toBe(0);
+    expect(meditation.baseline_value).toBe(1);
+
+    const highBaselineResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers,
+      payload: {
+        name: "Медитация",
+        unit: "minutes",
+        baseline_value: 10,
+        category_key: "meditation",
+      },
+    });
+    expect(highBaselineResponse.statusCode).toBe(201);
+    const highBaselineMeditation = habitResponseSchema.parse(JSON.parse(highBaselineResponse.body));
+    expect(highBaselineMeditation.current_goal).toBe(1);
+    expect(highBaselineMeditation.growth_step).toBe(0);
+    expect(highBaselineMeditation.baseline_value).toBe(1);
 
     const languageResponse = await app.inject({
       method: "POST",

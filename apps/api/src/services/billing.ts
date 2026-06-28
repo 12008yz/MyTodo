@@ -16,7 +16,6 @@ import type { Database } from "../db/index.js";
 import {
   billingWebhookEvents,
   subscriptions,
-  users,
   type Subscription,
   type User,
 } from "../db/schema/index.js";

@@ -1,40 +1,36 @@
 import type { HabitCategoryKey } from "../constants/habits.js";
 import { MEDITATION_HABIT_NAME, NUTRITION_HABIT_NAME } from "../constants/sessions.js";
 
+type HabitCategoryRef = {
+  category_key?: HabitCategoryKey | string | null;
+  name?: string | null;
+};
+
 export function isEarlyRiseCategoryKey(
-  categoryKey: HabitCategoryKey | null | undefined,
+  categoryKey: HabitCategoryKey | string | null | undefined,
 ): boolean {
   return categoryKey === "early_rise";
 }
 
 export function isNutritionCategoryKey(
-  categoryKey: HabitCategoryKey | null | undefined,
+  categoryKey: HabitCategoryKey | string | null | undefined,
 ): boolean {
   return categoryKey === "healthy_nutrition";
 }
 
-export function isNutritionHabit(habit: {
-  category_key?: HabitCategoryKey | null;
-  name?: string | null;
-}): boolean {
+export function isNutritionHabit(habit: HabitCategoryRef): boolean {
   return (
     isNutritionCategoryKey(habit.category_key) ||
     habit.name?.trim() === NUTRITION_HABIT_NAME
   );
 }
 
-export function isMeditationHabit(habit: {
-  category_key?: HabitCategoryKey | null;
-  name?: string | null;
-}): boolean {
+export function isMeditationHabit(habit: HabitCategoryRef): boolean {
   return habit.category_key === "meditation" || habit.name?.trim() === MEDITATION_HABIT_NAME;
 }
 
 /** Light habits that provide utility without daily check-in / day-close. */
-export function isCompanionLightHabit(habit: {
-  category_key?: HabitCategoryKey | null;
-  name?: string | null;
-}): boolean {
+export function isCompanionLightHabit(habit: HabitCategoryRef): boolean {
   return isNutritionHabit(habit);
 }
 

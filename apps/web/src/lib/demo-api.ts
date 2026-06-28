@@ -2,6 +2,7 @@ import { buildDailyPlan, calibrateHabit, computeNextGoal, recalculateLightGoal, 
 import {
   AWARENESS_SESSION_MIN,
   SESSION_TARGET_MIN,
+  computeSessionCompletionMinutes,
   sessionBudgetMinutes,
   sessionTotalSeconds,
   SOCIAL_MEDIA_MIN_GOAL,
@@ -10,9 +11,11 @@ import {
   HABIT_TEMPLATES,
   isStrengthWorkoutHabit,
   isNutritionHabit,
+  isMeditationHabit,
   isKnownNutritionIngredientId,
   isKnownNutritionRecipeId,
   NUTRITION_MIN_INGREDIENTS,
+  MEDITATION_DAILY_GOAL_MIN,
   resolveHabitDisplayName,
   resolveHabitIcon,
   resolveStrengthProgressionLevel,
@@ -205,6 +208,23 @@ function normalizeDemoHabitGoals(state: DemoState): DemoState {
       }
 
       return { ...habit, baseline_value: level, current_goal: expectedGoal };
+    }
+
+    if (isMeditationHabit(habit)) {
+      if (
+        habit.current_goal === MEDITATION_DAILY_GOAL_MIN &&
+        habit.baseline_value === MEDITATION_DAILY_GOAL_MIN &&
+        habit.growth_step === 0
+      ) {
+        return habit;
+      }
+
+      return {
+        ...habit,
+        baseline_value: MEDITATION_DAILY_GOAL_MIN,
+        current_goal: MEDITATION_DAILY_GOAL_MIN,
+        growth_step: 0,
+      };
     }
 
     const recommendedGoal = recalculateLightGoal(
@@ -592,7 +612,7 @@ const SHOWCASE_CUSTOM_LIGHT: ReadonlyArray<{
   baseline: number;
   categoryKey: HabitCategoryKey;
 }> = [
-  { name: "Медитация", unit: "minutes", baseline: 10, categoryKey: "meditation" },
+  { name: "Медитация", unit: "minutes", baseline: 1, categoryKey: "meditation" },
   { name: "Иностранный язык", unit: "minutes", baseline: 15, categoryKey: "language" },
   { name: "Дневник благодарности", unit: "minutes", baseline: 5, categoryKey: "gratitude" },
   { name: "Силовая тренировка", unit: "minutes", baseline: 4, categoryKey: "strength_workout" },
@@ -1540,9 +1560,12 @@ export function demoCompleteHabitSession(
     throw new Error("Session is too short to complete");
   }
 
-  const actualMin = data.ended_early
-    ? session.planned_min
-    : Math.max(1, Math.ceil(elapsedMs / 60_000));
+  const actualMin = computeSessionCompletionMinutes(
+    elapsedMs,
+    session.planned_min,
+    session.planned_seconds,
+    data.ended_early ?? false,
+  );
   const useDailyTotal = habit.side === "dark" && habit.type === "limit";
 
   let valueToAdd: number;

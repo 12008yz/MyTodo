@@ -239,7 +239,7 @@ export function recommendLightGoal(
   const activityId = resolveLightActivityId(habit);
 
   if (activityId === "mindfulness-meditation") {
-    return Math.max(baselineValue, MEDITATION_DAILY_GOAL_MIN);
+    return MEDITATION_DAILY_GOAL_MIN;
   }
 
   if (activityId === "mindfulness-language") {
@@ -399,6 +399,10 @@ export function estimateHabitComfortMinutesWithSetup(
     Number.isFinite(baselineValue) &&
     baselineValue >= 0
   ) {
+    if (resolveLightActivityId(habit) === "mindfulness-meditation") {
+      return MEDITATION_DAILY_GOAL_MIN;
+    }
+
     if (isStrengthWorkoutCircuit(habit)) {
       const level = strengthProgressionLevelFromOnboardingBaseline(baselineValue);
       return strengthDailyGoalMinutes(level);
@@ -485,6 +489,10 @@ export function formatHabitComfortLabelWithSetup(
     Number.isFinite(baselineValue) &&
     baselineValue >= 0
   ) {
+    if (resolveLightActivityId(habit) === "mindfulness-meditation") {
+      return `~${MEDITATION_DAILY_GOAL_MIN} мин/день`;
+    }
+
     if (isStrengthWorkoutCircuit(habit)) {
       const level = strengthProgressionLevelFromOnboardingBaseline(baselineValue);
       const minutes = strengthDailyGoalMinutes(level);

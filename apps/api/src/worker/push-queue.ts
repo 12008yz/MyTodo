@@ -1,7 +1,6 @@
 import { Queue, Worker, type ConnectionOptions } from "bullmq";
 import type { Redis } from "ioredis";
 import { DOOM_SCROLL_DURATION_MIN } from "@mytodo/shared";
-import type { Database } from "../db/index.js";
 import type { PushService } from "../services/push.js";
 import type { DoomScrollService } from "../services/doom-scroll.js";
 

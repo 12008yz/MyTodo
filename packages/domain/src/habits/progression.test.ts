@@ -149,4 +149,19 @@ describe("computeNextGoal", () => {
       nextBaselineValue: 2,
     });
   });
+
+  it("keeps meditation at 1 minute without growth", () => {
+    const meditation: HabitForProgression = {
+      ...lightTarget(1, 5),
+      categoryKey: "meditation",
+      progressionIntervalDays: 3,
+      successDaysAtGoal: 2,
+    };
+
+    expect(applyDayProgression(meditation, "success")).toEqual({
+      nextGoal: 1,
+      nextSuccessDaysAtGoal: 0,
+    });
+    expect(computeNextGoal(meditation, "success")).toBe(1);
+  });
 });

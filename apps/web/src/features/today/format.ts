@@ -2,6 +2,7 @@ import type { DailyPlanBlock, HabitUnit, TodayDarkHabit, TodayLightHabit } from 
 import {
   isEarlyRiseCategoryKey,
   isCompanionLightHabit,
+  isMeditationHabit,
   isStrengthWorkoutHabit,
   resolveStrengthProgressionLevel,
   strengthRepsPerExercise,
@@ -126,6 +127,13 @@ export function formatCardHint(params: {
     if (isEarlyRise && wakeTime && habit.preview_next_goal > habit.current_goal) {
       return {
         text: `Цель выполнена · завтра: ${formatEarlyRiseTargetWakeTime(wakeTime, habit.preview_next_goal)}`,
+        variant: "success",
+      };
+    }
+
+    if (isMeditationHabit(habit)) {
+      return {
+        text: "Цель выполнена",
         variant: "success",
       };
     }

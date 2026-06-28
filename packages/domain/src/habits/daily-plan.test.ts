@@ -18,7 +18,7 @@ describe("goalToMinutes", () => {
 describe("buildDailyPlan", () => {
   const habits = [
     { id: "h1", name: "Книги", icon: null, unit: "pages" as const, current_goal: 20, checkin_value: 0 },
-    { id: "h2", name: "Бег", icon: null, unit: "minutes" as const, current_goal: 15, checkin_value: 0, template_id: "running" },
+    { id: "h2", name: "Бег", icon: null, unit: "minutes" as const, current_goal: 15, checkin_value: 0, template_id: "running" as const },
   ];
 
   it("returns empty blocks when all goals met", () => {
@@ -45,7 +45,7 @@ describe("buildDailyPlan", () => {
           unit: "minutes",
           current_goal: 10,
           checkin_value: 0,
-          template_id: "running",
+          template_id: "running" as const,
         },
       ],
     });
@@ -80,7 +80,7 @@ describe("buildDailyPlan", () => {
           unit: "minutes",
           current_goal: 20,
           checkin_value: 0,
-          template_id: "running",
+          template_id: "running" as const,
         },
       ],
     });
@@ -123,7 +123,7 @@ describe("buildDailyPlan", () => {
           unit: "minutes",
           current_goal: 7,
           checkin_value: 0,
-          template_id: "running",
+          template_id: "running" as const,
         },
       ],
     });
@@ -188,7 +188,7 @@ describe("buildDailyPlan", () => {
           unit: "minutes",
           current_goal: 10,
           checkin_value: 0,
-          template_id: "running",
+          template_id: "running" as const,
         },
       ],
     });
@@ -211,7 +211,7 @@ describe("buildDailyPlan", () => {
           unit: "pages",
           current_goal: 5,
           checkin_value: 0,
-          template_id: "books",
+          template_id: "books" as const,
         },
       ],
     });
@@ -233,7 +233,7 @@ describe("buildDailyPlan", () => {
           unit: "seconds",
           current_goal: 35,
           checkin_value: 0,
-          template_id: "plank",
+          template_id: "plank" as const,
         },
       ],
     });

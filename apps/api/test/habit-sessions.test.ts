@@ -181,6 +181,27 @@ describe("Habit sessions", () => {
     expect(complete.value_added).toBe(10);
   });
 
+  it("credits one minute when a one-minute timer finishes slightly over sixty seconds", async () => {
+    const { user, auth } = await createOnboardedUser("sessions-meditation@example.com");
+    const habit = await createRunningHabit(auth.access_token);
+    const service = new HabitSessionService(app.db);
+
+    const start = await service.start(user, habit.id, {
+      plannedMin: 1,
+      blockId: "2026-06-24:meditation:0",
+    });
+
+    const startedAt = new Date(Date.now() - 65_000);
+    await app.db
+      .update(habitSessions)
+      .set({ startedAt })
+      .where(and(eq(habitSessions.id, start.id), eq(habitSessions.habitId, habit.id)));
+
+    const complete = await service.complete(user, habit.id, {});
+    expect(complete.checkin.value).toBe(1);
+    expect(complete.value_added).toBe(1);
+  });
+
   it("rejects second start while session is active", async () => {
     const { user, auth } = await createOnboardedUser("sessions-conflict@example.com");
     const habit = await createRunningHabit(auth.access_token);

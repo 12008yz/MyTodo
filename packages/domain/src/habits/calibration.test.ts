@@ -298,7 +298,25 @@ describe("calibrateHabit", () => {
     });
 
     expect(result.currentGoal).toBe(1);
+    expect(result.baselineValue).toBe(1);
+    expect(result.growthStep).toBe(0);
     expect(result.categoryKey).toBe("meditation");
+  });
+
+  it("keeps meditation at 1 minute even with a high onboarding baseline", () => {
+    const result = calibrateHabit({
+      kind: "custom",
+      name: "Медитация",
+      unit: "minutes",
+      baselineValue: 10,
+      categoryKey: "meditation",
+      profile,
+      activeLightHabitsIncludingNew: 1,
+    });
+
+    expect(result.currentGoal).toBe(1);
+    expect(result.baselineValue).toBe(1);
+    expect(result.growthStep).toBe(0);
   });
 
   it("calibrates foreign language to 25 minutes", () => {

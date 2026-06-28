@@ -5,6 +5,7 @@ import {
   ERROR_CODES,
   HTTP_STATUS,
   SESSION_TARGET_MIN,
+  computeSessionCompletionMinutes,
   sessionBudgetMinutes,
   sessionTotalSeconds,
   type HabitSessionCompleteResponse,
@@ -112,9 +113,12 @@ export class HabitSessionService {
       );
     }
 
-    const actualMin = opts.endedEarly
-      ? session.plannedMin
-      : Math.max(1, Math.ceil(elapsedMs / 60_000));
+    const actualMin = computeSessionCompletionMinutes(
+      elapsedMs,
+      session.plannedMin,
+      session.plannedSeconds,
+      opts.endedEarly ?? false,
+    );
 
     let valueToAdd: number;
     const useDailyTotal = habit.side === "dark" && habit.type === "limit";

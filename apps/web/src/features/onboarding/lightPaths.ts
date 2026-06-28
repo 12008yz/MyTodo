@@ -511,12 +511,13 @@ export function getLightHabitSummary(habit: SelectedHabit, wakeTime?: string): s
     return "От времени подъёма";
   }
 
+  if (habit.activityId === "mindfulness-meditation") {
+    return "1 мин/день";
+  }
+
   if (habit.practicesNow === false) {
     if (habit.kind === "custom" && habit.categoryKey === "healthy_nutrition") {
       return "";
-    }
-    if (habit.activityId === "mindfulness-meditation") {
-      return "1 мин/день";
     }
     if (habit.activityId === "strength-workout") {
       return `${STRENGTH_WORKOUT_INITIAL_REPS} повт. · 4 мин/день`;

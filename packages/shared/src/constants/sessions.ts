@@ -9,7 +9,7 @@ export const AWARENESS_SESSION_MIN = 5;
 export const LESSON_MINUTES_ESTIMATE = 15;
 export const DOOM_SCROLL_DURATION_MIN = 15;
 
-/** One focus block per day for meditation — goal grows via check-ins / progression. */
+/** One focus block per day for meditation — fixed 1 min, no goal growth. */
 export const MEDITATION_SESSION_MIN = 1;
 export const MEDITATION_DAILY_GOAL_MIN = 1;
 export const MEDITATION_HABIT_NAME = "Медитация";
@@ -79,4 +79,27 @@ export function sessionTotalSeconds(session: {
 
   const plannedMin = session.planned_min ?? session.plannedMin ?? 0;
   return Math.max(1, plannedMin * 60);
+}
+
+/** Minutes credited when a timed session completes (full timer or early stop). */
+export function computeSessionCompletionMinutes(
+  elapsedMs: number,
+  plannedMin: number,
+  plannedSeconds: number | null | undefined,
+  endedEarly: boolean,
+): number {
+  if (endedEarly) {
+    return plannedMin;
+  }
+
+  const totalSeconds = sessionTotalSeconds({
+    planned_min: plannedMin,
+    planned_seconds: plannedSeconds,
+  });
+
+  if (elapsedMs / 1000 >= totalSeconds) {
+    return sessionBudgetMinutes(totalSeconds);
+  }
+
+  return Math.max(1, Math.ceil(elapsedMs / 60_000));
 }

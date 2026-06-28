@@ -1,5 +1,5 @@
 import { createWebPushClient } from "./client.js";
-import { createNoopWebPushClient, MockWebPushClient } from "./mock-client.js";
+import { createNoopWebPushClient } from "./mock-client.js";
 import type { WebPushClient } from "./types.js";
 
 export type { PushSubscriptionPayload, WebPushClient } from "./types.js";

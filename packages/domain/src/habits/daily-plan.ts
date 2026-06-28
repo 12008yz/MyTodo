@@ -4,6 +4,7 @@ import {
   PUSHUP_SECONDS_PER_REP,
   sessionBudgetMinutes,
   sortLightHabitsForDisplay,
+  type HabitCategoryKey,
   type HabitTemplateId,
   type HabitUnit,
 } from "@mytodo/shared";
@@ -16,8 +17,8 @@ export type HabitPlanInput = {
   unit: HabitUnit;
   current_goal: number;
   checkin_value: number;
-  template_id?: string | null;
-  category_key?: string | null;
+  template_id?: HabitTemplateId | null;
+  category_key?: HabitCategoryKey | null;
 };
 
 export type DailyPlanBlock = {
@@ -100,8 +101,8 @@ function resolveHabitPlanEntry(habit: HabitPlanInput, neededMin: number): HabitP
     {
       name: habit.name,
       unit: habit.unit,
-      templateId: (habit.template_id as HabitTemplateId | null) ?? null,
-      categoryKey: (habit.category_key as import("@mytodo/shared").HabitCategoryKey | null) ?? null,
+      templateId: habit.template_id ?? null,
+      categoryKey: habit.category_key ?? null,
     },
     neededMin,
   );
@@ -226,8 +227,8 @@ export function buildDailyPlan(input: {
     const activityId = resolveLightActivityId({
       name: habit.name,
       unit: habit.unit,
-      templateId: (habit.template_id as HabitTemplateId | null) ?? null,
-      categoryKey: (habit.category_key as import("@mytodo/shared").HabitCategoryKey | null) ?? null,
+      templateId: habit.template_id ?? null,
+      categoryKey: habit.category_key ?? null,
     });
     if (isEarlyRiseActivity(activityId)) continue;
 
