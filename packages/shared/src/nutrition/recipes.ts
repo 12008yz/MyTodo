@@ -331,7 +331,7 @@ export const NUTRITION_RECIPES: NutritionRecipe[] = [
   {
     id: "rice-chicken-bowl",
     title: "Рис с курицей и овощами",
-    summary: "Bowl на каждый день",
+    summary: "Рецепт на каждый день",
     meal: "lunch",
     method: "stew",
     prepMinutes: 10,
@@ -428,7 +428,7 @@ export const NUTRITION_RECIPES: NutritionRecipe[] = [
   {
     id: "quinoa-bowl",
     title: "Киноа с овощами и фетой",
-    summary: "Сбалансированный обед",
+    summary: "Рецепт на каждый день",
     meal: "lunch",
     method: "boil",
     prepMinutes: 10,
@@ -800,7 +800,7 @@ export const NUTRITION_RECIPES: NutritionRecipe[] = [
   {
     id: "egg-fried-rice",
     title: "Рис с яйцом и овощами",
-    summary: "Простой bowl на обед",
+    summary: "Рецепт на каждый день",
     meal: "lunch",
     method: "stew",
     prepMinutes: 8,

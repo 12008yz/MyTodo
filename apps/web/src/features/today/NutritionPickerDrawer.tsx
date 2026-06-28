@@ -10,11 +10,12 @@ import {
   NUTRITION_MEAL_LABELS,
   NUTRITION_METHOD_LABELS,
   NUTRITION_MIN_INGREDIENTS,
-  NUTRITION_RECIPES,
   formatNutritionIngredientIds,
   getNutritionIngredient,
   getNutritionRecipe,
+  getNutritionRecipesForMeal,
   parseNutritionProductsText,
+  pickNutritionMealIdeas,
 } from "@mytodo/shared";
 import { putNutritionTodayLog } from "../../lib/api";
 
@@ -89,17 +90,8 @@ function resolveInitialPanelRecipe(log: HabitNutritionLog | null): NutritionReci
   return recipe;
 }
 
-function recipesForMeal(meal: PickableMeal): NutritionRecipe[] {
-  return NUTRITION_RECIPES.filter((recipe) => recipe.meal === meal);
-}
-
 function mealIdeas(meal: PickableMeal): NutritionRecipe[] {
-  return [...recipesForMeal(meal)]
-    .sort(
-      (left, right) =>
-        left.prepMinutes + left.cookMinutes - (right.prepMinutes + right.cookMinutes),
-    )
-    .slice(0, MEAL_SUGGESTION_LIMIT);
+  return pickNutritionMealIdeas(meal, MEAL_SUGGESTION_LIMIT);
 }
 
 function missingRequiredIngredients(
@@ -225,7 +217,7 @@ export function NutritionPickerDrawer({
   };
 
   const suggestions = useMemo(() => {
-    const mealRecipes = recipesForMeal(selectedMeal);
+    const mealRecipes = getNutritionRecipesForMeal(selectedMeal);
     if (selectedIds.length >= NUTRITION_MIN_INGREDIENTS) {
       const matches = matchNutritionRecipes(selectedIds, mealRecipes, {
         limit: MEAL_SUGGESTION_LIMIT,
