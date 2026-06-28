@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { DailyPlanBlock, HabitReadingProgress, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
 import {
   isEarlyRiseCategoryKey,
+  isMeditationHabit,
   isNonSessionLightCategory,
   isPlankHabit,
   isWarmupHabit,
@@ -57,6 +58,7 @@ import { isBooksHabit } from "./isBooksHabit";
 import { StrengthWorkoutCircuit, clearStrengthCircuitStorage, countStrengthCircuitExercisesDone, isStrengthCircuitRoundComplete } from "./StrengthWorkoutCircuit";
 import { PlankTechniqueDemo } from "./PlankTechniqueDemo";
 import { WarmupTechniqueDemo } from "./WarmupTechniqueDemo";
+import { MeditationGuide } from "./MeditationGuide";
 import { prefetchExerciseMedia } from "../../lib/exercise-media";
 
 function PlanInfoIcon({ className }: { className?: string }) {
@@ -192,6 +194,7 @@ export function DailyPlanHabitRow({
   const isStrengthWorkout = isStrengthWorkoutHabit(habit);
   const isPlank = isPlankHabit(habit);
   const isWarmup = isWarmupHabit(habit);
+  const isMeditation = isMeditationHabit(habit);
   const strengthReps = strengthRepsPerExercise(
     resolveStrengthProgressionLevel(habit.baseline_value, habit.current_goal),
   );
@@ -649,7 +652,9 @@ export function DailyPlanHabitRow({
               <PlanInfoIcon className="home__plan-item-drawer-icon" />
               {isStrengthWorkout ? "Круговая тренировка" : "Подробнее"}
             </p>
-            {isStrengthWorkout ? (
+            {isMeditation ? (
+              <MeditationGuide />
+            ) : isStrengthWorkout ? (
               <p className="home__plan-item-drawer-text home__strength-circuit-intro">
                 Каждое упражнение — по {strengthReps} раз. Со временем будем увеличивать.
               </p>

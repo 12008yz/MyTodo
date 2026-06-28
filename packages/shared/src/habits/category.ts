@@ -1,5 +1,5 @@
 import type { HabitCategoryKey } from "../constants/habits.js";
-import { NUTRITION_HABIT_NAME } from "../constants/sessions.js";
+import { MEDITATION_HABIT_NAME, NUTRITION_HABIT_NAME } from "../constants/sessions.js";
 
 export function isEarlyRiseCategoryKey(
   categoryKey: HabitCategoryKey | null | undefined,
@@ -21,6 +21,13 @@ export function isNutritionHabit(habit: {
     isNutritionCategoryKey(habit.category_key) ||
     habit.name?.trim() === NUTRITION_HABIT_NAME
   );
+}
+
+export function isMeditationHabit(habit: {
+  category_key?: HabitCategoryKey | null;
+  name?: string | null;
+}): boolean {
+  return habit.category_key === "meditation" || habit.name?.trim() === MEDITATION_HABIT_NAME;
 }
 
 /** Light habits that provide utility without daily check-in / day-close. */

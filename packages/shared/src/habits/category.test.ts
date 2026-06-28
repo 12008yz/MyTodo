@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isEarlyRiseCategoryKey,
   isCompanionLightHabit,
+  isMeditationHabit,
   isNonSessionLightCategory,
   isNutritionCategoryKey,
   isNutritionHabit,
@@ -23,6 +24,12 @@ describe("habit category helpers", () => {
     expect(isNutritionHabit({ name: "Правильное питание" })).toBe(true);
     expect(isCompanionLightHabit({ name: "Правильное питание" })).toBe(true);
     expect(isNutritionHabit({ name: "Бег" })).toBe(false);
+  });
+
+  it("detects meditation habit by category or name", () => {
+    expect(isMeditationHabit({ category_key: "meditation" })).toBe(true);
+    expect(isMeditationHabit({ name: "Медитация" })).toBe(true);
+    expect(isMeditationHabit({ name: "Бег", category_key: "walking" })).toBe(false);
   });
 
   it("groups non-session light categories", () => {

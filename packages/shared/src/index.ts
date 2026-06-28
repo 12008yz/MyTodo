@@ -75,6 +75,7 @@ export {
   isEarlyRiseCategoryKey,
   isCompanionLightHabit,
   isNonSessionLightCategory,
+  isMeditationHabit,
   isNutritionCategoryKey,
   isNutritionHabit,
   isPlankHabit,
