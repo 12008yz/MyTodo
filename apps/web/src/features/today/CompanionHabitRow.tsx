@@ -190,8 +190,8 @@ export function CompanionHabitRow({ habit, nutritionLog: nutritionLogProp }: Com
             Подбор ПП-рецепта
           </p>
           <p className="home__plan-item-drawer-text home__nutrition-intro">
-            Выберите приём пищи — покажем идеи. Ниже укажите продукты из холодильника, и список
-            сузится до того, что можно приготовить прямо сейчас.
+            Сначала — идеи на сегодня. Укажите продукты ниже: пока вводите, список временно
+            скроется, после закрытия клавиатуры подберём рецепты из холодильника.
           </p>
           <NutritionPickerDrawer
             key={drawerKey}

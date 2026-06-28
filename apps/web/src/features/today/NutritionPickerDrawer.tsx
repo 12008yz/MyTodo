@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   findNutritionNearMisses,
@@ -121,13 +121,14 @@ export function NutritionPickerDrawer({
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialPanelRecipe = openToSavedRecipe ? resolveInitialPanelRecipe(initialLog) : null;
   const [selectedMeal, setSelectedMeal] = useState<PickableMeal>(() => resolveInitialMeal(initialLog));
-  const [productsText, setProductsText] = useState(() =>
+  const [productsDraft, setProductsDraft] = useState(() =>
     initialLog?.ingredient_ids.length
       ? formatNutritionIngredientIds(initialLog.ingredient_ids)
       : "",
   );
   const [selectedIds, setSelectedIds] = useState<string[]>(() => initialLog?.ingredient_ids ?? []);
   const [unrecognizedProducts, setUnrecognizedProducts] = useState<string[]>([]);
+  const [isProductsFocused, setIsProductsFocused] = useState(false);
   const [panelRecipe, setPanelRecipe] = useState<NutritionRecipe | null>(initialPanelRecipe);
   const [detailOpen, setDetailOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -179,23 +180,32 @@ export function NutritionPickerDrawer({
     }
   };
 
-  const schedulePersist = (ingredientIds: string[], recipeId?: string) => {
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-    }
-    saveTimerRef.current = setTimeout(() => {
-      void persistLog(ingredientIds, recipeId ?? panelRecipeRef.current?.id);
-    }, 500);
-  };
+  const persistLogRef = useRef(persistLog);
+  persistLogRef.current = persistLog;
 
-  const handleProductsChange = (text: string) => {
-    setProductsText(text);
-    setError(null);
+  const productsDraftRef = useRef(productsDraft);
+  productsDraftRef.current = productsDraft;
+
+  const draftAtFocusRef = useRef<string | null>(null);
+
+  const isEditingProducts =
+    isProductsFocused &&
+    draftAtFocusRef.current != null &&
+    productsDraft !== draftAtFocusRef.current;
+
+  const commitProductsDraft = useCallback((text: string) => {
     const parsed = parseNutritionProductsText(text);
     setSelectedIds(parsed.ingredientIds);
     setUnrecognizedProducts(parsed.unrecognized);
-    schedulePersist(parsed.ingredientIds);
-  };
+    if (parsed.ingredientIds.length >= NUTRITION_MIN_INGREDIENTS) {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+      saveTimerRef.current = setTimeout(() => {
+        void persistLogRef.current(parsed.ingredientIds, panelRecipeRef.current?.id);
+      }, 500);
+    }
+  }, []);
 
   const closeDetail = () => {
     setDetailOpen(false);
@@ -205,6 +215,22 @@ export function NutritionPickerDrawer({
     closeTimerRef.current = setTimeout(() => {
       setPanelRecipe(null);
     }, DETAIL_CLOSE_MS);
+  };
+
+  const handleProductsDraftChange = (text: string) => {
+    setProductsDraft(text);
+    setError(null);
+  };
+
+  const handleProductsFocus = () => {
+    setIsProductsFocused(true);
+    draftAtFocusRef.current = productsDraftRef.current;
+  };
+
+  const handleProductsBlur = () => {
+    setIsProductsFocused(false);
+    draftAtFocusRef.current = null;
+    commitProductsDraft(productsDraftRef.current);
   };
 
   const openDetail = (recipe: NutritionRecipe) => {
@@ -306,7 +332,12 @@ export function NutritionPickerDrawer({
         {error ? <p className="home__nutrition-alert home__nutrition-alert--error">{error}</p> : null}
       </NutritionInlineReveal>
 
-      <div className="home__nutrition-stage">
+      {isEditingProducts ? (
+        <p className="home__nutrition-keyboard-hint">
+          Закройте клавиатуру — покажем рецепты под ваши продукты
+        </p>
+      ) : (
+        <div className="home__nutrition-stage">
         <div
           className={[
             "home__nutrition-view-shell",
@@ -485,6 +516,7 @@ export function NutritionPickerDrawer({
           </div>
         </div>
       </div>
+      )}
 
       <section
         className="home__nutrition-products"
@@ -496,8 +528,11 @@ export function NutritionPickerDrawer({
             className="home__nutrition-products-input"
             rows={3}
             placeholder="яйца, творог, огурец…"
-            value={productsText}
-            onChange={(event) => handleProductsChange(event.target.value)}
+            value={productsDraft}
+            enterKeyHint="done"
+            onChange={(event) => handleProductsDraftChange(event.target.value)}
+            onFocus={handleProductsFocus}
+            onBlur={handleProductsBlur}
           />
         </label>
         <p className="home__nutrition-products-hint">
@@ -506,7 +541,7 @@ export function NutritionPickerDrawer({
           {isSaving ? " · сохраняем…" : ""}
         </p>
 
-        <NutritionInlineReveal open={selectedIds.length > 0}>
+        <NutritionInlineReveal open={!isEditingProducts && selectedIds.length > 0}>
           <div className="home__nutrition-chips-block">
             <p className="home__nutrition-chips-label">Распознали</p>
             <div className="home__nutrition-chips">
@@ -519,12 +554,13 @@ export function NutritionPickerDrawer({
           </div>
         </NutritionInlineReveal>
 
-        <NutritionInlineReveal open={unrecognizedProducts.length > 0}>
+        <NutritionInlineReveal open={!isEditingProducts && unrecognizedProducts.length > 0}>
           <p className="home__nutrition-alert home__nutrition-alert--warn">
             Не нашли в каталоге: {unrecognizedProducts.join(", ")}
           </p>
         </NutritionInlineReveal>
       </section>
+
     </div>
   );
 };

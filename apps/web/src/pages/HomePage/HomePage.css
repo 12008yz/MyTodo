@@ -1986,7 +1986,7 @@
   border-radius: calc(12 * var(--s));
   background: rgba(255, 255, 255, 0.85);
   font: inherit;
-  font-size: calc(13 * var(--s));
+  font-size: 16px;
   line-height: 1.45;
   color: var(--color-text);
   resize: vertical;
@@ -2005,6 +2005,15 @@
   margin: calc(6 * var(--s)) 0 0;
   font-size: calc(11 * var(--s));
   line-height: 1.45;
+  color: var(--color-secondary);
+}
+
+.home__nutrition-keyboard-hint {
+  margin: 0;
+  padding: calc(16 * var(--s)) calc(8 * var(--s));
+  font-size: calc(13 * var(--s));
+  line-height: 1.45;
+  text-align: center;
   color: var(--color-secondary);
 }
 
