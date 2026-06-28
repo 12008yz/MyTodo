@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { sessionTotalSeconds } from "@mytodo/shared";
-import { getRemainingSecondsFromStart } from "./sessionRecovery";
+import { getRemainingSecondsFromStart, MIN_STALE_SESSION_SECONDS } from "./sessionRecovery";
 
 type UseSessionTimerOptions = {
   sessionKey: string | null;
@@ -105,7 +105,11 @@ export function useSessionTimer({
     return Math.ceil(elapsedSeconds / 60);
   }, [elapsedSeconds]);
 
-  const isFinished = armed && isActive && remainingSeconds <= 0;
+  const isFinished =
+    armed &&
+    isActive &&
+    remainingSeconds <= 0 &&
+    elapsedSeconds >= Math.min(MIN_STALE_SESSION_SECONDS, totalSeconds);
 
   return {
     remainingSeconds,
@@ -115,6 +119,7 @@ export function useSessionTimer({
     isPaused,
     isFinished,
     isActive,
+    armed,
     pause,
     resume,
     togglePause,

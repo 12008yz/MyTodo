@@ -104,8 +104,11 @@ export class HabitSessionService {
 
     const elapsedMs = this.getExerciseElapsedMs(session, new Date());
     const MIN_SESSION_MS = 5_000;
+    const totalMs = sessionTotalSeconds(session) * 1000;
+    const completedFullTimer =
+      !(opts.endedEarly ?? false) && elapsedMs >= Math.max(0, totalMs - 500);
 
-    if (elapsedMs < MIN_SESSION_MS) {
+    if (elapsedMs < MIN_SESSION_MS && !completedFullTimer) {
       throw new ApiError(
         HTTP_STATUS.BAD_REQUEST,
         ERROR_CODES.VALIDATION_ERROR,

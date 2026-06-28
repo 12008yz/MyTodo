@@ -40,3 +40,15 @@ export function resolveEarlyCompletionValue(
 
   return minutesToExpectedYield(block.unit, plannedMin);
 }
+
+export function resolveNaturalSecondsCompletionValue(
+  block: DailyPlanBlock,
+  plannedSeconds: number | null,
+  elapsedSeconds: number,
+): number {
+  return Math.max(
+    1,
+    plannedSeconds ??
+      (block.expected_yield > 0 ? block.expected_yield : elapsedSeconds),
+  );
+}

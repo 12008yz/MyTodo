@@ -1718,7 +1718,7 @@ function buildDemoDailyPlan(
 function getSupportedSessionHabit(state: DemoState, habitId: string): HabitResponse {
   const habit = state.habits.find((row) => row.id === habitId && row.is_active);
   if (!habit) {
-    throw new Error("Habit not found");
+    throw new Error("Привычка не найдена");
   }
 
   const isLightHabit = habit.side === "light";
@@ -1726,7 +1726,7 @@ function getSupportedSessionHabit(state: DemoState, habitId: string): HabitRespo
     habit.side === "dark" && habit.type === "limit" && habit.template_id !== "social_media";
 
   if (!isLightHabit && !isAllowedDarkLimit) {
-    throw new Error("Habit sessions are not available for this habit");
+    throw new Error("Для этой привычки таймер недоступен");
   }
 
   return habit;
@@ -1940,7 +1940,7 @@ export function demoStartHabitSession(
   getSupportedSessionHabit(state, habitId);
 
   if (findDemoActiveSessionByHabit(state, habitId)) {
-    throw new Error("Habit session already active for this habit");
+    throw new Error("Сессия уже запущена");
   }
 
   const plannedSeconds =
@@ -1976,12 +1976,15 @@ export function demoCompleteHabitSession(
   const session = findDemoActiveSessionByHabit(state, habitId);
 
   if (!session) {
-    throw new Error("No active habit session for this habit");
+    throw new Error("Активная сессия не найдена");
   }
 
   const elapsedMs = getDemoExerciseElapsedMs(session);
-  if (elapsedMs < 5_000) {
-    throw new Error("Session is too short to complete");
+  const totalMs = sessionTotalSeconds(session) * 1000;
+  const completedFullTimer =
+    !(data.ended_early ?? false) && elapsedMs >= Math.max(0, totalMs - 500);
+  if (elapsedMs < 5_000 && !completedFullTimer) {
+    throw new Error("Сессия слишком короткая — подождите ещё несколько секунд");
   }
 
   const actualMin = computeSessionCompletionMinutes(
@@ -2056,7 +2059,7 @@ export function demoStopHabitSession(habitId: string): HabitSessionResponse {
   const session = findDemoActiveSessionByHabit(state, habitId);
 
   if (!session) {
-    throw new Error("No active habit session for this habit");
+    throw new Error("Активная сессия не найдена");
   }
 
   const updatedSession: DemoHabitSession = {
@@ -2082,7 +2085,7 @@ export function demoPauseHabitSession(habitId: string): HabitSessionResponse {
   const session = findDemoActiveSessionByHabit(state, habitId);
 
   if (!session) {
-    throw new Error("No active habit session for this habit");
+    throw new Error("Активная сессия не найдена");
   }
 
   if (session.paused_at && session.paused_remaining_seconds != null) {
@@ -2117,7 +2120,7 @@ export function demoResumeHabitSession(habitId: string): HabitSessionResponse {
   const session = findDemoActiveSessionByHabit(state, habitId);
 
   if (!session) {
-    throw new Error("No active habit session for this habit");
+    throw new Error("Активная сессия не найдена");
   }
 
   if (!session.paused_at || session.paused_remaining_seconds == null) {
@@ -2249,7 +2252,7 @@ export function demoGetHabitProgress(
   const state = ensureState();
   const habit = state.habits.find((row) => row.id === habitId);
   if (!habit) {
-    throw new Error("Habit not found");
+    throw new Error("Привычка не найдена");
   }
 
   const today = todayDate();

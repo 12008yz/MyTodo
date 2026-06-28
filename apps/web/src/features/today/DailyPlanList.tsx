@@ -16,7 +16,8 @@ import {
 import { pauseSession, resumeSession, stopSession } from "../sessions/session-api";
 import { useCompleteHabitSession, useStartHabitSession } from "../sessions/useHabitSession";
 import { useSessionTimer } from "../sessions/useSessionTimer";
-import { resolveEarlyCompletionValue, needsCompletionValuePrompt } from "../sessions/sessionCompletion";
+import { needsCompletionValuePrompt, resolveEarlyCompletionValue, resolveNaturalSecondsCompletionValue } from "../sessions/sessionCompletion";
+import { formatSessionError } from "../sessions/sessionErrors";
 import {
   createFocusBlock,
   resolveSessionPlan,
@@ -109,9 +110,7 @@ function isPlankSession(habit: TodayLightHabit | TodayDarkHabit, block: DailyPla
 }
 
 function toErrorText(error: unknown): string {
-  if (error instanceof ClientApiError) return error.message;
-  if (error instanceof Error) return error.message;
-  return "Не удалось выполнить действие";
+  return formatSessionError(error);
 }
 
 function orderHabits(
@@ -409,12 +408,15 @@ export function DailyPlanList({
     () => new Map(),
   );
   const [completionBurst, setCompletionBurst] = useState(false);
+  const [completionRetryAvailable, setCompletionRetryAvailable] = useState(false);
   const [completionFlight, setCompletionFlight] = useState<{
     habitId: string;
     fromRect: CompletionFlightRect | null;
   } | null>(null);
   const completionFlightTimeoutRef = useRef<number | null>(null);
   const pendingCompletionFlightRef = useRef<CompletionFlightRect | null>(null);
+  const isFinishingSessionRef = useRef(false);
+  const autoCompleteFailedSessionRef = useRef<string | null>(null);
   const sessionSyncGenerationRef = useRef(0);
   const { setActive: setFocusSessionActive } = useFocusSession();
 
@@ -651,6 +653,7 @@ export function DailyPlanList({
       const habitPlanBlockIds = new Set(habitPlan.blocks.map((item) => item.id));
       const resolvedBlock = resolveBlockForSession(habitPlan, focusState.block, session.block_id);
       setFocusState(buildFocusState(focusState.habit, resolvedBlock, session, habitPlanBlockIds, true));
+      autoCompleteFailedSessionRef.current = null;
       setBackgroundSessions((prev) => {
         const next = new Map(prev);
         next.delete(focusState.habit.id);
@@ -701,6 +704,11 @@ export function DailyPlanList({
     }
 
     const closingFocus = focusState;
+    if (autoCompleteFailedSessionRef.current === closingFocus.sessionId) {
+      autoCompleteFailedSessionRef.current = null;
+    }
+    setCompletionRetryAvailable(false);
+    isFinishingSessionRef.current = false;
     setFocusState(null);
 
     if (!closingFocus.sessionId) {
@@ -723,136 +731,181 @@ export function DailyPlanList({
 
   const finishCurrentSession = useCallback(
     async (endedEarly: boolean) => {
-      if (!focusState?.sessionId || isEnding) {
+      if (!focusState?.sessionId || isFinishingSessionRef.current) {
         return;
       }
 
-      const elapsedForLimit = timer.elapsedSeconds;
-
-      if (endedEarly && elapsedForLimit < MIN_STALE_SESSION_SECONDS) {
-        setActionError(`Подождите ещё ${MIN_STALE_SESSION_SECONDS - elapsedForLimit} сек`);
-        return;
-      }
-
-      setIsEnding(true);
-      const currentFocus = focusState;
-      let flightFromRect: CompletionFlightRect | null = null;
+      const elapsedSecondsSnapshot = timer.elapsedSeconds;
+      const minNaturalElapsed = Math.min(MIN_STALE_SESSION_SECONDS, timer.totalSeconds);
 
       if (!endedEarly) {
+        if (!timer.isFinished || elapsedSecondsSnapshot < minNaturalElapsed) {
+          return;
+        }
+      } else if (elapsedSecondsSnapshot < MIN_STALE_SESSION_SECONDS) {
+        setActionError(`Подождите ещё ${MIN_STALE_SESSION_SECONDS - elapsedSecondsSnapshot} сек`);
+        return;
+      }
+
+      isFinishingSessionRef.current = true;
+      setIsEnding(true);
+      const currentFocus = focusState;
+
+      const runNaturalCelebration = async (flightFromRect: CompletionFlightRect | null) => {
         setCompletionBurst(true);
-        flightFromRect = captureHabitPlanItemRect(currentFocus.habit.id);
         pendingCompletionFlightRef.current = flightFromRect;
         await waitForHabitCompletion(HABIT_COMPLETION_CELEBRATION_MS);
         setCompletionBurst(false);
-      }
+      };
 
-      setFocusState(null);
-      setBackgroundSessions((prev) => {
-        const next = new Map(prev);
-        next.delete(currentFocus.habit.id);
-        return next;
-      });
+      const closeFocusSession = () => {
+        setFocusState(null);
+        setBackgroundSessions((prev) => {
+          const next = new Map(prev);
+          next.delete(currentFocus.habit.id);
+          return next;
+        });
+      };
 
-      if (endedEarly) {
-        if (needsCompletionValuePrompt(currentFocus.habit, currentFocus.block, true)) {
+      const releaseFinishLock = () => {
+        isFinishingSessionRef.current = false;
+        setIsEnding(false);
+      };
+
+      try {
+        if (endedEarly) {
+          autoCompleteFailedSessionRef.current = null;
+          setCompletionRetryAvailable(false);
+          closeFocusSession();
+
+          if (needsCompletionValuePrompt(currentFocus.habit, currentFocus.block, true)) {
+            setValuePrompt({
+              habitId: currentFocus.habit.id,
+              block: currentFocus.block,
+              sessionBlockId: currentFocus.sessionBlockId,
+              endedEarly: true,
+              isPlanBlock: currentFocus.isPlanBlock,
+            });
+            return;
+          }
+
+          const earlyValue =
+            currentFocus.block.unit === "seconds"
+              ? Math.max(
+                  1,
+                  Math.min(
+                    elapsedSecondsSnapshot,
+                    currentFocus.block.expected_yield > 0
+                      ? currentFocus.block.expected_yield
+                      : elapsedSecondsSnapshot,
+                  ),
+                )
+              : resolveEarlyCompletionValue(currentFocus.block, currentFocus.plannedMin);
+
+          await submitCompletion(
+            currentFocus.habit.id,
+            currentFocus.sessionBlockId,
+            currentFocus.isPlanBlock,
+            {
+              value: earlyValue,
+              endedEarly: true,
+            },
+          );
+          return;
+        }
+
+        const flightFromRect = captureHabitPlanItemRect(currentFocus.habit.id);
+        let completed = false;
+
+        if (currentFocus.block.unit === "minutes") {
+          completed = await submitCompletion(
+            currentFocus.habit.id,
+            currentFocus.sessionBlockId,
+            currentFocus.isPlanBlock,
+            { value: currentFocus.plannedMin, endedEarly },
+          );
+        } else if (currentFocus.block.unit === "seconds") {
+          completed = await submitCompletion(
+            currentFocus.habit.id,
+            currentFocus.sessionBlockId,
+            currentFocus.isPlanBlock,
+            {
+              value: resolveNaturalSecondsCompletionValue(
+                currentFocus.block,
+                currentFocus.plannedSeconds,
+                elapsedSecondsSnapshot,
+              ),
+              endedEarly,
+            },
+          );
+        } else {
+          pendingCompletionFlightRef.current = flightFromRect;
+          closeFocusSession();
           setValuePrompt({
             habitId: currentFocus.habit.id,
             block: currentFocus.block,
             sessionBlockId: currentFocus.sessionBlockId,
-            endedEarly: true,
+            endedEarly,
             isPlanBlock: currentFocus.isPlanBlock,
           });
-          setIsEnding(false);
           return;
         }
 
-        const earlyValue =
-          currentFocus.block.unit === "seconds"
-            ? Math.max(
-                1,
-                Math.min(
-                  timer.elapsedSeconds,
-                  currentFocus.block.expected_yield > 0
-                    ? currentFocus.block.expected_yield
-                    : timer.elapsedSeconds,
-                ),
-              )
-            : resolveEarlyCompletionValue(currentFocus.block, currentFocus.plannedMin);
-
-        await submitCompletion(
-          currentFocus.habit.id,
-          currentFocus.sessionBlockId,
-          currentFocus.isPlanBlock,
-          {
-            value: earlyValue,
-            endedEarly: true,
-          },
-        );
-        setIsEnding(false);
-        return;
-      }
-
-      if (currentFocus.block.unit === "minutes") {
-        const completed = await submitCompletion(
-          currentFocus.habit.id,
-          currentFocus.sessionBlockId,
-          currentFocus.isPlanBlock,
-          { value: currentFocus.plannedMin, endedEarly },
-        );
-        if (completed) {
-          triggerCompletionFlight(currentFocus.habit.id, flightFromRect);
+        if (!completed) {
+          if (elapsedSecondsSnapshot >= minNaturalElapsed) {
+            autoCompleteFailedSessionRef.current = currentFocus.sessionId;
+            setCompletionRetryAvailable(true);
+          }
+          return;
         }
-        pendingCompletionFlightRef.current = null;
-        setIsEnding(false);
-        return;
-      }
 
-      if (currentFocus.block.unit === "seconds") {
-        const fallbackSeconds = currentFocus.plannedSeconds ?? timer.elapsedSeconds;
-        const completed = await submitCompletion(
-          currentFocus.habit.id,
-          currentFocus.sessionBlockId,
-          currentFocus.isPlanBlock,
-          {
-            value:
-              currentFocus.block.expected_yield > 0
-                ? currentFocus.block.expected_yield
-                : Math.max(1, fallbackSeconds),
-            endedEarly,
-          },
-        );
-        if (completed) {
-          triggerCompletionFlight(currentFocus.habit.id, flightFromRect);
-        }
+        autoCompleteFailedSessionRef.current = null;
+        setCompletionRetryAvailable(false);
+        await runNaturalCelebration(flightFromRect);
+        closeFocusSession();
+        triggerCompletionFlight(currentFocus.habit.id, flightFromRect);
         pendingCompletionFlightRef.current = null;
-        setIsEnding(false);
-        return;
+      } finally {
+        releaseFinishLock();
       }
-
-      setValuePrompt({
-        habitId: currentFocus.habit.id,
-        block: currentFocus.block,
-        sessionBlockId: currentFocus.sessionBlockId,
-        endedEarly,
-        isPlanBlock: currentFocus.isPlanBlock,
-      });
-      setIsEnding(false);
     },
-    [
-      focusState,
-      isEnding,
-      submitCompletion,
-      timer.elapsedMin,
-      timer.elapsedSeconds,
-      triggerCompletionFlight,
-    ],
+    [focusState, submitCompletion, timer.elapsedSeconds, timer.isFinished, timer.totalSeconds, triggerCompletionFlight],
   );
 
   useEffect(() => {
-    if (focusState?.sessionId && timer.isFinished && !isEnding) {
-      void finishCurrentSession(false);
+    if (!focusState?.sessionId || isEnding || isFinishingSessionRef.current || !timer.armed) {
+      return;
     }
-  }, [finishCurrentSession, focusState?.sessionId, isEnding, timer.isFinished]);
+
+    const minNaturalElapsed = Math.min(MIN_STALE_SESSION_SECONDS, timer.totalSeconds);
+    if (!timer.isFinished || timer.elapsedSeconds < minNaturalElapsed) {
+      return;
+    }
+
+    if (autoCompleteFailedSessionRef.current === focusState.sessionId) {
+      return;
+    }
+
+    void finishCurrentSession(false);
+  }, [
+    finishCurrentSession,
+    focusState?.sessionId,
+    isEnding,
+    timer.armed,
+    timer.elapsedSeconds,
+    timer.isFinished,
+    timer.totalSeconds,
+  ]);
+
+  const handleRetryCompletion = useCallback(() => {
+    if (!focusState?.sessionId) {
+      return;
+    }
+
+    autoCompleteFailedSessionRef.current = null;
+    setActionError(null);
+    void finishCurrentSession(false);
+  }, [finishCurrentSession, focusState?.sessionId]);
 
   const recoverableHabitIds = useMemo(
     () =>
@@ -978,7 +1031,10 @@ export function DailyPlanList({
     setActionError(null);
     setCompletionBurst(false);
     setCompletionFlight(null);
+    setCompletionRetryAvailable(false);
     pendingCompletionFlightRef.current = null;
+    autoCompleteFailedSessionRef.current = null;
+    isFinishingSessionRef.current = false;
     if (completionFlightTimeoutRef.current != null) {
       window.clearTimeout(completionFlightTimeoutRef.current);
       completionFlightTimeoutRef.current = null;
@@ -1053,7 +1109,7 @@ export function DailyPlanList({
         </p>
       ) : null}
 
-      {actionError ? <p className="home__task-error">{actionError}</p> : null}
+      {actionError && !focusState ? <p className="home__task-error">{actionError}</p> : null}
 
       <FocusScreen
         isOpen={Boolean(focusState)}
@@ -1074,8 +1130,16 @@ export function DailyPlanList({
         }
         prepLabel="Встаньте в планку"
         sessionActive={Boolean(focusState?.sessionId)}
-        canStopEarly={timer.elapsedSeconds >= MIN_STALE_SESSION_SECONDS}
+        canStopEarly={
+          timer.elapsedSeconds >= MIN_STALE_SESSION_SECONDS ||
+          (Boolean(focusState?.sessionId) && timer.remainingSeconds <= 0)
+        }
         showCompletionBurst={completionBurst}
+        errorMessage={actionError}
+        showCompletionRetry={
+          completionRetryAvailable && !isEnding && !completeSession.isPending
+        }
+        onRetryCompletion={() => void handleRetryCompletion()}
         onBeginSession={() => void handleBeginExercise()}
         onTogglePause={() => void handleTogglePause()}
         onStopEarly={() => void finishCurrentSession(true)}
@@ -1091,6 +1155,8 @@ export function DailyPlanList({
         isSubmitting={completeSession.isPending}
         onCancel={() => {
           pendingCompletionFlightRef.current = null;
+          autoCompleteFailedSessionRef.current = null;
+          setCompletionRetryAvailable(false);
           setValuePrompt(null);
         }}
         onSubmit={(value) => {
@@ -1117,6 +1183,7 @@ export function DailyPlanList({
               );
             }
             pendingCompletionFlightRef.current = null;
+            autoCompleteFailedSessionRef.current = null;
             setValuePrompt(null);
           })();
         }}

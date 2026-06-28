@@ -23,6 +23,9 @@ type FocusScreenProps = {
   sessionActive?: boolean;
   canStopEarly: boolean;
   showCompletionBurst?: boolean;
+  errorMessage?: string | null;
+  showCompletionRetry?: boolean;
+  onRetryCompletion?: () => void;
   onBeginSession: () => void;
   onTogglePause: () => void;
   onStopEarly: () => void;
@@ -60,6 +63,9 @@ export function FocusScreen({
   sessionActive = false,
   canStopEarly,
   showCompletionBurst = false,
+  errorMessage = null,
+  showCompletionRetry = false,
+  onRetryCompletion,
   onBeginSession,
   onTogglePause,
   onStopEarly,
@@ -325,6 +331,20 @@ export function FocusScreen({
 
         {showSessionControls && sessionActive && !showCompletionBurst ? (
           <div className="focus-screen__actions">
+            {errorMessage ? (
+              <p className="focus-screen__error" role="alert">
+                {errorMessage}
+              </p>
+            ) : null}
+            {showCompletionRetry ? (
+              <button
+                type="button"
+                className="focus-screen__btn focus-screen__btn--primary focus-screen__btn--retry"
+                onClick={() => onRetryCompletion?.()}
+              >
+                Повторить сохранение
+              </button>
+            ) : null}
             <button
               type="button"
               className="focus-screen__btn focus-screen__btn--ghost"

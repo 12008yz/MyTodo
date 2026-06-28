@@ -68,6 +68,23 @@
   pointer-events: none;
 }
 
+.focus-screen__error {
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(248, 113, 113, 0.14);
+  color: #fecaca;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.focus-screen__btn--retry {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
 .focus-screen__eyebrow {
   margin: 0;
   font-size: 12px;

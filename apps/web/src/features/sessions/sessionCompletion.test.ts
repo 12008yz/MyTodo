@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { needsCompletionValuePrompt, resolveEarlyCompletionValue } from "./sessionCompletion";
+import { needsCompletionValuePrompt, resolveEarlyCompletionValue, resolveNaturalSecondsCompletionValue } from "./sessionCompletion";
 
 const baseBlock = {
   id: "block-1",
@@ -116,5 +116,37 @@ describe("resolveEarlyCompletionValue", () => {
         10,
       ),
     ).toBe(5);
+  });
+});
+
+describe("resolveNaturalSecondsCompletionValue", () => {
+  it("prefers the session timer length over a smaller block yield", () => {
+    expect(
+      resolveNaturalSecondsCompletionValue(
+        {
+          ...baseBlock,
+          unit: "seconds",
+          duration_min: 1,
+          expected_yield: 20,
+        },
+        30,
+        30,
+      ),
+    ).toBe(30);
+  });
+
+  it("falls back to block yield when planned seconds are missing", () => {
+    expect(
+      resolveNaturalSecondsCompletionValue(
+        {
+          ...baseBlock,
+          unit: "seconds",
+          duration_min: 1,
+          expected_yield: 25,
+        },
+        null,
+        25,
+      ),
+    ).toBe(25);
   });
 });
