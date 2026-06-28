@@ -159,7 +159,7 @@ pnpm seed
 
 Creates (idempotently):
 
-- 100 English lessons
+- English lessons (full VK playlist catalog)
 - Push notification templates
 - Users: `demo@novayaglava.local`, `trial@novayaglava.local`, `admin@novayaglava.local`
 

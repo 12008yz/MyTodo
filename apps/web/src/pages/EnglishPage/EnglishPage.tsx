@@ -11,12 +11,14 @@ import {
   formatEnglishLessonLabel,
   formatLessonDuration,
   formatWatchProgress,
-  parseYouTubeVideoId,
+  parseVkVideoRef,
   resolveEnglishCompleteWatchSec,
+  resolveEnglishLessonDuration,
   resolveEnglishWatchRequirement,
+  resolveDisplayLessonDuration,
 } from "../../features/english/format";
 import { useEnglishHistory, useEnglishMutations, useEnglishToday } from "../../features/english/useEnglish";
-import { YouTubeLessonPlayer } from "../../features/english/YouTubeLessonPlayer";
+import { VkLessonPlayer } from "../../features/english/VkLessonPlayer";
 import "./EnglishPage.css";
 
 function formatDisplayDate(date: string): string {
@@ -38,10 +40,11 @@ export function EnglishPage() {
   const [playerDurationSec, setPlayerDurationSec] = useState<number | null>(null);
   const [skipConfirmOpen, setSkipConfirmOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [playerSessionKey, setPlayerSessionKey] = useState(0);
   const autoCompletedRef = useRef(false);
 
   const lesson = today?.enabled ? today.lesson : null;
-  const videoId = lesson ? parseYouTubeVideoId(lesson.video_url) : null;
+  const vkVideo = lesson ? parseVkVideoRef(lesson.video_url) : null;
 
   const { requiredWatchSec } = useMemo(() => {
     if (!lesson) {
@@ -64,6 +67,7 @@ export function EnglishPage() {
       return;
     }
     setPlayerDurationSec(null);
+    setPlayerSessionKey(0);
   }, [lessonIdentityKey]);
 
   useEffect(() => {
@@ -80,14 +84,21 @@ export function EnglishPage() {
   }, []);
 
   const finalizeLesson = useCallback(
-    async (seconds: number) => {
-      if (!lesson || !canAutoCompleteEnglishLesson(seconds, lesson.duration_sec)) {
+    async (seconds: number, durationOverride?: number) => {
+      if (!lesson) {
+        return false;
+      }
+      const lessonDuration = resolveEnglishLessonDuration(
+        lesson.duration_sec,
+        durationOverride ?? playerDurationSec,
+      );
+      if (!canAutoCompleteEnglishLesson(seconds, lessonDuration)) {
         return false;
       }
 
       setActionError(null);
       try {
-        const watchedForApi = resolveEnglishCompleteWatchSec(seconds, lesson.duration_sec);
+        const watchedForApi = resolveEnglishCompleteWatchSec(seconds, lessonDuration);
         await complete.mutateAsync(watchedForApi);
         return true;
       } catch (error) {
@@ -101,24 +112,29 @@ export function EnglishPage() {
         return false;
       }
     },
-    [complete, lesson],
+    [complete, lesson, playerDurationSec],
   );
 
   const handleVideoEnded = useCallback(
-    (seconds: number) => {
+    ({ watchedSec: seconds, durationSec }: { watchedSec: number; durationSec: number }) => {
       if (isFinishedToday || autoCompletedRef.current || complete.isPending || !lesson) {
         return;
       }
 
       autoCompletedRef.current = true;
+      const lessonDuration = resolveEnglishLessonDuration(lesson.duration_sec, durationSec);
       const finalSeconds = Math.max(
         seconds,
-        resolveEnglishCompleteWatchSec(seconds, lesson.duration_sec),
+        resolveEnglishCompleteWatchSec(seconds, lessonDuration),
       );
       setWatchedSec(finalSeconds);
-      void finalizeLesson(finalSeconds).then((completed) => {
+      setPlayerDurationSec((current) =>
+        durationSec > current ? durationSec : current,
+      );
+      void finalizeLesson(finalSeconds, durationSec).then((completed) => {
         if (!completed) {
           autoCompletedRef.current = false;
+          setPlayerSessionKey((key) => key + 1);
         }
       });
     },
@@ -206,6 +222,9 @@ export function EnglishPage() {
   }
 
   const progressPercent = Math.round((today.current_day / ENGLISH_LESSON_COUNT) * 100);
+  const displayDurationSec = lesson
+    ? resolveDisplayLessonDuration(lesson.duration_sec, playerDurationSec)
+    : null;
 
   return (
     <EnglishShell onBack={() => navigate("/profile")}>
@@ -217,8 +236,8 @@ export function EnglishPage() {
 
       <header className="english-page__hero">
         <h1 className="english-page__lesson-title">{formatEnglishLessonLabel(today.current_day)}</h1>
-        {lesson ? (
-          <p className="english-page__lesson-meta">{formatLessonDuration(playerDurationSec ?? lesson.duration_sec)}</p>
+        {displayDurationSec != null ? (
+          <p className="english-page__lesson-meta">{formatLessonDuration(displayDurationSec)}</p>
         ) : null}
         <div className="english-page__course-progress" aria-hidden="true">
           <div className="english-page__course-progress-track">
@@ -259,14 +278,21 @@ export function EnglishPage() {
         </section>
       ) : null}
 
-      {lesson && videoId ? (
+      {lesson && vkVideo ? (
         <section className="english-page__video-section" aria-label="Видеоурок">
-          <YouTubeLessonPlayer
-            videoId={videoId}
+          <VkLessonPlayer
+            key={`${vkVideo.oid}:${vkVideo.id}:${playerSessionKey}`}
+            video={vkVideo}
+            pageUrl={lesson.video_url}
             durationSec={lesson.duration_sec}
+            fallbackClassName="english-page__btn english-page__btn--ghost"
+            completionMessage={
+              isFinishedToday ? "Урок на сегодня пройден" : "Урок просмотрен"
+            }
             onDurationReady={setPlayerDurationSec}
             onWatchProgress={handleWatchProgress}
             onVideoEnded={handleVideoEnded}
+            onRewatch={() => setPlayerSessionKey((key) => key + 1)}
           />
 
           {!isFinishedToday ? (
@@ -284,9 +310,11 @@ export function EnglishPage() {
               <p className="english-page__watch-hint">
                 {complete.isPending
                   ? "Сохраняем…"
-                  : watchProgress >= 100
+                  : watchProgress >= 100 && requiredWatchSec > 0
                     ? "Урок засчитывается…"
-                    : `Осталось ~${formatLessonDuration(Math.max(0, requiredWatchSec - watchedSec))}`}
+                    : requiredWatchSec > 0
+                      ? `Осталось ~${formatLessonDuration(Math.max(0, requiredWatchSec - watchedSec))}`
+                      : "Нажмите play и смотрите до конца"}
               </p>
             </div>
           ) : null}

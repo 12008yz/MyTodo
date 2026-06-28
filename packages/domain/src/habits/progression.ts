@@ -2,6 +2,8 @@ import {
   resolveStrengthProgressionLevel,
   strengthDailyGoalMinutes,
   isNutritionCategoryKey,
+  FOREIGN_LANGUAGE_HABIT_NAME,
+  LANGUAGE_SESSION_TARGET_MIN,
   MEDITATION_DAILY_GOAL_MIN,
   MEDITATION_HABIT_NAME,
   NUTRITION_HABIT_NAME,
@@ -56,6 +58,13 @@ function isMeditationProgression(habit: HabitForProgression): boolean {
   );
 }
 
+function isForeignLanguageProgression(habit: HabitForProgression): boolean {
+  return (
+    habit.categoryKey === "language" ||
+    habit.name?.trim() === FOREIGN_LANGUAGE_HABIT_NAME
+  );
+}
+
 export function applyDayProgression(
   habit: HabitForProgression,
   dayStatus: DayStatus,
@@ -66,6 +75,10 @@ export function applyDayProgression(
 
   if (isMeditationProgression(habit)) {
     return { nextGoal: MEDITATION_DAILY_GOAL_MIN, nextSuccessDaysAtGoal: 0 };
+  }
+
+  if (isForeignLanguageProgression(habit)) {
+    return { nextGoal: LANGUAGE_SESSION_TARGET_MIN, nextSuccessDaysAtGoal: 0 };
   }
 
   const interval = habit.progressionIntervalDays ?? 1;

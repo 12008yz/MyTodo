@@ -670,7 +670,10 @@ export function demoCompleteEnglishLesson(
     throw new Error("Cannot complete a failed day");
   }
 
-  const minimumWatchSec = Math.ceil(seed.durationSec * ENGLISH_WATCH_THRESHOLD);
+  const minimumWatchSec =
+    seed.durationSec <= 60
+      ? Math.max(600, Math.floor(data.watched_sec * 0.95))
+      : Math.ceil(seed.durationSec * ENGLISH_WATCH_THRESHOLD);
   if (data.watched_sec < minimumWatchSec) {
     throw new Error(`watched_sec must be at least ${minimumWatchSec}`);
   }

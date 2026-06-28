@@ -138,6 +138,7 @@ describe("Habits", () => {
     expect(languageResponse.statusCode).toBe(201);
     const language = habitResponseSchema.parse(JSON.parse(languageResponse.body));
     expect(language.current_goal).toBe(25);
+    expect(language.growth_step).toBe(0);
   });
 
   it("creates early rise from zero shift with 5-minute growth every 3 days", async () => {

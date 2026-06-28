@@ -7,6 +7,7 @@ import {
   adminUsersListResponseSchema,
   createPledgePaymentResponseSchema,
   authResponseSchema,
+  ENGLISH_LESSON_COUNT,
   englishLessonSchema,
   habitResponseSchema,
   pledgeResponseSchema,
@@ -332,7 +333,7 @@ describe("Admin API", () => {
   it("seed script is idempotent", async () => {
     const first = await seedDatabase(db);
     expect(first.users_created).toBe(3);
-    expect(first.lessons_created).toBe(30);
+    expect(first.lessons_created).toBe(ENGLISH_LESSON_COUNT);
 
     const second = await seedDatabase(db);
     expect(second.users_created).toBe(0);

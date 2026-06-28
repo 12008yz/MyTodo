@@ -79,7 +79,10 @@ export class EnglishService {
       );
     }
 
-    const minimumWatchSec = Math.ceil(lesson.durationSec * ENGLISH_WATCH_THRESHOLD);
+    const minimumWatchSec =
+      lesson.durationSec <= 60
+        ? Math.max(600, Math.floor(watchedSec * 0.95))
+        : Math.ceil(lesson.durationSec * ENGLISH_WATCH_THRESHOLD);
 
     if (watchedSec < minimumWatchSec) {
       throw new ApiError(

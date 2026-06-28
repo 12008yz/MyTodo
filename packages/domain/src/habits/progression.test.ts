@@ -164,4 +164,20 @@ describe("computeNextGoal", () => {
     });
     expect(computeNextGoal(meditation, "success")).toBe(1);
   });
+
+  it("keeps foreign language at 25 minutes without growth", () => {
+    const language: HabitForProgression = {
+      ...lightTarget(25, 5),
+      categoryKey: "language",
+      progressionIntervalDays: 3,
+      successDaysAtGoal: 2,
+    };
+
+    expect(applyDayProgression(language, "success")).toEqual({
+      nextGoal: 25,
+      nextSuccessDaysAtGoal: 0,
+    });
+    expect(computeNextGoal(language, "success")).toBe(25);
+    expect(computeNextGoal({ ...language, currentGoal: 28 }, "success")).toBe(25);
+  });
 });

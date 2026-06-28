@@ -2,6 +2,7 @@ import type { DailyPlanBlock, HabitUnit, TodayDarkHabit, TodayLightHabit } from 
 import {
   isEarlyRiseCategoryKey,
   isCompanionLightHabit,
+  isForeignLanguageHabit,
   isMeditationHabit,
   isStrengthWorkoutHabit,
   resolveStrengthProgressionLevel,
@@ -121,6 +122,13 @@ export function formatCardHint(params: {
   const { habit, block, goalReached, resumeSession, hasActiveFocus, wakeTime } = params;
 
   if (goalReached) {
+    if (isForeignLanguageHabit(habit)) {
+      return {
+        text: "Урок пройден — миссия на сегодня выполнена",
+        variant: "success",
+      };
+    }
+
     const unit = formatUnit(habit.unit);
     const isEarlyRise = isEarlyRiseCategoryKey(habit.category_key);
 

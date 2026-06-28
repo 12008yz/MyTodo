@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 /**
- * Import YouTube playlist into packages/shared/src/data/english-lessons.json
- *
- * Requires: python -m pip install yt-dlp
+ * Fast VK playlist import (~5s). Fetches IDs/URLs only via flat playlist.
+ * Titles/durations in JSON are placeholders — UI uses VK player for real duration.
  *
  * Usage: node scripts/import-english-playlist.mjs
  */
@@ -11,8 +10,9 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const PLAYLIST_URL =
-  "https://www.youtube.com/playlist?list=PLD6SPjEPomaustGSgYNsn3V62BTQeH85X";
+const PLAYLIST_URL = "https://vkvideo.ru/playlist/-98069659_11";
+/** Placeholder until VK player reports real duration; not used when player is ready. */
+const PLACEHOLDER_DURATION_SEC = 1;
 const OUT = join(
   dirname(fileURLToPath(import.meta.url)),
   "../packages/shared/src/data/english-lessons.json",
@@ -25,24 +25,25 @@ const raw = execFileSync(
     "yt_dlp",
     "--flat-playlist",
     "--print",
-    "%(playlist_index)s|%(id)s|%(title)s|%(duration)s",
+    "%(playlist_index)s|%(id)s",
     PLAYLIST_URL,
   ],
-  { encoding: "utf8", maxBuffer: 10 * 1024 * 1024 },
+  { encoding: "utf8", maxBuffer: 50 * 1024 * 1024 },
 );
 
 const lessons = raw
   .trim()
   .split(/\r?\n/)
-  .filter(Boolean)
+  .filter((line) => line && !line.startsWith("WARNING"))
   .map((line) => {
-    const [index, videoId, title, duration] = line.split("|", 4);
+    const [index, vkId] = line.split("|", 2);
     const dayNumber = Number(index);
+    const normalizedVkId = vkId?.trim() ?? "";
     return {
       dayNumber,
-      title: title?.trim() || `Урок ${dayNumber}`,
-      videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
-      durationSec: Math.max(1, Math.floor(Number(duration) || 0)),
+      title: `Урок ${dayNumber}`,
+      videoUrl: `https://vk.com/video${normalizedVkId}`,
+      durationSec: PLACEHOLDER_DURATION_SEC,
       description: null,
     };
   });

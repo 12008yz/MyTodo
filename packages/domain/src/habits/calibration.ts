@@ -215,6 +215,8 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
     categoryKey === "healthy_nutrition" || resolveLightActivityId({ name, unit }) === "energy-nutrition";
   const isMeditation =
     categoryKey === "meditation" || resolveLightActivityId({ name, unit }) === "mindfulness-meditation";
+  const isForeignLanguage =
+    categoryKey === "language" || resolveLightActivityId({ name, unit }) === "mindfulness-language";
 
   return {
     name,
@@ -223,7 +225,7 @@ export function calibrateHabit(input: CalibrateHabitInput): CalibratedHabit {
     currentGoal,
     growthStep: isEarlyRise
       ? EARLY_RISE_SHIFT_MIN
-      : isNutrition || isMeditation
+      : isNutrition || isMeditation || isForeignLanguage
         ? 0
         : growthStepForCustomUnit(unit),
     progressionIntervalDays: LIGHT_GROWTH_INTERVAL_DAYS,

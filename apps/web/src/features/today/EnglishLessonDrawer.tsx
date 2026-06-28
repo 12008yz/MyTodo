@@ -6,11 +6,13 @@ import {
   formatLessonDuration,
   formatWatchProgress,
   canAutoCompleteEnglishLesson,
-  parseYouTubeVideoId,
+  parseVkVideoRef,
   resolveEnglishCompleteWatchSec,
+  resolveEnglishLessonDuration,
   resolveEnglishWatchRequirement,
+  resolveDisplayLessonDuration,
 } from "../english/format";
-import { YouTubeLessonPlayer } from "../english/YouTubeLessonPlayer";
+import { VkLessonPlayer } from "../english/VkLessonPlayer";
 import { englishQueryKeys, useEnglishMutations } from "../english/useEnglish";
 
 type EnglishLessonDrawerProps = {
@@ -81,11 +83,12 @@ export function EnglishLessonDrawer({
   const [playerDurationSec, setPlayerDurationSec] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isOpening, setIsOpening] = useState(false);
+  const [playerSessionKey, setPlayerSessionKey] = useState(0);
   const autoCompletedRef = useRef(false);
   const reportedMinuteRef = useRef(-1);
 
   const lesson = today?.enabled ? today.lesson : null;
-  const videoId = lesson ? parseYouTubeVideoId(lesson.video_url) : null;
+  const vkVideo = lesson ? parseVkVideoRef(lesson.video_url) : null;
   const dayStatus = today?.enabled ? today.day_status : null;
   const isFinishedToday = dayStatus === "success" || dayStatus === "skipped";
 
@@ -119,6 +122,7 @@ export function EnglishLessonDrawer({
       return;
     }
     setPlayerDurationSec(null);
+    setPlayerSessionKey(0);
   }, [lessonIdentityKey]);
 
   useEffect(() => {
@@ -134,14 +138,21 @@ export function EnglishLessonDrawer({
   }, []);
 
   const finalizeLesson = useCallback(
-    async (seconds: number) => {
-      if (!lesson || !canAutoCompleteEnglishLesson(seconds, lesson.duration_sec)) {
+    async (seconds: number, durationOverride?: number) => {
+      if (!lesson) {
+        return false;
+      }
+      const lessonDuration = resolveEnglishLessonDuration(
+        lesson.duration_sec,
+        durationOverride ?? playerDurationSec,
+      );
+      if (!canAutoCompleteEnglishLesson(seconds, lessonDuration)) {
         return false;
       }
 
       setActionError(null);
       try {
-        const watchedForApi = resolveEnglishCompleteWatchSec(seconds, lesson.duration_sec);
+        const watchedForApi = resolveEnglishCompleteWatchSec(seconds, lessonDuration);
         await complete.mutateAsync(watchedForApi);
         if (goalMinutes != null) {
           onWatchMinutesChange?.(goalMinutes);
@@ -159,7 +170,7 @@ export function EnglishLessonDrawer({
         return false;
       }
     },
-    [complete, goalMinutes, lesson, onPlanComplete, onWatchMinutesChange],
+    [complete, goalMinutes, lesson, onPlanComplete, onWatchMinutesChange, playerDurationSec],
   );
 
   const handleWatchProgress = useCallback(
@@ -187,6 +198,7 @@ export function EnglishLessonDrawer({
           throw new Error("Не удалось включить курс");
         }
       }
+      setPlayerSessionKey((key) => key + 1);
       setPlayerOpen(true);
     } catch (error) {
       setActionError(
@@ -202,23 +214,28 @@ export function EnglishLessonDrawer({
   };
 
   const handleVideoEnded = useCallback(
-    (seconds: number) => {
+    ({ watchedSec: seconds, durationSec }: { watchedSec: number; durationSec: number }) => {
       if (isFinishedToday || autoCompletedRef.current || complete.isPending || !lesson) {
         return;
       }
 
       autoCompletedRef.current = true;
+      const lessonDuration = resolveEnglishLessonDuration(lesson.duration_sec, durationSec);
       const finalSeconds = Math.max(
         seconds,
-        resolveEnglishCompleteWatchSec(seconds, lesson.duration_sec),
+        resolveEnglishCompleteWatchSec(seconds, lessonDuration),
       );
       setWatchedSec(finalSeconds);
+      setPlayerDurationSec((current) =>
+        durationSec > current ? durationSec : current,
+      );
       if (goalMinutes != null) {
         onWatchMinutesChange?.(goalMinutes);
       }
-      void finalizeLesson(finalSeconds).then((completed) => {
+      void finalizeLesson(finalSeconds, durationSec).then((completed) => {
         if (!completed) {
           autoCompletedRef.current = false;
+          setPlayerSessionKey((key) => key + 1);
         }
       });
     },
@@ -261,7 +278,10 @@ export function EnglishLessonDrawer({
   }
 
   const dayNumber = lesson?.day_number ?? (today?.enabled ? today.current_day : 1);
-  const displayDurationSec = playerDurationSec ?? lesson?.duration_sec ?? 0;
+  const displayDurationSec = resolveDisplayLessonDuration(
+    lesson?.duration_sec ?? 0,
+    playerDurationSec,
+  );
 
   return (
     <div className="home__english-lesson home__english-fade-in">
@@ -298,22 +318,29 @@ export function EnglishLessonDrawer({
         </button>
       </EnglishInlineReveal>
 
-      <EnglishInlineReveal open={playerOpen && Boolean(lesson && videoId)}>
-        {lesson && videoId ? (
+      <EnglishInlineReveal open={playerOpen && Boolean(lesson && vkVideo)}>
+        {lesson && vkVideo ? (
           <div className="home__english-lesson-player">
-            <YouTubeLessonPlayer
-              key={videoId}
-              videoId={videoId}
+            <VkLessonPlayer
+              key={`${vkVideo.oid}:${vkVideo.id}:${playerSessionKey}`}
+              video={vkVideo}
+              pageUrl={lesson.video_url}
               durationSec={lesson.duration_sec}
+              completionMessage={
+                isFinishedToday ? "Урок на сегодня пройден" : "Урок просмотрен"
+              }
               onDurationReady={handleDurationReady}
               onWatchProgress={handleWatchProgress}
               onVideoEnded={handleVideoEnded}
+              onRewatch={() => setPlayerSessionKey((key) => key + 1)}
             />
-            <p className="home__english-lesson-meta">
-              Длительность: {formatLessonDuration(displayDurationSec)}
-            </p>
+            {!isFinishedToday && displayDurationSec != null ? (
+              <p className="home__english-lesson-meta">
+                Длительность: {formatLessonDuration(displayDurationSec)}
+              </p>
+            ) : null}
 
-            {!isFinishedToday ? (
+            {!isFinishedToday && requiredWatchSec > 0 ? (
               <>
                 <div className="home__english-lesson-progress" aria-hidden="true">
                   <div
@@ -324,9 +351,11 @@ export function EnglishLessonDrawer({
                 <p className="home__english-lesson-progress-label">
                   {complete.isPending
                     ? "Сохраняем…"
-                    : watchProgress >= 100
+                    : watchProgress >= 100 && requiredWatchSec > 0
                       ? "Урок засчитывается…"
-                      : `Просмотрено ${watchProgress}%`}
+                      : requiredWatchSec > 0
+                        ? `Просмотрено ${watchProgress}%`
+                        : "Нажмите play и смотрите до конца"}
                 </p>
               </>
             ) : null}

@@ -17,10 +17,11 @@ export const MEDITATION_HABIT_NAME = "Медитация";
 /** Beginner reading: 5 pages per day. */
 export const BOOKS_START_PAGES = 5;
 
-/** Foreign-language practice — fixed ~25 min block. */
+/** Foreign-language practice — fixed 25 min block, one lesson per day, no goal growth. */
 export const LANGUAGE_SESSION_MIN = 25;
 export const LANGUAGE_SESSION_MAX = 25;
 export const LANGUAGE_SESSION_TARGET_MIN = 25;
+export const FOREIGN_LANGUAGE_DAILY_GOAL_MIN = LANGUAGE_SESSION_TARGET_MIN;
 export const FOREIGN_LANGUAGE_HABIT_NAME = "Иностранный язык";
 
 /** Running — always at least 10 min per day. */

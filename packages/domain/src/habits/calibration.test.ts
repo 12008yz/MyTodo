@@ -331,6 +331,7 @@ describe("calibrateHabit", () => {
     });
 
     expect(result.currentGoal).toBe(25);
+    expect(result.growthStep).toBe(0);
   });
 
   it("calibrates dark limit habits from baseline", () => {

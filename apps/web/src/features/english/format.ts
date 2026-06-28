@@ -1,24 +1,50 @@
 import { ENGLISH_COURSE_TITLE, ENGLISH_WATCH_THRESHOLD } from "@mytodo/shared";
 
+export type VkVideoRef = {
+  oid: string;
+  id: string;
+};
+
 export function formatEnglishLessonLabel(dayNumber: number): string {
   return `Урок ${dayNumber} - ${ENGLISH_COURSE_TITLE}`;
 }
 
-export function parseYouTubeVideoId(url: string): string | null {
+/** Parses VK / VK Video page or embed URLs. */
+export function parseVkVideoRef(url: string): VkVideoRef | null {
   try {
     const parsed = new URL(url);
-    if (parsed.hostname.includes("youtu.be")) {
-      return parsed.pathname.slice(1).split("/")[0] || null;
+    const host = parsed.hostname;
+    if (!host.includes("vk.com") && !host.includes("vkvideo.ru")) {
+      return null;
     }
-    const fromQuery = parsed.searchParams.get("v");
-    if (fromQuery) {
-      return fromQuery;
+
+    const fromPath = parsed.pathname.match(/\/video(-?\d+)_(\d+)/);
+    if (fromPath) {
+      return { oid: fromPath[1], id: fromPath[2] };
     }
-    const embedMatch = parsed.pathname.match(/\/embed\/([^/?]+)/);
-    return embedMatch?.[1] ?? null;
+
+    if (parsed.pathname.includes("video_ext.php")) {
+      const oid = parsed.searchParams.get("oid");
+      const id = parsed.searchParams.get("id");
+      if (oid && id) {
+        return { oid, id };
+      }
+    }
+
+    return null;
   } catch {
     return null;
   }
+}
+
+export function buildVkEmbedUrl(video: VkVideoRef): string {
+  const params = new URLSearchParams({
+    oid: video.oid,
+    id: video.id,
+    hd: "2",
+    js_api: "1",
+  });
+  return `https://vk.com/video_ext.php?${params.toString()}`;
 }
 
 export function formatLessonDuration(totalSec: number): string {
@@ -31,6 +57,26 @@ export function formatLessonDuration(totalSec: number): string {
     return `${minutes} мин`;
   }
   return `${minutes} мин ${seconds} сек`;
+}
+
+/** Catalog entries from fast VK import use 1s until the player reports real duration. */
+export const CATALOG_DURATION_PLACEHOLDER_MAX_SEC = 60;
+
+export function isCatalogDurationPlaceholder(catalogDurationSec: number): boolean {
+  return catalogDurationSec <= CATALOG_DURATION_PLACEHOLDER_MAX_SEC;
+}
+
+export function resolveDisplayLessonDuration(
+  catalogDurationSec: number,
+  playerDurationSec: number | null,
+): number | null {
+  if (playerDurationSec != null && playerDurationSec > CATALOG_DURATION_PLACEHOLDER_MAX_SEC) {
+    return playerDurationSec;
+  }
+  if (!isCatalogDurationPlaceholder(catalogDurationSec)) {
+    return catalogDurationSec;
+  }
+  return null;
 }
 
 export function formatWatchProgress(watchedSec: number, requiredSec: number): number {
@@ -47,24 +93,50 @@ export function resolveEnglishWatchRequirement(
   lessonDurationSec: number,
   playerDurationSec: number | null,
 ): { requiredWatchSec: number; apiMinimumSec: number } {
-  const apiMinimumSec = Math.ceil(lessonDurationSec * ENGLISH_WATCH_THRESHOLD);
-  const requiredWatchSec =
-    playerDurationSec != null ? Math.min(playerDurationSec, apiMinimumSec) : apiMinimumSec;
+  if (
+    isCatalogDurationPlaceholder(lessonDurationSec) &&
+    (playerDurationSec == null || playerDurationSec <= CATALOG_DURATION_PLACEHOLDER_MAX_SEC)
+  ) {
+    return { requiredWatchSec: 0, apiMinimumSec: 0 };
+  }
+
+  const effectiveDuration = resolveEnglishLessonDuration(lessonDurationSec, playerDurationSec);
+  const apiMinimumSec = Math.ceil(effectiveDuration * ENGLISH_WATCH_THRESHOLD);
+  const requiredWatchSec = Math.min(playerDurationSec ?? effectiveDuration, apiMinimumSec);
   return { requiredWatchSec, apiMinimumSec };
+}
+
+export function resolveEnglishLessonDuration(
+  catalogDurationSec: number,
+  playerDurationSec: number | null,
+): number {
+  if (playerDurationSec != null && playerDurationSec > CATALOG_DURATION_PLACEHOLDER_MAX_SEC) {
+    return playerDurationSec;
+  }
+  if (!isCatalogDurationPlaceholder(catalogDurationSec)) {
+    return catalogDurationSec;
+  }
+  return 0;
 }
 
 export function resolveEnglishCompleteWatchSec(
   watchedSec: number,
   lessonDurationSec: number,
 ): number {
+  if (lessonDurationSec <= 0) {
+    return watchedSec;
+  }
   return Math.max(watchedSec, Math.ceil(lessonDurationSec * ENGLISH_WATCH_THRESHOLD));
 }
 
-/** True when the iframe reported the video has finished. */
+/** True when the player reported the video has finished. */
 export function canAutoCompleteEnglishLesson(
   watchedSec: number,
   lessonDurationSec: number,
 ): boolean {
+  if (lessonDurationSec <= CATALOG_DURATION_PLACEHOLDER_MAX_SEC) {
+    return false;
+  }
   const apiMinimumSec = Math.ceil(lessonDurationSec * ENGLISH_WATCH_THRESHOLD);
   return watchedSec >= apiMinimumSec - 1;
 }
