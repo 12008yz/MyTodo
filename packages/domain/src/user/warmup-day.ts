@@ -8,8 +8,24 @@ import {
 
 export type DayStartSlot = "morning" | "day" | "evening" | "night";
 
+/** After this local time on the anchor night, warmup day is rest (no morning wake). */
+export const WARMUP_LATE_NIGHT_REST_AFTER_MINUTE = 50;
+
 const EVENING_OFFSET_MIN = 30;
 const NOON_MINUTES = 12 * 60;
+const DEFAULT_MORNING_START_MIN = 6 * 60;
+
+function anchorLocalMinute(anchor: Date, timezone: string): number {
+  return localTimeToMinutes(normalizeHour(getLocalTimeParts(anchor, timezone)));
+}
+
+/**
+ * Onboarding between 00:00 and 00:49 — upcoming wake (e.g. 07:00) still counts on the warmup day.
+ * From 00:50 onward that morning is treated as rest.
+ */
+export function isWarmupPreDawnSignup(anchor: Date, timezone: string): boolean {
+  return anchorLocalMinute(anchor, timezone) < WARMUP_LATE_NIGHT_REST_AFTER_MINUTE;
+}
 
 function normalizeHour(time: LocalTime): LocalTime {
   if (time.hour === 24) {
@@ -118,7 +134,28 @@ function formatSleepTime(value: string): string {
 export type WarmupDayInfo = {
   active: boolean;
   slot: DayStartSlot;
+  earlyRiseEnforcement: boolean;
 };
+
+/** Warmup banner slot — pre-dawn signup keeps morning; 00:50–06:00 is night rest. */
+export function resolveWarmupDaySlot(
+  anchor: Date,
+  timezone: string,
+  wakeTime?: string | null,
+  sleepTime?: string | null,
+): DayStartSlot {
+  const minute = anchorLocalMinute(anchor, timezone);
+
+  if (minute < WARMUP_LATE_NIGHT_REST_AFTER_MINUTE) {
+    return "morning";
+  }
+
+  if (minute >= WARMUP_LATE_NIGHT_REST_AFTER_MINUTE && minute < DEFAULT_MORNING_START_MIN) {
+    return "night";
+  }
+
+  return resolveDayStartSlot(anchor, timezone, wakeTime, sleepTime);
+}
 
 export function resolveWarmupDayInfo(params: {
   onboardingCompletedAt: Date | null | undefined;
@@ -131,10 +168,13 @@ export function resolveWarmupDayInfo(params: {
   const anchor = resolveWarmupAnchor(params.onboardingCompletedAt, params.registeredAt);
   const active = isWarmupDay(anchor, params.planDate, params.timezone);
 
+  const preDawnSignup = isWarmupPreDawnSignup(anchor, params.timezone);
+
   return {
     active,
     slot: active
-      ? resolveDayStartSlot(anchor, params.timezone, params.wakeTime, params.sleepTime)
+      ? resolveWarmupDaySlot(anchor, params.timezone, params.wakeTime, params.sleepTime)
       : "morning",
+    earlyRiseEnforcement: active && preDawnSignup,
   };
 }

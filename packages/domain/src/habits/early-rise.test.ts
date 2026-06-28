@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { computeEarlyRiseWindowState, formatEarlyRiseCountdown, isEarlyRiseEnforcementActive } from "./early-rise.js";
+import { computeEarlyRiseWindowState, formatEarlyRiseCountdown, isEarlyRiseEnforcementActive, isWeekendDate } from "./early-rise.js";
+
+describe("isWeekendDate", () => {
+  it("detects Saturday and Sunday", () => {
+    expect(isWeekendDate("2026-06-27")).toBe(true);
+    expect(isWeekendDate("2026-06-28")).toBe(true);
+    expect(isWeekendDate("2026-06-29")).toBe(false);
+  });
+});
 
 describe("computeEarlyRiseWindowState", () => {
   const timezone = "Europe/Moscow";
@@ -52,8 +60,29 @@ describe("isEarlyRiseEnforcementActive", () => {
   const timezone = "Europe/Moscow";
   const createdAt = new Date("2026-06-28T08:00:00.000Z"); // 11:00 Moscow
 
-  it("is inactive on the registration day", () => {
+  it("is inactive on the registration day after morning", () => {
     expect(isEarlyRiseEnforcementActive(createdAt, "2026-06-28", timezone)).toBe(false);
+  });
+
+  it("is inactive on Saturday and Sunday", () => {
+    const weekdayAnchor = new Date("2026-06-25T08:00:00.000Z"); // Wednesday
+    expect(isEarlyRiseEnforcementActive(weekdayAnchor, "2026-06-27", timezone)).toBe(false); // Saturday
+    expect(isEarlyRiseEnforcementActive(weekdayAnchor, "2026-06-28", timezone)).toBe(false); // Sunday
+  });
+
+  it("is active on Monday after weekend", () => {
+    const weekdayAnchor = new Date("2026-06-25T08:00:00.000Z");
+    expect(isEarlyRiseEnforcementActive(weekdayAnchor, "2026-06-29", timezone)).toBe(true);
+  });
+
+  it("is active on warmup day for pre-dawn signup before 00:50 on a weekday", () => {
+    const preDawn = new Date("2026-06-25T21:10:00.000Z"); // 00:10 Moscow, Friday 2026-06-26
+    expect(isEarlyRiseEnforcementActive(preDawn, "2026-06-26", timezone)).toBe(true);
+  });
+
+  it("is inactive on warmup day after 00:50 local signup on a weekday", () => {
+    const lateNight = new Date("2026-06-25T21:55:00.000Z"); // 00:55 Moscow, Friday 2026-06-26
+    expect(isEarlyRiseEnforcementActive(lateNight, "2026-06-26", timezone)).toBe(false);
   });
 
   it("is active from the next local day", () => {

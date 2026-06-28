@@ -5,12 +5,13 @@ import {
   getProgressPeriodRange,
   getUserLocalDate,
   getWeekStartMonday,
+  isWeekendDate,
   listDatesInclusive,
   usesAbstinenceStreakRules,
   type DayColor,
   type HabitDayStatus,
 } from "@mytodo/domain";
-import { isCompanionLightHabit, resolveHabitDisplayName, type HabitTemplateId } from "@mytodo/shared";
+import { isCompanionLightHabit, isEarlyRiseCategoryKey, resolveHabitDisplayName, type HabitTemplateId } from "@mytodo/shared";
 import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
 import type { Database } from "../db/index.js";
 import {
@@ -303,6 +304,10 @@ export class StatsService {
     checkinStatus?: string,
   ): HabitDayStatus {
     if (isCompanionLightHabit({ category_key: habit.categoryKey, name: habit.name })) {
+      return "skipped";
+    }
+
+    if (isEarlyRiseCategoryKey(habit.categoryKey) && isWeekendDate(date)) {
       return "skipped";
     }
 

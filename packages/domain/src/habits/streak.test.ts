@@ -142,6 +142,49 @@ describe("computeGlobalStreak", () => {
   it("returns zero when there are no habits", () => {
     expect(computeGlobalStreak(new Map(), [], "2026-06-19")).toBe(0);
   });
+
+  it("counts today only when every active habit succeeded or skipped", () => {
+    const records = new Map([
+      ["habit-a", [{ date: "2026-06-19", status: "success" as const }]],
+      ["habit-b", []],
+    ]);
+
+    const habits = [
+      { id: "habit-a", activeFrom: "2026-06-01", type: "target" as const, phase: "reduction" as const },
+      { id: "habit-b", activeFrom: "2026-06-01", type: "target" as const, phase: "reduction" as const },
+    ];
+
+    expect(computeGlobalStreak(records, habits, "2026-06-19")).toBe(0);
+
+    records.set("habit-b", [{ date: "2026-06-19", status: "success" as const }]);
+    expect(computeGlobalStreak(records, habits, "2026-06-19")).toBe(1);
+  });
+
+  it("extends streak from today through consecutive complete days", () => {
+    const records = new Map([
+      [
+        "habit-a",
+        [
+          { date: "2026-06-19", status: "success" as const },
+          { date: "2026-06-18", status: "success" as const },
+        ],
+      ],
+      [
+        "habit-b",
+        [
+          { date: "2026-06-19", status: "skipped" as const },
+          { date: "2026-06-18", status: "success" as const },
+        ],
+      ],
+    ]);
+
+    const habits = [
+      { id: "habit-a", activeFrom: "2026-06-01", type: "target" as const, phase: "reduction" as const },
+      { id: "habit-b", activeFrom: "2026-06-01", type: "limit" as const, phase: "reduction" as const },
+    ];
+
+    expect(computeGlobalStreak(records, habits, "2026-06-19")).toBe(2);
+  });
 });
 
 describe("getWeekStartMonday", () => {

@@ -11,6 +11,8 @@ export {
   computeEarlyRiseWindowState,
   formatEarlyRiseCountdown,
   isEarlyRiseEnforcementActive,
+  isEarlyRiseWeekendRest,
+  isWeekendDate,
   type EarlyRisePhase,
   type EarlyRiseWindowState,
 } from "./habits/early-rise.js";
@@ -122,9 +124,12 @@ export {
 export {
   isHabitEnforcementActive,
   isWarmupDay,
+  isWarmupPreDawnSignup,
   resolveDayStartSlot,
   resolveWarmupAnchor,
   resolveWarmupDayInfo,
+  resolveWarmupDaySlot,
+  WARMUP_LATE_NIGHT_REST_AFTER_MINUTE,
   type DayStartSlot,
   type WarmupDayInfo,
 } from "./user/warmup-day.js";

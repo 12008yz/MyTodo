@@ -105,6 +105,7 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
     habitSessionService,
     readingProgressService,
     nutritionLogService,
+    checkinService,
   );
   const statsService = new StatsService(db);
   const englishService = new EnglishService(db);

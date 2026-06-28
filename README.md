@@ -49,6 +49,10 @@ npx pnpm test
 - API: `http://localhost:3000/api/v1/health`
 - Web: `http://localhost:5173` (proxy `/api` → API)
 
+**Без API (только браузер):** `npx pnpm dev:demo` — демо-режим, данные в localStorage.
+
+**С API и Docker:** `npx pnpm dev` — демо-баннер и кнопка «Открыть демо» не показываются.
+
 **Seed-аккаунты:** `demo@novayaglava.local` / `demo1234`, `trial@novayaglava.local` / `trial1234`, `admin@novayaglava.local` / `admin1234`
 
 > Порты **5433** и **6380** — чтобы не конфликтовать с локальным PostgreSQL/Redis на Windows (стандартные 5432/6379).

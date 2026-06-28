@@ -31,6 +31,12 @@ const env = loadEnv({
 
 const CLOSE_DATE = "2026-06-18";
 
+function shiftDate(date: string, deltaDays: number): string {
+  const parsed = new Date(`${date}T12:00:00.000Z`);
+  parsed.setUTCDate(parsed.getUTCDate() + deltaDays);
+  return parsed.toISOString().slice(0, 10);
+}
+
 describe("Day close worker", () => {
   let app: Awaited<ReturnType<typeof buildApp>>["app"];
   let db: Awaited<ReturnType<typeof buildApp>>["app"]["db"];
@@ -86,6 +92,16 @@ describe("Day close worker", () => {
 
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return { auth, user: user! };
+  }
+
+  async function backdateOnboarding(userId: string, beforeDate: string) {
+    const anchor = new Date(`${shiftDate(beforeDate, -3)}T12:00:00.000Z`);
+    await db
+      .update(users)
+      .set({ onboardingCompletedAt: anchor, createdAt: anchor })
+      .where(eq(users.id, userId));
+    const [row] = await db.select().from(users).where(eq(users.id, userId));
+    return row!;
   }
 
   it("closes abstinence as success and writes daily_stats", async () => {
@@ -321,7 +337,8 @@ describe("Day close worker", () => {
     expect(complete.current_day).toBe(1);
     expect(complete.preview_next_day).toBe(2);
 
-    await dayCloseService.closeDayForUser(user, today);
+    const userForClose = await backdateOnboarding(user.id, today);
+    await dayCloseService.closeDayForUser(userForClose, today);
 
     const [settings] = await db.select().from(englishSettings);
     expect(settings?.currentDay).toBe(2);
@@ -418,8 +435,9 @@ describe("Day close worker", () => {
       payload: { watched_sec: 600 },
     });
 
-    await dayCloseService.closeDayForUser(user, today);
-    await dayCloseService.closeDayForUser(user, today);
+    const userForClose = await backdateOnboarding(user.id, today);
+    await dayCloseService.closeDayForUser(userForClose, today);
+    await dayCloseService.closeDayForUser(userForClose, today);
 
     const [settings] = await db.select().from(englishSettings);
     expect(settings?.currentDay).toBe(2);

@@ -10,7 +10,7 @@ import {
   isDateInRange,
   type DayCheckin,
 } from "@mytodo/domain";
-import { AWARENESS_SESSION_MIN, isNutritionHabit, resolveHabitDisplayName, type HabitCategoryKey, type HabitTemplateId, type HabitUnit } from "@mytodo/shared";
+import { AWARENESS_SESSION_MIN, isCompanionLightHabit, isNutritionHabit, resolveHabitDisplayName, type HabitCategoryKey, type HabitTemplateId, type HabitUnit } from "@mytodo/shared";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Database } from "../db/index.js";
 import { checkins, habits, type Habit, type User } from "../db/schema/index.js";
@@ -21,6 +21,7 @@ import type { HabitSessionService } from "./habit-sessions.js";
 import type { ReadingProgressService } from "./reading-progress.js";
 import type { NutritionLogService } from "./nutrition-log.js";
 import type { PomodoroService } from "./pomodoro.js";
+import type { CheckinService } from "./checkins.js";
 import { buildWarmupDayPayload, isWarmupDayForUser } from "../lib/warmup.js";
 
 type Side = "light" | "dark";
@@ -43,6 +44,7 @@ export class TodayService {
     private readonly habitSessionService: HabitSessionService,
     private readonly readingProgressService: ReadingProgressService,
     private readonly nutritionLogService: NutritionLogService,
+    private readonly checkinService: CheckinService,
   ) {}
 
   async getLightDashboard(user: User) {
@@ -95,6 +97,7 @@ export class TodayService {
 
   private async getDashboard(user: User, side: Side) {
     const today = getUserLocalDate(new Date(), user.timezone);
+    await this.checkinService.ensureEarlyRiseWeekendSkips(user, today);
     const weekStart = getWeekStartMonday(today);
     const userHabits = await this.listHabits(user.id, side);
     const habitIds = userHabits.map((habit) => habit.id);
@@ -251,15 +254,18 @@ export class TodayService {
             this.indexTodayCheckins(allCheckins, today),
           );
 
+    const streakHabits = userHabits.filter(
+      (habit) => !isCompanionLightHabit({ category_key: habit.categoryKey, name: habit.name }),
+    );
     const streakRecords = new Map<string, DayCheckin[]>();
-    const habitScopes = userHabits.map((habit) => ({
+    const habitScopes = streakHabits.map((habit) => ({
       id: habit.id,
       activeFrom: getUserLocalDate(habit.createdAt, user.timezone),
       type: habit.type as "target" | "limit" | "abstinence",
       phase: habit.phase as "reduction" | "abstinence",
     }));
 
-    for (const habit of userHabits) {
+    for (const habit of streakHabits) {
       streakRecords.set(
         habit.id,
         (checkinsByHabit.get(habit.id) ?? []).map((row) => ({

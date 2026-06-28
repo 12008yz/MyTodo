@@ -225,6 +225,8 @@ export function CollapsibleReveal({
   const frozenChildrenRef = useRef(children);
   const storedHeightRef = useRef(0);
   const runIdRef = useRef(0);
+  const prevOpenRef = useRef(open);
+  const openAnimatedRef = useRef(false);
   const onExpandedRef = useRef(onExpanded);
   const onCollapsedRef = useRef(onCollapsed);
 
@@ -248,6 +250,9 @@ export function CollapsibleReveal({
   }, [open, rendered]);
 
   useLayoutEffect(() => {
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = open;
+
     if (open) {
       if (!rendered) {
         setRendered(true);
@@ -256,6 +261,12 @@ export function CollapsibleReveal({
     }
 
     if (!rendered) {
+      return;
+    }
+
+    // Only animate collapse when open flips true → false. Parent transitions
+    // toggle `immediate` without changing `open` and must not replay close.
+    if (!wasOpen) {
       return;
     }
 
@@ -271,6 +282,7 @@ export function CollapsibleReveal({
     const finish = () => {
       if (runIdRef.current !== runId) return;
       storedHeightRef.current = 0;
+      openAnimatedRef.current = false;
       requestAnimationFrame(() => {
         if (runIdRef.current !== runId) return;
         onCollapsedRef.current?.();
@@ -289,6 +301,9 @@ export function CollapsibleReveal({
   useLayoutEffect(() => {
     if (!open || !rendered) return;
 
+    // Parent path transitions flip `immediate` while staying open — don't replay.
+    if (openAnimatedRef.current) return;
+
     const outer = outerRef.current;
     const inner = innerRef.current;
     if (!outer || !inner) return;
@@ -303,18 +318,18 @@ export function CollapsibleReveal({
     const scrollParent = anchor ? getScrollParent(anchor) : null;
     const panelHeight = inner.offsetHeight;
 
+    const markOpened = () => {
+      if (runIdRef.current !== runId) return;
+      openAnimatedRef.current = true;
+      onExpandedRef.current?.();
+    };
+
     if (reduced) {
-      runInstant(outer, inner, true, scrollParent, panelHeight, scrollBehavior, () => {
-        if (runIdRef.current !== runId) return;
-        onExpandedRef.current?.();
-      });
+      runInstant(outer, inner, true, scrollParent, panelHeight, scrollBehavior, markOpened);
       return () => controller.abort();
     }
 
-    void animateOpen(outer, inner, controller.signal, scrollParent, scrollBehavior, () => {
-      if (runIdRef.current !== runId) return;
-      onExpandedRef.current?.();
-    });
+    void animateOpen(outer, inner, controller.signal, scrollParent, scrollBehavior, markOpened);
 
     return () => controller.abort();
   }, [immediate, open, rendered, scrollAnchorRef, scrollBehavior]);

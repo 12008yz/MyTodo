@@ -5,9 +5,10 @@ import {
   isDayCloseMinute,
   type HabitForDayClose,
 } from "@mytodo/domain";
-import { SOCIAL_MEDIA_MIN_GOAL, isCompanionLightHabit } from "@mytodo/shared";
+import { SOCIAL_MEDIA_MIN_GOAL, isCompanionLightHabit, isEarlyRiseCategoryKey } from "@mytodo/shared";
 import { and, eq } from "drizzle-orm";
 import type { Database, DbExecutor } from "../db/index.js";
+import { isWeekendDate } from "@mytodo/domain";
 import {
   checkins,
   dailyStats,
@@ -131,12 +132,19 @@ export class DayCloseService {
         .where(and(eq(checkins.habitId, habit.id), eq(checkins.date, date)))
         .limit(1);
 
+      const checkinForClose =
+        isEarlyRiseCategoryKey(habit.categoryKey) &&
+        isWeekendDate(date) &&
+        (!checkin || checkin.status === "pending")
+          ? { status: "skipped" as const, value: null }
+          : checkin
+            ? { status: checkin.status, value: checkin.value == null ? null : Number(checkin.value) }
+            : null;
+
       const goalBeforeClose = Number(habit.currentGoal);
       const result = closeDayForHabit(
         this.toDayCloseHabit(habit),
-        checkin
-          ? { status: checkin.status, value: checkin.value == null ? null : Number(checkin.value) }
-          : null,
+        checkinForClose,
         {
           silenceMode: options.silenceMode,
           hasActivePledge: options.hasActivePledge,
@@ -166,7 +174,31 @@ export class DayCloseService {
         return false;
       }
 
-      if (result.upsertCheckin) {
+      const weekendEarlyRiseSkip =
+        isEarlyRiseCategoryKey(habit.categoryKey) &&
+        isWeekendDate(date) &&
+        result.status === "skipped" &&
+        (!checkin || checkin.status === "pending");
+
+      if (weekendEarlyRiseSkip) {
+        if (checkin) {
+          await executor
+            .update(checkins)
+            .set({
+              status: "skipped",
+              value: null,
+              updatedAt: new Date(),
+            })
+            .where(eq(checkins.id, checkin.id));
+        } else {
+          await executor.insert(checkins).values({
+            habitId: habit.id,
+            date,
+            status: "skipped",
+            value: null,
+          });
+        }
+      } else if (result.upsertCheckin) {
         if (checkin) {
           await executor
             .update(checkins)

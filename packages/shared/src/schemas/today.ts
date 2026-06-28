@@ -10,6 +10,8 @@ export const warmupDaySchema = z.object({
   active: z.boolean(),
   slot: z.enum(["morning", "day", "evening", "night"]),
   message: z.string(),
+  /** True on warmup day when anchor was 00:00–00:49 — morning wake still enforced. */
+  early_rise_enforcement: z.boolean(),
 });
 
 export type WarmupDay = z.infer<typeof warmupDaySchema>;

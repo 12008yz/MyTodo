@@ -4,6 +4,7 @@ import {
   computeEarlyRiseWindowState,
   computeNextGoal,
   getUserLocalDate,
+  isWeekendDate,
   resolveCheckinStatus,
 } from "@mytodo/domain";
 import {
@@ -19,7 +20,7 @@ import { checkins, habits, users, type Habit, type User } from "../db/schema/ind
 import { toCheckinResponse } from "../lib/checkin-mapper.js";
 import { previewStatusFromCheckin, toProgressionHabit } from "../lib/habit-progression.js";
 import {
-  isEnforcementActiveForUser,
+  isEarlyRiseEnforcementActiveForUser,
   isWarmupDayForUser,
 } from "../lib/warmup.js";
 
@@ -275,7 +276,7 @@ export class CheckinService {
 
       const date = getUserLocalDate(now, user.timezone);
 
-      if (!isEnforcementActiveForUser(user, date)) {
+      if (!isEarlyRiseEnforcementActiveForUser(user, date)) {
         continue;
       }
 
@@ -306,6 +307,39 @@ export class CheckinService {
     }
 
     return failed;
+  }
+
+  /** Auto-skip early rise on Saturday and Sunday (no wake window, no GG). */
+  async ensureEarlyRiseWeekendSkips(user: User, date: string): Promise<void> {
+    if (!isWeekendDate(date)) {
+      return;
+    }
+
+    const rows = await this.db
+      .select()
+      .from(habits)
+      .where(
+        and(
+          eq(habits.userId, user.id),
+          eq(habits.isActive, true),
+          eq(habits.categoryKey, "early_rise"),
+        ),
+      );
+
+    for (const habit of rows) {
+      const existing = await this.findExistingCheckin(habit.id, date);
+
+      if (
+        existing &&
+        (existing.status === "success" ||
+          existing.status === "fail" ||
+          existing.status === "skipped")
+      ) {
+        continue;
+      }
+
+      await this.saveCheckin(habit.id, date, "skipped", null);
+    }
   }
 
   private async resolveStatus(
@@ -384,7 +418,7 @@ export class CheckinService {
       );
     }
 
-    const enforcementActive = isEnforcementActiveForUser(user, date);
+    const enforcementActive = isEarlyRiseEnforcementActiveForUser(user, date);
 
     if (!enforcementActive) {
       if (body.status === "fail") {

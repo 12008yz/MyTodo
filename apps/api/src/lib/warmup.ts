@@ -1,5 +1,6 @@
 import {
   isHabitEnforcementActive,
+  isEarlyRiseEnforcementActive,
   isWarmupDay,
   resolveWarmupAnchor,
   resolveWarmupDayInfo,
@@ -19,6 +20,10 @@ export function isEnforcementActiveForUser(user: User, planDate: string): boolea
   return isHabitEnforcementActive(warmupAnchorFromUser(user), planDate, user.timezone);
 }
 
+export function isEarlyRiseEnforcementActiveForUser(user: User, planDate: string): boolean {
+  return isEarlyRiseEnforcementActive(warmupAnchorFromUser(user), planDate, user.timezone);
+}
+
 export function buildWarmupDayPayload(user: User, planDate: string) {
   const info = resolveWarmupDayInfo({
     onboardingCompletedAt: user.onboardingCompletedAt,
@@ -35,5 +40,6 @@ export function buildWarmupDayPayload(user: User, planDate: string) {
     active: info.active,
     slot: info.slot,
     message: getWarmupDayMessage(info.slot, harshness),
+    early_rise_enforcement: info.earlyRiseEnforcement,
   };
 }

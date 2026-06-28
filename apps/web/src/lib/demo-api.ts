@@ -1,4 +1,4 @@
-import { buildDailyPlan, calibrateHabit, canSkipThisWeek, computeEarlyRiseWindowState, computeNextEnglishDay, computeNextGoal, isHabitEnforcementActive, isWarmupDay, recalculateLightGoal, resolveWarmupAnchor, resolveWarmupDayInfo, type CalibrationProfile } from "@mytodo/domain";
+import { buildDailyPlan, calibrateHabit, canSkipThisWeek, computeEarlyRiseWindowState, computeGlobalStreak, computeNextEnglishDay, computeNextGoal, isEarlyRiseEnforcementActive, isWarmupDay, isWeekendDate, recalculateLightGoal, resolveWarmupAnchor, resolveWarmupDayInfo, type CalibrationProfile } from "@mytodo/domain";
 import {
   AWARENESS_SESSION_MIN,
   SESSION_TARGET_MIN,
@@ -17,6 +17,7 @@ import {
   isStrengthWorkoutHabit,
   isNutritionHabit,
   isEarlyRiseCategoryKey,
+  isCompanionLightHabit,
   isMeditationHabit,
   isKnownNutritionIngredientId,
   isKnownNutritionRecipeId,
@@ -1114,7 +1115,7 @@ function resolveDemoCheckinStatus(
 
     const anchor = resolveDemoWarmupAnchor(state);
 
-    if (!isHabitEnforcementActive(anchor, date, state.user.timezone)) {
+    if (!isEarlyRiseEnforcementActive(anchor, date, state.user.timezone)) {
       if (data.status === "fail") {
         throw new Error("Сегодня разгонный день — штрафов нет");
       }
@@ -1213,7 +1214,42 @@ function weekStartMonday(date: string): string {
   return `${year}-${month}-${dayNum}`;
 }
 
-function buildTodayStats(state: DemoState, checkinsToday: CheckinResponse[], habitIds: Set<string>) {
+function buildDemoGlobalStreak(state: DemoState, sideHabits: HabitResponse[]): number {
+  const today = todayDate();
+  const streakHabits = sideHabits.filter((habit) => !isCompanionLightHabit(habit));
+  const records = new Map<
+    string,
+    { date: string; status: "success" | "fail" | "skipped" | "pending" }[]
+  >();
+
+  for (const habit of streakHabits) {
+    records.set(
+      habit.id,
+      state.checkins
+        .filter((checkin) => checkin.habit_id === habit.id)
+        .map((checkin) => ({
+          date: checkin.date,
+          status: checkin.status,
+        })),
+    );
+  }
+
+  const scopes = streakHabits.map((habit) => ({
+    id: habit.id,
+    activeFrom: habit.created_at.slice(0, 10),
+    type: habit.type,
+    phase: habit.phase,
+  }));
+
+  return computeGlobalStreak(records, scopes, today);
+}
+
+function buildTodayStats(
+  state: DemoState,
+  sideHabits: HabitResponse[],
+  checkinsToday: CheckinResponse[],
+) {
+  const habitIds = new Set(sideHabits.map((habit) => habit.id));
   const scoped = checkinsToday.filter((checkin) => habitIds.has(checkin.habit_id));
   const completedToday = scoped.filter((c) => c.status === "success").length;
   const relapsesThisWeek = scoped.filter(
@@ -1226,7 +1262,7 @@ function buildTodayStats(state: DemoState, checkinsToday: CheckinResponse[], hab
     relapses_this_week: relapsesThisWeek,
     minutes_today: minutesToday,
     pomodoros_today: 0,
-    streak_days: completedToday > 0 ? 1 : 0,
+    streak_days: buildDemoGlobalStreak(state, sideHabits),
   };
 }
 
@@ -1474,16 +1510,49 @@ function buildDemoWarmupDay(user: UserProfile, planDate: string) {
     active: info.active,
     slot: info.slot,
     message: getWarmupDayMessage(info.slot, harshness),
+    early_rise_enforcement: info.earlyRiseEnforcement,
   };
+}
+
+function ensureDemoEarlyRiseWeekendSkips(state: DemoState, date: string): void {
+  if (!isWeekendDate(date)) {
+    return;
+  }
+
+  for (const habit of state.habits.filter(
+    (row) => row.is_active && row.category_key === "early_rise",
+  )) {
+    const existing = state.checkins.find(
+      (checkin) => checkin.habit_id === habit.id && checkin.date === date,
+    );
+
+    if (
+      existing &&
+      (existing.status === "success" ||
+        existing.status === "fail" ||
+        existing.status === "skipped")
+    ) {
+      continue;
+    }
+
+    if (existing) {
+      existing.status = "skipped";
+      existing.value = null;
+      existing.updated_at = nowIso();
+      continue;
+    }
+
+    state.checkins.push(makeCheckin(habit, date, "skipped", null));
+  }
 }
 
 function buildLightTodayResponse(): TodayLightResponse {
   const state = ensureState();
   const date = todayDate();
+  ensureDemoEarlyRiseWeekendSkips(state, date);
   const sideHabits = state.habits.filter((h) => h.side === "light" && h.is_active);
-  const habitIds = new Set(sideHabits.map((habit) => habit.id));
   const todayCheckins = state.checkins.filter((c) => c.date === date);
-  const stats = buildTodayStats(state, todayCheckins, habitIds);
+  const stats = buildTodayStats(state, sideHabits, todayCheckins);
 
   return todayLightResponseSchema.parse({
     date,
@@ -1505,10 +1574,10 @@ function buildLightTodayResponse(): TodayLightResponse {
 function buildDarkTodayResponse(): TodayDarkResponse {
   const state = ensureState();
   const date = todayDate();
+  ensureDemoEarlyRiseWeekendSkips(state, date);
   const sideHabits = state.habits.filter((h) => h.side === "dark" && h.is_active);
-  const habitIds = new Set(sideHabits.map((habit) => habit.id));
   const todayCheckins = state.checkins.filter((c) => c.date === date);
-  const stats = buildTodayStats(state, todayCheckins, habitIds);
+  const stats = buildTodayStats(state, sideHabits, todayCheckins);
 
   return todayDarkResponseSchema.parse({
     date,

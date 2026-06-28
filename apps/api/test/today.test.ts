@@ -349,7 +349,15 @@ describe("Today dashboards", () => {
       .select()
       .from(users)
       .where(eq(users.email, "today-stats@example.com"));
-    await dayCloseService.closeDayForUser(user!, today);
+    await db
+      .update(users)
+      .set({ onboardingCompletedAt: new Date(`${shiftDate(today, -10)}T12:00:00.000Z`) })
+      .where(eq(users.id, user!.id));
+    const [userAfterOnboarding] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, user!.id));
+    await dayCloseService.closeDayForUser(userAfterOnboarding!, today);
 
     const response = await app.inject({
       method: "GET",

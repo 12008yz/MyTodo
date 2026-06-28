@@ -58,6 +58,39 @@ function hasFailedToday(records: DayCheckin[], today: string): boolean {
   return statusForDate(records, today) === "fail";
 }
 
+function isGlobalStreakDayComplete(
+  recordsByHabit: Map<string, DayCheckin[]>,
+  habits: HabitStreakScope[],
+  date: string,
+  today: string,
+): boolean {
+  const activeHabits = habits.filter((habit) => date >= habit.activeFrom);
+
+  if (activeHabits.length === 0) {
+    return false;
+  }
+
+  for (const habit of activeHabits) {
+    const status = resolveStreakStatus(
+      recordsByHabit.get(habit.id) ?? [],
+      date,
+      today,
+      habit.type,
+      habit.phase,
+    );
+
+    if (status === null || status === "fail" || status === "pending") {
+      return false;
+    }
+
+    if (!STREAK_CONTINUE.has(status)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export function computeHabitStreak(
   records: DayCheckin[],
   today: string,
@@ -114,7 +147,7 @@ export function computeGlobalStreak(
   }
 
   let streak = 0;
-  let cursor = previousDay(today);
+  let cursor = today;
 
   while (true) {
     const activeHabits = habits.filter((habit) => cursor >= habit.activeFrom);
@@ -123,24 +156,12 @@ export function computeGlobalStreak(
       break;
     }
 
-    let dayContinues = true;
-
-    for (const habit of activeHabits) {
-      const status = resolveStreakStatus(
-        recordsByHabit.get(habit.id) ?? [],
-        cursor,
-        today,
-        habit.type,
-        habit.phase,
-      );
-
-      if (status === null || status === "fail" || status === "pending") {
-        dayContinues = false;
-        break;
+    if (!isGlobalStreakDayComplete(recordsByHabit, habits, cursor, today)) {
+      if (cursor === today) {
+        cursor = previousDay(today);
+        continue;
       }
-    }
 
-    if (!dayContinues) {
       break;
     }
 

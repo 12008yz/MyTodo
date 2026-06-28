@@ -13,7 +13,9 @@ import {
   strengthRepsPerExercise,
   STRENGTH_WORKOUT_REPS_PER_ROUND,
   STRETCH_TARGET_MINUTES,
+  EARLY_RISE_WEEKEND_MESSAGE,
 } from "@mytodo/shared";
+import { isWeekendDate } from "@mytodo/domain";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClientApiError, clearHabitBook, getEnglishToday, resetTodayCheckin, selectHabitBook } from "../../lib/api";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
@@ -147,12 +149,16 @@ function habitReading(
 function resolveBadge(
   habit: TodayLightHabit | TodayDarkHabit,
   _block: DailyPlanBlock | null,
-  options?: { earlyRiseEnforcementActive?: boolean; warmupDayActive?: boolean },
+  options?: { earlyRiseEnforcementActive?: boolean; warmupDayActive?: boolean; earlyRiseWeekendRest?: boolean },
 ): { label: string; className: string } {
   const status = habit.checkin?.status;
 
   if (status === "success") {
     return { label: statusLabel(status, habit.type), className: "home__plan-badge--completed" };
+  }
+
+  if (status === "skipped" && options?.earlyRiseWeekendRest) {
+    return { label: "Выходной", className: "home__plan-badge--completed" };
   }
 
   if (status === "fail") {
@@ -172,7 +178,7 @@ function resolveBadge(
     return { label: statusLabel(status, habit.type), className: "home__plan-badge--pending" };
   }
 
-  if (options?.warmupDayActive) {
+  if (options?.warmupDayActive && !options?.earlyRiseEnforcementActive) {
     return { label: "Разгон", className: "home__plan-badge--warmup" };
   }
 
@@ -230,9 +236,13 @@ export function DailyPlanHabitRow({
   );
   const reading = habitReading(habit);
   const isEarlyRise = isEarlyRiseCategoryKey(habit.category_key);
+  const isEarlyRiseWeekendRest = isEarlyRise && Boolean(planDate && isWeekendDate(planDate));
   const warmupDayActive = warmupDay?.active === true;
   const earlyRiseEnforcementActive =
-    isEarlyRise && warmupDay !== undefined && !warmupDayActive;
+    isEarlyRise &&
+    !isEarlyRiseWeekendRest &&
+    warmupDay !== undefined &&
+    (!warmupDayActive || warmupDay.early_rise_enforcement === true);
   const earlyRiseWindow = useEarlyRiseWindow({
     enabled:
       earlyRiseEnforcementActive &&
@@ -409,7 +419,9 @@ export function DailyPlanHabitRow({
       ? formatBooksDailyProgressLabel(booksDailyProgress, habit.current_goal)
       : `${progressLabelValue} / ${habit.current_goal} ${formatUnit(habit.unit)}`;
   const cardHint = isEarlyRise
-    ? null
+    ? isEarlyRiseWeekendRest
+      ? { text: EARLY_RISE_WEEKEND_MESSAGE, variant: "hint" as const }
+      : null
     : isStrengthWorkout && !goalReached
     ? { text: "Нажмите «Упражнения»", variant: "hint" as const }
     : formatCardHint({
@@ -570,7 +582,11 @@ export function DailyPlanHabitRow({
     ? { label: "Фокус", className: "home__plan-badge--active" }
     : resumeSession
       ? { label: "В процессе", className: "home__plan-badge--active" }
-      : resolveBadge(habit, block, { earlyRiseEnforcementActive, warmupDayActive });
+      : resolveBadge(habit, block, {
+          earlyRiseEnforcementActive,
+          warmupDayActive,
+          earlyRiseWeekendRest: isEarlyRiseWeekendRest && status === "skipped",
+        });
 
   const startLabel = hasActiveFocus
     ? "Идёт фокус"
@@ -631,7 +647,7 @@ export function DailyPlanHabitRow({
           <span className={["home__plan-badge", badge.className].join(" ")}>{badge.label}</span>
         </header>
 
-        <p className="home__plan-item-goal">{formatGoalLabel(habit, wakeTime)}</p>
+        <p className="home__plan-item-goal">{formatGoalLabel(habit, wakeTime, planDate)}</p>
 
         {timer ? (
           <p className="home__task-timer">Чистое время: {formatTimer(timer.elapsed)}</p>
@@ -811,7 +827,9 @@ export function DailyPlanHabitRow({
             ) : (
               <p className="home__plan-item-drawer-text">
                 {isEarlyRise
-                  ? earlyRiseEnforcementActive
+                  ? isEarlyRiseWeekendRest
+                    ? EARLY_RISE_WEEKEND_MESSAGE
+                    : earlyRiseEnforcementActive
                     ? "В целевое время откроется 5 минут — нажмите «Я проснулся». Не успели — GG и день не засчитан. После 3 успешных дней подъём сдвинется на 5 минут раньше."
                     : warmupDay?.message ??
                       "Сегодня разгонный день — подъём по желанию, без штрафов. С завтрашнего утра — полный режим."

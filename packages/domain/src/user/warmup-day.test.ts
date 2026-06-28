@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   isHabitEnforcementActive,
   isWarmupDay,
+  isWarmupPreDawnSignup,
   resolveDayStartSlot,
   resolveWarmupAnchor,
   resolveWarmupDayInfo,
+  resolveWarmupDaySlot,
 } from "./warmup-day.js";
 
 const timezone = "Europe/Moscow";
@@ -74,7 +76,7 @@ describe("resolveWarmupDayInfo", () => {
       sleepTime: "23:00",
     });
 
-    expect(info).toEqual({ active: false, slot: "morning" });
+    expect(info).toEqual({ active: false, slot: "morning", earlyRiseEnforcement: false });
   });
 
   it("returns active night slot for late onboarding", () => {
@@ -90,5 +92,40 @@ describe("resolveWarmupDayInfo", () => {
 
     expect(info.active).toBe(true);
     expect(info.slot).toBe("night");
+    expect(info.earlyRiseEnforcement).toBe(false);
+  });
+
+  it("keeps morning wake on pre-dawn signup before 00:50", () => {
+    const completedAt = new Date("2026-06-27T21:10:00.000Z"); // 00:10 Moscow
+    const info = resolveWarmupDayInfo({
+      onboardingCompletedAt: completedAt,
+      registeredAt: completedAt,
+      planDate: "2026-06-28",
+      timezone,
+      wakeTime: "07:00",
+      sleepTime: "23:00",
+    });
+
+    expect(info.active).toBe(true);
+    expect(info.slot).toBe("morning");
+    expect(info.earlyRiseEnforcement).toBe(true);
+    expect(isWarmupPreDawnSignup(completedAt, timezone)).toBe(true);
+  });
+
+  it("treats signup at 00:50 and later as night rest on warmup day", () => {
+    const completedAt = new Date("2026-06-27T21:55:00.000Z"); // 00:55 Moscow
+    const info = resolveWarmupDayInfo({
+      onboardingCompletedAt: completedAt,
+      registeredAt: completedAt,
+      planDate: "2026-06-28",
+      timezone,
+      wakeTime: "07:00",
+      sleepTime: "23:00",
+    });
+
+    expect(info.active).toBe(true);
+    expect(info.slot).toBe("night");
+    expect(info.earlyRiseEnforcement).toBe(false);
+    expect(resolveWarmupDaySlot(completedAt, timezone, "07:00", "23:00")).toBe("night");
   });
 });

@@ -60,6 +60,10 @@ export const EARLY_RISE_SHIFT_MIN = 5;
 export const EARLY_RISE_CONFIRM_WINDOW_MIN = 5;
 export const EARLY_RISE_HABIT_NAME = "Ранний подъём";
 
+/** Shown when early rise is auto-skipped on Saturday and Sunday. */
+export const EARLY_RISE_WEEKEND_MESSAGE =
+  "В выходные можно не вставать рано — привычка засчитана автоматически.";
+
 export function maxLightHabitsForBudget(freeTimeMin: number): number {
   if (freeTimeMin < MIN_MINUTES_PER_LIGHT_HABIT) return 0;
   return Math.min(MAX_LIGHT_HABITS, MAX_ACTIVE_HABITS);

@@ -1,5 +1,6 @@
 import { EARLY_RISE_CONFIRM_WINDOW_MIN } from "@mytodo/shared";
-import { isHabitEnforcementActive } from "../user/warmup-day.js";
+import { getUserLocalDate } from "../time/user-day.js";
+import { isWarmupPreDawnSignup } from "../user/warmup-day.js";
 import {
   getLocalTimeParts,
   localTimeToMinutes,
@@ -8,6 +9,16 @@ import {
   type LocalTime,
 } from "../push/schedule.js";
 import { formatEarlyRiseTargetWakeTime } from "./workload.js";
+
+/** Saturday and Sunday for a user-local calendar date (YYYY-MM-DD). */
+export function isWeekendDate(planDate: string): boolean {
+  const weekday = new Date(`${planDate}T12:00:00.000Z`).getUTCDay();
+  return weekday === 0 || weekday === 6;
+}
+
+export function isEarlyRiseWeekendRest(planDate: string): boolean {
+  return isWeekendDate(planDate);
+}
 
 export type EarlyRisePhase = "before" | "window" | "expired";
 
@@ -85,11 +96,28 @@ export function formatEarlyRiseCountdown(totalSeconds: number): string {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-/** Early rise window and GG apply from the calendar day after the plan anchor. */
+/**
+ * Early rise window and GG: from the next calendar day, or on warmup day only for
+ * pre-dawn signup (00:00–00:49) when the morning wake is still ahead.
+ */
 export function isEarlyRiseEnforcementActive(
   planAnchor: Date,
   planDate: string,
   timezone: string,
 ): boolean {
-  return isHabitEnforcementActive(planAnchor, planDate, timezone);
+  if (isEarlyRiseWeekendRest(planDate)) {
+    return false;
+  }
+
+  const anchorDay = getUserLocalDate(planAnchor, timezone);
+
+  if (planDate > anchorDay) {
+    return true;
+  }
+
+  if (planDate < anchorDay) {
+    return false;
+  }
+
+  return isWarmupPreDawnSignup(planAnchor, timezone);
 }

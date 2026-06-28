@@ -8,7 +8,8 @@ import {
   resolveStrengthProgressionLevel,
   strengthRepsPerExercise,
 } from "@mytodo/shared";
-import { formatEarlyRiseTargetWakeTime } from "@mytodo/domain";
+import { formatEarlyRiseTargetWakeTime, isWeekendDate } from "@mytodo/domain";
+import { EARLY_RISE_WEEKEND_MESSAGE } from "@mytodo/shared";
 import { isBooksHabit } from "./isBooksHabit";
 
 const UNIT_LABELS: Record<HabitUnit, string> = {
@@ -38,12 +39,16 @@ export function formatSessionDuration(block: DailyPlanBlock): string {
 export function formatGoalLabel(
   habit: TodayLightHabit | TodayDarkHabit,
   wakeTime?: string | null,
+  planDate?: string | null,
 ): string {
   if (isCompanionLightHabit(habit)) {
     return "Рецепты ПП из ваших продуктов";
   }
 
   if (isEarlyRiseCategoryKey(habit.category_key)) {
+    if (planDate && isWeekendDate(planDate)) {
+      return EARLY_RISE_WEEKEND_MESSAGE;
+    }
     if (!wakeTime) {
       return "цель: по времени подъёма из профиля";
     }
