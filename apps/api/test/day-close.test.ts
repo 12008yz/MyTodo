@@ -315,7 +315,7 @@ describe("Day close worker", () => {
       method: "POST",
       url: "/api/v1/english/complete",
       headers,
-      payload: { watched_sec: 480 },
+      payload: { watched_sec: 600 },
     });
     const complete = englishCompleteResponseSchema.parse(JSON.parse(completeResponse.body));
     expect(complete.current_day).toBe(1);
@@ -415,7 +415,7 @@ describe("Day close worker", () => {
       method: "POST",
       url: "/api/v1/english/complete",
       headers,
-      payload: { watched_sec: 480 },
+      payload: { watched_sec: 600 },
     });
 
     await dayCloseService.closeDayForUser(user, today);

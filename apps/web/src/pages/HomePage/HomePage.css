@@ -1404,6 +1404,11 @@
   font-weight: 600;
 }
 
+.home__plan-drawer-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
 .home__plan-book-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2188,9 +2193,21 @@
     animation: none;
   }
 
+  .home__english-fade-in,
+  .home__english-lesson-skeleton-line,
+  .home__english-lesson-skeleton-btn {
+    animation: none;
+  }
+
   .home__nutrition-inline-reveal,
   .home__nutrition-inline-reveal-inner,
   .home__nutrition-inline-reveal-content {
+    transition: none;
+  }
+
+  .home__english-inline-reveal,
+  .home__english-inline-reveal-inner,
+  .home__english-inline-reveal-content {
     transition: none;
   }
 }
@@ -3283,3 +3300,121 @@
     background-position: -200% 0;
   }
 }
+
+.home__english-lesson {
+  display: flex;
+  flex-direction: column;
+  gap: calc(10 * var(--s));
+}
+
+.home__english-lesson--loading {
+  min-height: calc(88 * var(--s));
+}
+
+.home__english-lesson-skeleton-line {
+  height: calc(14 * var(--s));
+  border-radius: calc(6 * var(--s));
+  background: linear-gradient(
+    90deg,
+    rgba(95, 51, 225, 0.06) 0%,
+    rgba(95, 51, 225, 0.12) 50%,
+    rgba(95, 51, 225, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: home__shimmer 1.2s ease-in-out infinite;
+}
+
+.home__english-lesson-skeleton-line--short {
+  width: 72%;
+}
+
+.home__english-lesson-skeleton-btn {
+  height: calc(36 * var(--s));
+  margin-top: calc(4 * var(--s));
+  border-radius: calc(10 * var(--s));
+  background: linear-gradient(
+    90deg,
+    rgba(95, 51, 225, 0.08) 0%,
+    rgba(95, 51, 225, 0.14) 50%,
+    rgba(95, 51, 225, 0.08) 100%
+  );
+  background-size: 200% 100%;
+  animation: home__shimmer 1.2s ease-in-out infinite;
+}
+
+.home__english-inline-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home__english-inline-reveal--open {
+  grid-template-rows: 1fr;
+}
+
+.home__english-inline-reveal-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.home__english-inline-reveal-content {
+  opacity: 0;
+  transform: translateY(calc(-4 * var(--s)));
+  transition:
+    opacity 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home__english-inline-reveal-content--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes home-english-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(6 * var(--s)));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.home__english-fade-in {
+  animation: home-english-fade-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.home__english-lesson-meta {
+  margin: 0;
+  font-size: calc(12 * var(--s));
+  color: var(--color-secondary);
+}
+
+.home__english-lesson-progress {
+  height: calc(8 * var(--s));
+  border-radius: calc(999 * var(--s));
+  background: rgba(95, 51, 225, 0.12);
+  overflow: hidden;
+}
+
+.home__english-lesson-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #3b82f6, var(--color-primary));
+  transition: width 0.25s ease;
+}
+
+.home__english-lesson-progress-label {
+  margin: 0;
+  font-size: calc(12 * var(--s));
+  color: var(--color-secondary);
+}
+
+.home__english-lesson-player {
+  display: flex;
+  flex-direction: column;
+  gap: calc(10 * var(--s));
+}
+

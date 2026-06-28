@@ -1,5 +1,6 @@
 import {
   computeDailyBudgetMin,
+  ENGLISH_LESSON_CATALOG,
   TRIAL_DAYS,
 } from "@mytodo/shared";
 import { eq } from "drizzle-orm";
@@ -48,17 +49,13 @@ function addDays(date: Date, days: number): Date {
 }
 
 function buildEnglishLessons() {
-  return Array.from({ length: 30 }, (_, index) => {
-    const day = index + 1;
-    const durationSec = 300 + (day % 6) * 60;
-    return {
-      dayNumber: day,
-      title: `Day ${day}: English lesson`,
-      videoUrl: `https://www.youtube.com/watch?v=seed-lesson-${day}`,
-      durationSec,
-      description: `Seed lesson ${day} for local development`,
-    };
-  });
+  return ENGLISH_LESSON_CATALOG.map((lesson) => ({
+    dayNumber: lesson.dayNumber,
+    title: lesson.title,
+    videoUrl: lesson.videoUrl,
+    durationSec: lesson.durationSec,
+    description: lesson.description,
+  }));
 }
 
 export type SeedResult = {
@@ -115,6 +112,15 @@ export async function seedDatabase(db: Database): Promise<SeedResult> {
       .limit(1);
 
     if (existing) {
+      await db
+        .update(englishLessons)
+        .set({
+          title: lesson.title,
+          videoUrl: lesson.videoUrl,
+          durationSec: lesson.durationSec,
+          description: lesson.description,
+        })
+        .where(eq(englishLessons.id, existing.id));
       continue;
     }
 

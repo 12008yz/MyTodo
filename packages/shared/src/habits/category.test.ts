@@ -3,6 +3,7 @@ import {
   isEarlyRiseCategoryKey,
   isCompanionLightHabit,
   isMeditationHabit,
+  isForeignLanguageHabit,
   isNonSessionLightCategory,
   isNutritionCategoryKey,
   isNutritionHabit,
@@ -30,6 +31,12 @@ describe("habit category helpers", () => {
     expect(isMeditationHabit({ category_key: "meditation" })).toBe(true);
     expect(isMeditationHabit({ name: "Медитация" })).toBe(true);
     expect(isMeditationHabit({ name: "Бег", category_key: "walking" })).toBe(false);
+  });
+
+  it("detects foreign language habit by category or name", () => {
+    expect(isForeignLanguageHabit({ category_key: "language" })).toBe(true);
+    expect(isForeignLanguageHabit({ name: "Иностранный язык" })).toBe(true);
+    expect(isForeignLanguageHabit({ name: "Бег", category_key: "walking" })).toBe(false);
   });
 
   it("groups non-session light categories", () => {

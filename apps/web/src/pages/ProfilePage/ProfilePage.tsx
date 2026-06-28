@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { HARSHNESS_OPTIONS } from "../../features/onboarding/constants";
 import { useProfileTodayStats } from "../../features/profile/useProfileTodayStats";
@@ -20,6 +22,8 @@ import {
 import { ProfileMenuRow } from "../../components/profile/ProfileMenuRow";
 import { ProfileMenuSection } from "../../components/profile/ProfileMenuSection";
 import { isDemoMode } from "../../lib/demo-mode";
+import { getEnglishToday } from "../../lib/api";
+import { englishQueryKeys } from "../../features/english/useEnglish";
 import { requestPushSubscription } from "../../lib/push";
 import "./ProfilePage.css";
 
@@ -38,9 +42,19 @@ function comingSoon() {
 }
 
 export function ProfilePage() {
+  const navigate = useNavigate();
   const { user, logout, updateProfile } = useAuth();
   const { pending, completed, isLoading } = useProfileTodayStats();
+  const { data: englishToday } = useQuery({
+    queryKey: englishQueryKeys.today,
+    queryFn: getEnglishToday,
+  });
   const [editNameOpen, setEditNameOpen] = useState(false);
+
+  const englishHint =
+    englishToday?.enabled === true
+      ? `День ${englishToday.current_day}`
+      : "Начать курс";
 
   if (!user) {
     return <p className="home__placeholder">Загрузка профиля…</p>;
@@ -120,7 +134,12 @@ export function ProfilePage() {
       </ProfileMenuSection>
 
       <ProfileMenuSection title="Новая глава">
-        <ProfileMenuRow icon={<BookIcon />} label="Английский" hint="Скоро" disabled />
+        <ProfileMenuRow
+          icon={<BookIcon />}
+          label="Английский"
+          hint={englishHint}
+          onClick={() => navigate("/english")}
+        />
         <ProfileMenuRow icon={<ShieldIcon />} label="Залог" hint="5000 ₽ · скоро" disabled />
         <ProfileMenuRow icon={<CardIcon />} label="Подписка" hint="Скоро" disabled />
       </ProfileMenuSection>

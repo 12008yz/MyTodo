@@ -3,7 +3,9 @@ import { z } from "zod";
 export const ENGLISH_PROGRESS_STATUSES = ["success", "fail", "pending", "skipped"] as const;
 export type EnglishProgressStatus = (typeof ENGLISH_PROGRESS_STATUSES)[number];
 
-export const ENGLISH_WATCH_THRESHOLD = 0.8;
+export const ENGLISH_WATCH_THRESHOLD = 1;
+
+export const ENGLISH_COURSE_TITLE = "С 0 до совершенства";
 
 export const englishLessonSchema = z.object({
   id: z.string().uuid(),

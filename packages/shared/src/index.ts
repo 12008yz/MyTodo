@@ -76,6 +76,7 @@ export {
   isCompanionLightHabit,
   isNonSessionLightCategory,
   isMeditationHabit,
+  isForeignLanguageHabit,
   isNutritionCategoryKey,
   isNutritionHabit,
   isPlankHabit,
@@ -325,6 +326,7 @@ export {
 } from "./schemas/stats.js";
 export {
   ENGLISH_PROGRESS_STATUSES,
+  ENGLISH_COURSE_TITLE,
   ENGLISH_WATCH_THRESHOLD,
   englishCompleteRequestSchema,
   englishCompleteResponseSchema,
@@ -345,6 +347,14 @@ export {
   type EnglishTodayResponse,
   type PatchEnglishSettingsRequest,
 } from "./schemas/english.js";
+export {
+  ENGLISH_LESSON_CATALOG,
+  ENGLISH_LESSON_COUNT,
+  englishLessonSeedId,
+  getEnglishLessonByDay,
+  seedToEnglishLessonResponse,
+  type EnglishLessonSeed,
+} from "./data/english-lessons.js";
 export {
   SUBSCRIPTION_STATUSES,
   cancelSubscriptionResponseSchema,

@@ -132,7 +132,7 @@ describe("English", () => {
       method: "POST",
       url: "/api/v1/english/complete",
       headers: { authorization: `Bearer ${auth.access_token}` },
-      payload: { watched_sec: 480 },
+      payload: { watched_sec: 600 },
     });
 
     expect(response.statusCode).toBe(200);
@@ -152,7 +152,7 @@ describe("English", () => {
       method: "POST",
       url: "/api/v1/english/complete",
       headers: { authorization: `Bearer ${auth.access_token}` },
-      payload: { watched_sec: 480 },
+      payload: { watched_sec: 600 },
     });
 
     const response = await app.inject({
@@ -171,7 +171,7 @@ describe("English", () => {
     }
   });
 
-  it("rejects completion when watched_sec is below 80%", async () => {
+  it("rejects completion when watched_sec is below 100%", async () => {
     const auth = await createOnboardedUser("english-watch@example.com");
     await enableEnglish(auth.access_token);
 
@@ -179,7 +179,7 @@ describe("English", () => {
       method: "POST",
       url: "/api/v1/english/complete",
       headers: { authorization: `Bearer ${auth.access_token}` },
-      payload: { watched_sec: 479 },
+      payload: { watched_sec: 599 },
     });
 
     expect(response.statusCode).toBe(400);
@@ -233,7 +233,7 @@ describe("English", () => {
       method: "POST",
       url: "/api/v1/english/complete",
       headers,
-      payload: { watched_sec: 480 },
+      payload: { watched_sec: 600 },
     });
 
     expect(response.statusCode).toBe(400);
@@ -264,7 +264,7 @@ describe("English", () => {
       method: "POST",
       url: "/api/v1/english/complete",
       headers: { authorization: `Bearer ${auth.access_token}` },
-      payload: { watched_sec: 480 },
+      payload: { watched_sec: 600 },
     });
 
     expect(response.statusCode).toBe(404);
@@ -278,7 +278,7 @@ describe("English", () => {
       method: "POST",
       url: "/api/v1/english/complete",
       headers: { authorization: `Bearer ${auth.access_token}` },
-      payload: { watched_sec: 480 },
+      payload: { watched_sec: 600 },
     });
 
     const response = await app.inject({

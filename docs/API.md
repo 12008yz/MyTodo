@@ -159,7 +159,7 @@ pnpm seed
 
 Creates (idempotently):
 
-- 30 English lessons
+- 100 English lessons
 - Push notification templates
 - Users: `demo@novayaglava.local`, `trial@novayaglava.local`, `admin@novayaglava.local`
 

@@ -1,5 +1,9 @@
 import type { HabitCategoryKey } from "../constants/habits.js";
-import { MEDITATION_HABIT_NAME, NUTRITION_HABIT_NAME } from "../constants/sessions.js";
+import {
+  FOREIGN_LANGUAGE_HABIT_NAME,
+  MEDITATION_HABIT_NAME,
+  NUTRITION_HABIT_NAME,
+} from "../constants/sessions.js";
 
 type HabitCategoryRef = {
   category_key?: HabitCategoryKey | string | null;
@@ -27,6 +31,13 @@ export function isNutritionHabit(habit: HabitCategoryRef): boolean {
 
 export function isMeditationHabit(habit: HabitCategoryRef): boolean {
   return habit.category_key === "meditation" || habit.name?.trim() === MEDITATION_HABIT_NAME;
+}
+
+export function isForeignLanguageHabit(habit: HabitCategoryRef): boolean {
+  return (
+    habit.category_key === "language" ||
+    habit.name?.trim() === FOREIGN_LANGUAGE_HABIT_NAME
+  );
 }
 
 /** Light habits that provide utility without daily check-in / day-close. */

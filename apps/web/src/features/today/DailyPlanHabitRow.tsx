@@ -4,6 +4,7 @@ import type { DailyPlanBlock, HabitReadingProgress, HabitSessionResponse, TodayD
 import {
   isEarlyRiseCategoryKey,
   isMeditationHabit,
+  isForeignLanguageHabit,
   isNonSessionLightCategory,
   isPlankHabit,
   isWarmupHabit,
@@ -13,8 +14,8 @@ import {
   STRENGTH_WORKOUT_REPS_PER_ROUND,
   STRETCH_TARGET_MINUTES,
 } from "@mytodo/shared";
-import { useQueryClient } from "@tanstack/react-query";
-import { ClientApiError, clearHabitBook, resetTodayCheckin, selectHabitBook } from "../../lib/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ClientApiError, clearHabitBook, getEnglishToday, resetTodayCheckin, selectHabitBook } from "../../lib/api";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import { BookPickerModal } from "./BookPickerModal";
 import {
@@ -59,6 +60,8 @@ import { StrengthWorkoutCircuit, clearStrengthCircuitStorage, countStrengthCircu
 import { PlankTechniqueDemo } from "./PlankTechniqueDemo";
 import { WarmupTechniqueDemo } from "./WarmupTechniqueDemo";
 import { MeditationGuide } from "./MeditationGuide";
+import { EnglishLessonDrawer } from "./EnglishLessonDrawer";
+import { englishQueryKeys } from "../english/useEnglish";
 import { prefetchExerciseMedia } from "../../lib/exercise-media";
 
 function PlanInfoIcon({ className }: { className?: string }) {
@@ -161,7 +164,7 @@ function resolveBadge(
 function isInteractiveTarget(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
-    Boolean(target.closest("button, a, input, label, .home__strength-circuit, .home__plank-technique-wrap, .home__plank-technique, .home__warmup-technique-wrap, .home__warmup-technique, video"))
+    Boolean(target.closest("button, a, input, label, .home__strength-circuit, .home__plank-technique-wrap, .home__plank-technique, .home__warmup-technique-wrap, .home__warmup-technique, .home__english-lesson, .home__english-lesson-player, video, iframe"))
   );
 }
 
@@ -195,6 +198,13 @@ export function DailyPlanHabitRow({
   const isPlank = isPlankHabit(habit);
   const isWarmup = isWarmupHabit(habit);
   const isMeditation = isMeditationHabit(habit);
+  const isForeignLanguage = isForeignLanguageHabit(habit);
+  useQuery({
+    queryKey: englishQueryKeys.today,
+    queryFn: getEnglishToday,
+    enabled: isForeignLanguage,
+    staleTime: 5 * 60_000,
+  });
   const strengthReps = strengthRepsPerExercise(
     resolveStrengthProgressionLevel(habit.baseline_value, habit.current_goal),
   );
@@ -266,6 +276,7 @@ export function DailyPlanHabitRow({
   const [strengthRoundComplete, setStrengthRoundComplete] = useState(() =>
     isStrengthWorkout ? isStrengthCircuitRoundComplete(habit.id, planDate, strengthReps) : false,
   );
+  const [lessonWatchMinutes, setLessonWatchMinutes] = useState(0);
   useEffect(() => {
     if (!isStrengthWorkout) {
       setStrengthRoundComplete(false);
@@ -293,6 +304,12 @@ export function DailyPlanHabitRow({
     setExpanded(true);
   };
 
+  useEffect(() => {
+    if (!expanded && isForeignLanguage) {
+      setLessonWatchMinutes(0);
+    }
+  }, [expanded, isForeignLanguage]);
+
   const startDisabled =
     sessionBusy || focusLocked || hasActiveFocus || !canStartSession;
   const canQuickAdd =
@@ -302,7 +319,11 @@ export function DailyPlanHabitRow({
     !isStrengthWorkout;
   const sessionProgress = getLiveSessionProgress(habit.unit, sessionElapsedSeconds);
   const hasSessionProgress = sessionProgress > 0;
-  const progressValue = hasSessionProgress ? currentValue + sessionProgress : currentValue;
+  const progressValue = hasSessionProgress
+    ? currentValue + sessionProgress
+    : isForeignLanguage
+      ? Math.max(currentValue, lessonWatchMinutes)
+      : currentValue;
   const effectiveProgressValue = isBooks ? booksDailyProgress : progressValue;
   const effectiveProgressPercent =
     habit.type !== "abstinence" && habit.current_goal > 0
@@ -337,6 +358,8 @@ export function DailyPlanHabitRow({
             currentValue + getLiveSessionProgressLabel(habit.unit, sessionElapsedSeconds),
           ),
         )
+    : isForeignLanguage
+      ? String(Math.max(currentValue, lessonWatchMinutes))
     : String(currentValue);
   const strengthProgressLabel = `${displayProgressValue} / ${STRENGTH_WORKOUT_REPS_PER_ROUND} упражн.`;
   const progressLabelText = isStrengthWorkout
@@ -654,6 +677,22 @@ export function DailyPlanHabitRow({
             </p>
             {isMeditation ? (
               <MeditationGuide />
+            ) : isForeignLanguage ? (
+              <EnglishLessonDrawer
+                open={expanded}
+                goalMinutes={habit.current_goal}
+                onWatchMinutesChange={setLessonWatchMinutes}
+                onPlanComplete={
+                  status === "success" || status === "skipped"
+                    ? undefined
+                    : async () => {
+                        await checkinMutation.mutateAsync({
+                          habit_id: habit.id,
+                          value: Math.max(currentValue, habit.current_goal),
+                        });
+                      }
+                }
+              />
             ) : isStrengthWorkout ? (
               <p className="home__plan-item-drawer-text home__strength-circuit-intro">
                 Каждое упражнение — по {strengthReps} раз. Со временем будем увеличивать.

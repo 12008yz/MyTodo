@@ -6,6 +6,11 @@ import {
   createHabitRequestSchema,
   createCheckinRequestSchema,
   englishSettingsResponseSchema,
+  englishTodayResponseSchema,
+  englishCompleteRequestSchema,
+  englishCompleteResponseSchema,
+  englishSkipResponseSchema,
+  englishHistoryResponseSchema,
   habitSessionActiveResponseSchema,
   habitSessionCompleteResponseSchema,
   habitSessionSchema,
@@ -59,6 +64,11 @@ import {
   type UserProfile,
   userProfileSchema,
   type EnglishSettingsResponse,
+  type EnglishTodayResponse,
+  type EnglishCompleteRequest,
+  type EnglishCompleteResponse,
+  type EnglishSkipResponse,
+  type EnglishHistoryResponse,
 } from "@mytodo/shared";
 import {
   clearTokens,
@@ -94,6 +104,10 @@ import {
   demoUpdateReadingBookmark,
   demoSubscribePush,
   demoUpdateEnglishSettings,
+  demoGetEnglishToday,
+  demoCompleteEnglishLesson,
+  demoSkipEnglishLesson,
+  demoGetEnglishHistory,
   demoUpdateMe,
   demoEnterShowcase,
 } from "./demo-api";
@@ -308,6 +322,51 @@ export async function updateEnglishSettings(
     body: JSON.stringify(data),
   });
   return englishSettingsResponseSchema.parse(response);
+}
+
+export async function getEnglishToday(): Promise<EnglishTodayResponse> {
+  if (isDemoMode()) {
+    return demoGetEnglishToday();
+  }
+
+  const response = await apiFetch<unknown>("/api/v1/english/today");
+  return englishTodayResponseSchema.parse(response);
+}
+
+export async function completeEnglishLesson(
+  data: EnglishCompleteRequest,
+): Promise<EnglishCompleteResponse> {
+  englishCompleteRequestSchema.parse(data);
+
+  if (isDemoMode()) {
+    return demoCompleteEnglishLesson(data);
+  }
+
+  const response = await apiFetch<unknown>("/api/v1/english/complete", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return englishCompleteResponseSchema.parse(response);
+}
+
+export async function skipEnglishLesson(): Promise<EnglishSkipResponse> {
+  if (isDemoMode()) {
+    return demoSkipEnglishLesson();
+  }
+
+  const response = await apiFetch<unknown>("/api/v1/english/skip", {
+    method: "POST",
+  });
+  return englishSkipResponseSchema.parse(response);
+}
+
+export async function getEnglishHistory(): Promise<EnglishHistoryResponse> {
+  if (isDemoMode()) {
+    return demoGetEnglishHistory();
+  }
+
+  const response = await apiFetch<unknown>("/api/v1/english/history");
+  return englishHistoryResponseSchema.parse(response);
 }
 
 export async function getTodayLight(): Promise<TodayLightResponse> {
