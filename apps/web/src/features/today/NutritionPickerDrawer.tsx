@@ -18,6 +18,12 @@ import {
   pickNutritionMealIdeas,
 } from "@mytodo/shared";
 import { putNutritionTodayLog } from "../../lib/api";
+import {
+  afterKeyboardDismiss,
+  clearKeyboardScrollPadding,
+  getScrollParent,
+  scrollElementStartIntoView,
+} from "../../utils/scrollPanelIntoView";
 
 function NutritionInlineReveal({
   open,
@@ -119,6 +125,8 @@ export function NutritionPickerDrawer({
   const queryClient = useQueryClient();
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const keyboardDismissCleanupRef = useRef<(() => void) | null>(null);
   const initialPanelRecipe = openToSavedRecipe ? resolveInitialPanelRecipe(initialLog) : null;
   const [selectedMeal, setSelectedMeal] = useState<PickableMeal>(() => resolveInitialMeal(initialLog));
   const [productsDraft, setProductsDraft] = useState(() =>
@@ -126,7 +134,8 @@ export function NutritionPickerDrawer({
       ? formatNutritionIngredientIds(initialLog.ingredient_ids)
       : "",
   );
-  const [selectedIds, setSelectedIds] = useState<string[]>(() => initialLog?.ingredient_ids ?? []);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [appliedSuggestionIds, setAppliedSuggestionIds] = useState<string[]>([]);
   const [unrecognizedProducts, setUnrecognizedProducts] = useState<string[]>([]);
   const [isProductsFocused, setIsProductsFocused] = useState(false);
   const [panelRecipe, setPanelRecipe] = useState<NutritionRecipe | null>(initialPanelRecipe);
@@ -157,6 +166,7 @@ export function NutritionPickerDrawer({
       if (closeTimerRef.current) {
         clearTimeout(closeTimerRef.current);
       }
+      keyboardDismissCleanupRef.current?.();
     };
   }, []);
 
@@ -205,6 +215,7 @@ export function NutritionPickerDrawer({
         void persistLogRef.current(parsed.ingredientIds, panelRecipeRef.current?.id);
       }, 500);
     }
+    return parsed;
   }, []);
 
   const closeDetail = () => {
@@ -228,9 +239,34 @@ export function NutritionPickerDrawer({
   };
 
   const handleProductsBlur = () => {
+    const draftAtFocus = draftAtFocusRef.current;
+    const text = productsDraftRef.current;
+    const edited = draftAtFocus != null && text !== draftAtFocus;
+
     setIsProductsFocused(false);
     draftAtFocusRef.current = null;
-    commitProductsDraft(productsDraftRef.current);
+    const parsed = commitProductsDraft(text);
+
+    if (!edited) {
+      return;
+    }
+
+    const nextAppliedIds =
+      parsed.ingredientIds.length >= NUTRITION_MIN_INGREDIENTS ? parsed.ingredientIds : [];
+    setAppliedSuggestionIds(nextAppliedIds);
+
+    const card = rootRef.current?.closest<HTMLElement>(".home__plan-item");
+    if (!card) {
+      return;
+    }
+
+    keyboardDismissCleanupRef.current?.();
+    keyboardDismissCleanupRef.current = afterKeyboardDismiss(() => {
+      keyboardDismissCleanupRef.current = null;
+      const scrollParent = getScrollParent(card);
+      clearKeyboardScrollPadding(scrollParent);
+      scrollElementStartIntoView(card, scrollParent);
+    });
   };
 
   const openDetail = (recipe: NutritionRecipe) => {
@@ -244,8 +280,8 @@ export function NutritionPickerDrawer({
 
   const suggestions = useMemo(() => {
     const mealRecipes = getNutritionRecipesForMeal(selectedMeal);
-    if (selectedIds.length >= NUTRITION_MIN_INGREDIENTS) {
-      const matches = matchNutritionRecipes(selectedIds, mealRecipes, {
+    if (appliedSuggestionIds.length >= NUTRITION_MIN_INGREDIENTS) {
+      const matches = matchNutritionRecipes(appliedSuggestionIds, mealRecipes, {
         limit: MEAL_SUGGESTION_LIMIT,
       });
       if (matches.length > 0) {
@@ -254,31 +290,41 @@ export function NutritionPickerDrawer({
       return {
         kind: "nearMisses" as const,
         matches: [],
-        nearMisses: findNutritionNearMisses(selectedIds, mealRecipes, 3),
+        nearMisses: findNutritionNearMisses(appliedSuggestionIds, mealRecipes, 3),
       };
     }
     return { kind: "ideas" as const, ideas: mealIdeas(selectedMeal), matches: [], nearMisses: [] };
-  }, [selectedMeal, selectedIds]);
+  }, [selectedMeal, appliedSuggestionIds]);
+
+  const ingredientIdsForRecipe = useMemo(() => {
+    if (selectedIds.length >= NUTRITION_MIN_INGREDIENTS) {
+      return selectedIds;
+    }
+    const parsed = parseNutritionProductsText(productsDraft);
+    return parsed.ingredientIds.length >= NUTRITION_MIN_INGREDIENTS
+      ? parsed.ingredientIds
+      : selectedIds;
+  }, [selectedIds, productsDraft]);
 
   const displayRecipe = useMemo(() => {
     if (!panelRecipe) {
       return null;
     }
-    if (selectedIds.length >= NUTRITION_MIN_INGREDIENTS) {
-      return personalizeNutritionRecipe(panelRecipe, selectedIds);
+    if (ingredientIdsForRecipe.length >= NUTRITION_MIN_INGREDIENTS) {
+      return personalizeNutritionRecipe(panelRecipe, ingredientIdsForRecipe);
     }
     return panelRecipe;
-  }, [panelRecipe, selectedIds]);
+  }, [panelRecipe, ingredientIdsForRecipe]);
 
   const missingIngredients = useMemo(
-    () => (panelRecipe ? missingRequiredIngredients(panelRecipe, selectedIds) : []),
-    [panelRecipe, selectedIds],
+    () => (panelRecipe ? missingRequiredIngredients(panelRecipe, ingredientIdsForRecipe) : []),
+    [panelRecipe, ingredientIdsForRecipe],
   );
 
   const handleSelectRecipe = async (recipe: NutritionRecipe) => {
     openDetail(recipe);
-    if (selectedIds.length >= NUTRITION_MIN_INGREDIENTS) {
-      await persistLog(selectedIds, recipe.id);
+    if (ingredientIdsForRecipe.length >= NUTRITION_MIN_INGREDIENTS) {
+      await persistLog(ingredientIdsForRecipe, recipe.id);
     }
   };
 
@@ -290,19 +336,19 @@ export function NutritionPickerDrawer({
   };
 
   const ingredientCountForRecipe = (recipe: NutritionRecipe) =>
-    selectedIds.length >= NUTRITION_MIN_INGREDIENTS
-      ? personalizeNutritionRecipe(recipe, selectedIds).ingredients.length
+    appliedSuggestionIds.length >= NUTRITION_MIN_INGREDIENTS
+      ? personalizeNutritionRecipe(recipe, appliedSuggestionIds).ingredients.length
       : recipe.ingredients.filter((item) => !item.optional).length;
 
   const suggestionsLabel =
-    selectedIds.length >= NUTRITION_MIN_INGREDIENTS
+    appliedSuggestionIds.length >= NUTRITION_MIN_INGREDIENTS
       ? suggestions.kind === "nearMisses"
         ? "Почти подходят"
         : "Можно приготовить"
       : "Идеи на сегодня";
 
   return (
-    <div className="home__nutrition-picker">
+    <div className="home__nutrition-picker" ref={rootRef}>
       <div
         className="home__nutrition-meals"
         role="tablist"
@@ -467,7 +513,7 @@ export function NutritionPickerDrawer({
                 {displayRecipe.ingredients.length > 0 ? (
                   <div className="home__nutrition-recipe-section">
                     <p className="home__nutrition-recipe-section-title">
-                      {selectedIds.length >= NUTRITION_MIN_INGREDIENTS
+                      {ingredientIdsForRecipe.length >= NUTRITION_MIN_INGREDIENTS
                         ? "Из ваших продуктов"
                         : "Ингредиенты"}
                     </p>

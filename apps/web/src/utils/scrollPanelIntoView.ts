@@ -190,6 +190,30 @@ export function applyScrollDelta(scrollParent: HTMLElement, delta: number): void
   scrollParent.scrollTop = clampScrollTop(scrollParent, scrollParent.scrollTop + delta);
 }
 
+/** Align the top of an element with the visible top of its scroll parent. */
+export function scrollElementStartIntoView(
+  element: HTMLElement,
+  scrollContainer?: HTMLElement | null,
+  smooth = true,
+): void {
+  const scrollParent = resolveScrollParent(element, scrollContainer);
+  if (!scrollParent) return;
+
+  const rect = element.getBoundingClientRect();
+  const scrollParentTop = scrollParent.getBoundingClientRect().top + SCROLL_PADDING_PX;
+  const visibleTop = Math.max(getVisibleTop(), scrollParentTop);
+  const delta = rect.top - visibleTop;
+
+  if (Math.abs(delta) < 1) return;
+
+  const targetTop = scrollParent.scrollTop + delta;
+  if (smooth) {
+    animateScrollTop(scrollParent, targetTop);
+  } else {
+    scrollParent.scrollTop = clampScrollTop(scrollParent, targetTop);
+  }
+}
+
 /** After inner step changes (e.g. «Да» → input). */
 export function scrollPanelIntoView(
   element: HTMLElement | null,
