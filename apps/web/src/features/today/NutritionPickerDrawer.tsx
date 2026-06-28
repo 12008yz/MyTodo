@@ -63,10 +63,10 @@ const DETAIL_CLOSE_MS = 420;
 
 function defaultMealByTime(): PickableMeal {
   const hour = new Date().getHours();
-  if (hour < 11) {
+  if (hour < 12) {
     return "breakfast";
   }
-  if (hour < 16) {
+  if (hour < 18) {
     return "lunch";
   }
   return "dinner";
