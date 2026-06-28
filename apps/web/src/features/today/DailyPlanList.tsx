@@ -34,6 +34,23 @@ const EMPTY_PLAN: DailyPlan = {
   minutes_remaining: 0,
 };
 
+export const HOME_COMPLETED_TODAY_SECTION_ID = "home-completed-today";
+
+function isHabitCompletedToday(
+  habit: TodayLightHabit | TodayDarkHabit,
+  planDate?: string,
+): boolean {
+  if (habit.checkin?.status !== "success") {
+    return false;
+  }
+
+  if (planDate) {
+    return habit.checkin.date === planDate;
+  }
+
+  return true;
+}
+
 export type SidePlanData = {
   dailyPlan?: DailyPlan | null;
   habits: (TodayLightHabit | TodayDarkHabit)[];
@@ -226,6 +243,57 @@ function HabitListLayer({
     [sideData.habits, blocks, side],
   );
 
+  const { activeHabits, completedHabits } = useMemo(() => {
+    const active: (TodayLightHabit | TodayDarkHabit)[] = [];
+    const completed: (TodayLightHabit | TodayDarkHabit)[] = [];
+
+    for (const habit of orderedHabits) {
+      if (isHabitCompletedToday(habit, sideData.planDate)) {
+        completed.push(habit);
+      } else {
+        active.push(habit);
+      }
+    }
+
+    return { activeHabits: active, completedHabits: completed };
+  }, [orderedHabits]);
+
+  const renderHabitRow = (habit: TodayLightHabit | TodayDarkHabit) => {
+    if (isCompanionLightHabit(habit)) {
+      return <CompanionHabitRow key={habit.id} habit={habit} />;
+    }
+
+    const block = blockByHabitId.get(habit.id) ?? null;
+    const hasActiveFocus = focusHabitId === habit.id;
+
+    return (
+      <DailyPlanHabitRow
+        key={habit.id}
+        habit={habit}
+        block={block}
+        side={side}
+        planDate={sideData.planDate ?? habit.checkin?.date ?? ""}
+        hasActiveFocus={hasActiveFocus}
+        resumeSession={backgroundSessions.get(habit.id) ?? null}
+        sessionElapsedSeconds={focusElapsedByHabitId.get(habit.id) ?? 0}
+        isRecoveringSessions={isRecoveringSessions}
+        sessionBusy={sessionBusy}
+        focusLocked={Boolean(focusHabitId && !hasActiveFocus)}
+        wakeTime={wakeTime}
+        timezone={timezone}
+        warmupDay={warmupDay}
+        onStart={
+          habit.type !== "abstinence" &&
+          !isNonSessionLightCategory(habit.category_key) &&
+          !isStrengthWorkoutHabit(habit)
+            ? (overrides) => onStart(habit, block, overrides)
+            : undefined
+        }
+        onAbortSessionForBookChange={onAbortSessionForBookChange}
+      />
+    );
+  };
+
   let content: ReactNode;
 
   if (sideData.isError) {
@@ -256,41 +324,24 @@ function HabitListLayer({
           .filter(Boolean)
           .join(" ")}
       >
-        {orderedHabits.map((habit) => {
-          if (isCompanionLightHabit(habit)) {
-            return <CompanionHabitRow key={habit.id} habit={habit} />;
-          }
-
-          const block = blockByHabitId.get(habit.id) ?? null;
-          const hasActiveFocus = focusHabitId === habit.id;
-
-          return (
-            <DailyPlanHabitRow
-              key={habit.id}
-              habit={habit}
-              block={block}
-              side={side}
-              planDate={sideData.planDate ?? habit.checkin?.date ?? ""}
-              hasActiveFocus={hasActiveFocus}
-              resumeSession={backgroundSessions.get(habit.id) ?? null}
-              sessionElapsedSeconds={focusElapsedByHabitId.get(habit.id) ?? 0}
-              isRecoveringSessions={isRecoveringSessions}
-              sessionBusy={sessionBusy}
-              focusLocked={Boolean(focusHabitId && !hasActiveFocus)}
-              wakeTime={wakeTime}
-              timezone={timezone}
-              warmupDay={warmupDay}
-              onStart={
-                habit.type !== "abstinence" &&
-                !isNonSessionLightCategory(habit.category_key) &&
-                !isStrengthWorkoutHabit(habit)
-                  ? (overrides) => onStart(habit, block, overrides)
-                  : undefined
-              }
-              onAbortSessionForBookChange={onAbortSessionForBookChange}
-            />
-          );
-        })}
+        {activeHabits.map((habit) => renderHabitRow(habit))}
+        {completedHabits.length > 0 ? (
+          <section
+            id={isActive ? HOME_COMPLETED_TODAY_SECTION_ID : undefined}
+            className="home__plan-completed"
+            aria-labelledby={isActive ? "home-completed-today-heading" : undefined}
+          >
+            <h3
+              id={isActive ? "home-completed-today-heading" : undefined}
+              className="home__plan-completed-title"
+            >
+              Выполнено сегодня
+            </h3>
+            <div className="home__plan-list home__plan-list--completed">
+              {completedHabits.map((habit) => renderHabitRow(habit))}
+            </div>
+          </section>
+        ) : null}
       </div>
     );
   }

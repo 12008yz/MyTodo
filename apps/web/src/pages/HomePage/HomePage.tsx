@@ -1,10 +1,10 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import type { TodayLightResponse } from "@mytodo/shared";
 import { SideToggle } from "../../components/SideToggle/SideToggle";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { useHabitSide } from "../../features/shell/SideContext";
-import { DailyPlanList } from "../../features/today/DailyPlanList";
+import { DailyPlanList, HOME_COMPLETED_TODAY_SECTION_ID } from "../../features/today/DailyPlanList";
 import { useTodayDashboard, type TodayDashboard } from "../../features/today/useTodayData";
 import { getPlaceholderWeekDays, WeekStrip } from "../../features/today/WeekStrip";
 import { isDemoMode } from "../../lib/demo-mode";
@@ -36,6 +36,18 @@ export function HomePage() {
   const lightData = lightDashboard.dashboard;
   const darkData = darkDashboard.dashboard;
   const warmupDay = lightData?.warmup_day ?? darkData?.warmup_day;
+  const completedToday = stats?.completed_today ?? 0;
+
+  const scrollToCompletedToday = useCallback(() => {
+    if (completedToday <= 0) {
+      return;
+    }
+
+    document.getElementById(HOME_COMPLETED_TODAY_SECTION_ID)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [completedToday]);
 
   return (
     <>
@@ -80,10 +92,30 @@ export function HomePage() {
           </Link>
         </div>
         <div className="home__stats-grid">
-          <div className="home__stat-card home__stat-card--primary">
+          <div
+            className="home__stat-card home__stat-card--primary"
+            onClick={completedToday > 0 ? scrollToCompletedToday : undefined}
+            onKeyDown={
+              completedToday > 0
+                ? (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      scrollToCompletedToday();
+                    }
+                  }
+                : undefined
+            }
+            role={completedToday > 0 ? "button" : undefined}
+            tabIndex={completedToday > 0 ? 0 : undefined}
+            aria-label={
+              completedToday > 0
+                ? `Выполнено сегодня: ${completedToday}. Перейти к списку выполненных привычек`
+                : undefined
+            }
+          >
             <span className="home__stat-label">Выполнено сегодня</span>
             <span className="home__stat-value">
-              {isLoading && !stats ? "…" : (stats?.completed_today ?? 0)}
+              {isLoading && !stats ? "…" : completedToday}
             </span>
           </div>
           <div className="home__stat-card home__stat-card--light">

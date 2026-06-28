@@ -13,7 +13,6 @@ import {
   strengthRepsPerExercise,
   STRENGTH_WORKOUT_REPS_PER_ROUND,
   STRETCH_TARGET_MINUTES,
-  EARLY_RISE_WEEKEND_MESSAGE,
 } from "@mytodo/shared";
 import { isWeekendDate } from "@mytodo/domain";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -419,9 +418,7 @@ export function DailyPlanHabitRow({
       ? formatBooksDailyProgressLabel(booksDailyProgress, habit.current_goal)
       : `${progressLabelValue} / ${habit.current_goal} ${formatUnit(habit.unit)}`;
   const cardHint = isEarlyRise
-    ? isEarlyRiseWeekendRest
-      ? { text: EARLY_RISE_WEEKEND_MESSAGE, variant: "hint" as const }
-      : null
+    ? null
     : isStrengthWorkout && !goalReached
     ? { text: "Нажмите «Упражнения»", variant: "hint" as const }
     : formatCardHint({
@@ -828,7 +825,7 @@ export function DailyPlanHabitRow({
               <p className="home__plan-item-drawer-text">
                 {isEarlyRise
                   ? isEarlyRiseWeekendRest
-                    ? EARLY_RISE_WEEKEND_MESSAGE
+                    ? "С понедельника снова обычный режим раннего подъёма."
                     : earlyRiseEnforcementActive
                     ? "В целевое время откроется 5 минут — нажмите «Я проснулся». Не успели — GG и день не засчитан. После 3 успешных дней подъём сдвинется на 5 минут раньше."
                     : warmupDay?.message ??
