@@ -17,6 +17,14 @@ export function booksPagesRemainingForToday(pagesReadToday: number, dailyGoal: n
 }
 
 export function formatBooksDailyProgressLabel(pagesReadToday: number, dailyGoal: number): string {
+  if (dailyGoal <= 0) {
+    return `${pagesReadToday} стр.`;
+  }
+
+  if (pagesReadToday > dailyGoal) {
+    return `${pagesReadToday} стр. (план ${dailyGoal})`;
+  }
+
   return `${pagesReadToday}/${dailyGoal} стр.`;
 }
 

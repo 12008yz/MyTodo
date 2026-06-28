@@ -43,22 +43,22 @@ describe("bookReadingProgress", () => {
     ).toBe(6);
   });
 
-  it("returns zero before today's baseline is saved", () => {
+  it("falls back to credited pages when today's reader baseline is missing", () => {
     expect(
       pagesReadTodayFromProgress(
         {
           book_id: "meditations",
           pages_read: 20,
-          pages_credited_today: 0,
-          last_read_page: 32,
+          pages_credited_today: 8,
+          last_read_page: 25,
           reader_day_start_page: 20,
           reader_day_date: "2026-06-26",
-          last_checkin_date: "2026-06-26",
+          last_checkin_date: "2026-06-27",
           completed_at: null,
         },
         "2026-06-27",
       ),
-    ).toBe(0);
+    ).toBe(8);
   });
 
   it("estimates remaining pages from current position", () => {

@@ -33,11 +33,15 @@ export function pagesReadTodayFromProgress(
   planDate: string,
 ): number {
   const dayStart = resolveReaderDayStartPage(reading, planDate);
-  if (dayStart == null) {
-    return 0;
+  if (dayStart != null) {
+    return pagesReadTodayInBook(reading.last_read_page, dayStart);
   }
 
-  return pagesReadTodayInBook(reading.last_read_page, dayStart);
+  if (reading.last_checkin_date === planDate) {
+    return reading.pages_credited_today;
+  }
+
+  return 0;
 }
 
 /** Сколько страниц осталось прочитать, если пользователь на `currentPage`. */

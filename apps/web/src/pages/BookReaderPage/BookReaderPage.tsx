@@ -20,6 +20,7 @@ import {
   useSyncedReadingTimer,
 } from "../../features/books/bookReadingTimer";
 import { createCheckin, updateReadingBookmark } from "../../lib/api";
+import { patchBooksHabitOnToday } from "../../features/books/bookTodayCache";
 import "./BookReaderPage.css";
 
 export function BookReaderPage() {
@@ -39,6 +40,7 @@ export function BookReaderPage() {
   const [manifest, setManifest] = useState<BookManifest | null>(null);
   const [page, setPage] = useState<number | null>(null);
   const [dayStartPage, setDayStartPage] = useState<number | null>(null);
+  const [localPagesToday, setLocalPagesToday] = useState(0);
   const [pageText, setPageText] = useState("");
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -47,13 +49,22 @@ export function BookReaderPage() {
   const dayBaselineReadyRef = useRef(false);
   const dayBaselinePersistedRef = useRef(false);
   const lastCreditedPagesRef = useRef<number | null>(null);
+  const checkinDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingCheckinRef = useRef<{ habitId: string; planDate: string; value: number } | null>(
+    null,
+  );
 
   const pageCount = manifest?.pageCount ?? reading?.page_count ?? 1;
   const dailyGoal = habit?.template_id === "books" ? habit.current_goal : 0;
-  const pagesReadTodayLive =
-    page != null && dayStartPage != null
-      ? pagesReadTodayInBook(page, dayStartPage)
-      : (habit?.checkin?.value ?? 0);
+  const effectiveDayStart = dayStartPage ?? dayStartPageRef.current;
+  const pagesFromCurrentPage =
+    page != null && effectiveDayStart != null
+      ? pagesReadTodayInBook(page, effectiveDayStart)
+      : null;
+  const pagesReadTodayLive = Math.max(
+    pagesFromCurrentPage ?? localPagesToday,
+    habit?.checkin?.value ?? 0,
+  );
   const pagesRemainingForTimer = booksPagesRemainingForToday(pagesReadTodayLive, dailyGoal);
   const readingTimerDone = dailyGoal > 0 && pagesReadTodayLive >= dailyGoal;
   const bookPagesLeft =
@@ -89,6 +100,7 @@ export function BookReaderPage() {
   useEffect(() => {
     setPage(null);
     setDayStartPage(null);
+    setLocalPagesToday(0);
     dayStartPageRef.current = null;
     dayBaselineReadyRef.current = false;
     dayBaselinePersistedRef.current = false;
@@ -119,11 +131,54 @@ export function BookReaderPage() {
   }, [bookId]);
 
   useEffect(() => {
-    if (!reading || !manifest || page != null) {
+    if (!reading || !manifest || page != null || !planDate) {
       return;
     }
-    setPage(clampBookPage(reading.last_read_page ?? 1, manifest.pageCount));
-  }, [reading, manifest, page]);
+
+    const initialPage = clampBookPage(reading.last_read_page ?? 1, manifest.pageCount);
+    let initialDayStart = dayStartPageRef.current;
+
+    if (reading.reader_day_date === planDate && reading.reader_day_start_page != null) {
+      initialDayStart = reading.reader_day_start_page;
+      dayStartPageRef.current = initialDayStart;
+      setDayStartPage(initialDayStart);
+      dayBaselineReadyRef.current = true;
+      dayBaselinePersistedRef.current = true;
+    }
+
+    setLocalPagesToday(
+      initialDayStart != null ? pagesReadTodayInBook(initialPage, initialDayStart) : 0,
+    );
+    setPage(initialPage);
+    if (habitId && initialDayStart != null) {
+      patchBooksHabitOnToday(queryClient, habitId, {
+        lastReadPage: initialPage,
+        checkinValue: pagesReadTodayInBook(initialPage, initialDayStart),
+      });
+    }
+  }, [habitId, queryClient, reading, manifest, page, planDate]);
+
+  const syncReaderProgress = useCallback(
+    (nextPage: number) => {
+      if (!habitId) {
+        return;
+      }
+
+      const dayStart = dayStartPageRef.current;
+      const patch: Parameters<typeof patchBooksHabitOnToday>[2] = {
+        lastReadPage: nextPage,
+      };
+
+      if (dayStart != null) {
+        const pagesToday = pagesReadTodayInBook(nextPage, dayStart);
+        setLocalPagesToday(pagesToday);
+        patch.checkinValue = pagesToday;
+      }
+
+      patchBooksHabitOnToday(queryClient, habitId, patch);
+    },
+    [habitId, queryClient],
+  );
 
   useEffect(() => {
     if (!bookId || page == null) {
@@ -184,20 +239,40 @@ export function BookReaderPage() {
     setDayStartPage(startPage);
     dayBaselineReadyRef.current = true;
     dayBaselinePersistedRef.current = true;
+    setLocalPagesToday(
+      page != null ? pagesReadTodayInBook(page, startPage) : pagesReadTodayInBook(startPage, startPage),
+    );
 
     void updateReadingBookmark(habitId, {
       reader_day_start_page: startPage,
       reader_day_date: planDate,
     }).then(() => {
-      void queryClient.invalidateQueries({ queryKey: ["today", "light"] });
+      patchBooksHabitOnToday(queryClient, habitId, {
+        readerDayStartPage: startPage,
+        readerDayDate: planDate,
+      });
+      if (page != null) {
+        syncReaderProgress(page);
+      }
     });
-  }, [habit, habitId, planDate, queryClient, reading]);
+  }, [habit, habitId, page, planDate, queryClient, reading, syncReaderProgress]);
 
   useEffect(() => {
+    const serverValue = habit?.checkin?.value ?? 0;
+    if (lastCreditedPagesRef.current == null || serverValue > lastCreditedPagesRef.current) {
+      lastCreditedPagesRef.current = serverValue;
+    }
+  }, [habit?.checkin?.value]);
+
+  const habitRef = useRef(habit);
+  habitRef.current = habit;
+
+  useEffect(() => {
+    const currentHabit = habitRef.current;
     if (
       !habitId ||
-      !habit ||
-      habit.template_id !== "books" ||
+      !currentHabit ||
+      currentHabit.template_id !== "books" ||
       page == null ||
       !planDate ||
       !dayBaselineReadyRef.current ||
@@ -208,27 +283,68 @@ export function BookReaderPage() {
 
     const dayStartPage = dayStartPageRef.current;
     const pagesFromReader = pagesReadTodayInBook(page, dayStartPage);
-    const currentValue = habit.checkin?.value ?? 0;
+    const serverValue = currentHabit.checkin?.value ?? 0;
+    const nextValue = Math.max(serverValue, lastCreditedPagesRef.current ?? 0, pagesFromReader);
 
-    if (lastCreditedPagesRef.current == null) {
-      lastCreditedPagesRef.current = currentValue;
-    }
-
-    const nextValue = Math.max(lastCreditedPagesRef.current, pagesFromReader);
-
-    if (nextValue <= lastCreditedPagesRef.current) {
+    if (nextValue <= Math.max(lastCreditedPagesRef.current ?? 0, serverValue)) {
       return;
     }
 
-    void createCheckin({
-      habit_id: habitId,
-      date: planDate,
-      value: nextValue,
-    }).then(() => {
-      lastCreditedPagesRef.current = nextValue;
-      void queryClient.invalidateQueries({ queryKey: ["today", "light"] });
-    });
-  }, [habit, habitId, page, planDate, queryClient]);
+    pendingCheckinRef.current = { habitId, planDate, value: nextValue };
+    patchBooksHabitOnToday(queryClient, habitId, { checkinValue: nextValue });
+
+    if (checkinDebounceRef.current) {
+      window.clearTimeout(checkinDebounceRef.current);
+    }
+
+    checkinDebounceRef.current = window.setTimeout(() => {
+      void createCheckin({
+        habit_id: habitId,
+        date: planDate,
+        value: nextValue,
+      })
+        .then((response) => {
+          lastCreditedPagesRef.current = nextValue;
+          pendingCheckinRef.current = null;
+          patchBooksHabitOnToday(queryClient, habitId, {
+            checkinValue: response.value ?? nextValue,
+          });
+        })
+        .catch(() => {
+          // Повторим при следующем перелистывании.
+        });
+    }, 400);
+
+    return () => {
+      if (checkinDebounceRef.current) {
+        window.clearTimeout(checkinDebounceRef.current);
+        checkinDebounceRef.current = null;
+      }
+    };
+  }, [habitId, page, planDate, queryClient]);
+
+  useEffect(() => {
+    return () => {
+      const hadPendingTimer = checkinDebounceRef.current != null;
+      if (checkinDebounceRef.current) {
+        window.clearTimeout(checkinDebounceRef.current);
+        checkinDebounceRef.current = null;
+      }
+
+      const pending = pendingCheckinRef.current;
+      if (!pending || !hadPendingTimer) {
+        return;
+      }
+
+      void createCheckin({
+        habit_id: pending.habitId,
+        date: pending.planDate,
+        value: pending.value,
+      }).catch(() => {
+        // Страница уже закрыта — сохранится при следующем открытии.
+      });
+    };
+  }, []);
 
   const persistBookmark = useCallback(
     async (nextPage: number) => {
@@ -239,32 +355,32 @@ export function BookReaderPage() {
         await updateReadingBookmark(habitId, {
           last_read_page: nextPage,
         });
-        await queryClient.invalidateQueries({ queryKey: ["today", "light"] });
       } catch {
         // Закладка сохранится при следующей попытке.
       }
     },
-    [habitId, queryClient],
+    [habitId],
   );
 
   useEffect(() => {
-    const bookmark = reading?.last_read_page ?? 1;
-    if (!habitId || page == null || !reading || page === bookmark) {
+    if (!habitId || page == null) {
       return;
     }
 
     const timer = window.setTimeout(() => {
       void persistBookmark(page);
-    }, 700);
+    }, 400);
 
     return () => window.clearTimeout(timer);
-  }, [habitId, page, persistBookmark, reading]);
+  }, [habitId, page, persistBookmark]);
 
   const goToPage = useCallback(
     (next: number) => {
-      setPage(clampBookPage(next, pageCount));
+      const clamped = clampBookPage(next, pageCount);
+      setPage(clamped);
+      syncReaderProgress(clamped);
     },
-    [pageCount],
+    [pageCount, syncReaderProgress],
   );
 
   const goPrev = useCallback(() => {
@@ -362,7 +478,7 @@ export function BookReaderPage() {
           aria-live="polite"
           title={
             readingTimerDone
-              ? "Дневная цель по страницам выполнена"
+              ? "Дневная цель выполнена — можно читать дальше"
               : `Осталось примерно ${pagesRemainingForTimer} стр. до плана на сегодня`
           }
         >

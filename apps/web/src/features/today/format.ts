@@ -9,6 +9,7 @@ import {
   strengthRepsPerExercise,
 } from "@mytodo/shared";
 import { formatEarlyRiseTargetWakeTime } from "@mytodo/domain";
+import { isBooksHabit } from "./isBooksHabit";
 
 const UNIT_LABELS: Record<HabitUnit, string> = {
   pages: "стр.",
@@ -122,6 +123,13 @@ export function formatCardHint(params: {
   const { habit, block, goalReached, resumeSession, hasActiveFocus, wakeTime } = params;
 
   if (goalReached) {
+    if (isBooksHabit(habit)) {
+      return {
+        text: "План на сегодня выполнен · можно читать дальше",
+        variant: "success",
+      };
+    }
+
     if (isForeignLanguageHabit(habit)) {
       return {
         text: "Задание на сегодня выполнено",
@@ -201,6 +209,24 @@ export function formatCardHint(params: {
   if (resumeSession && !hasActiveFocus) {
     return {
       text: "Сессия на паузе — нажмите «Продолжить»",
+      variant: "hint",
+    };
+  }
+
+  if (isBooksHabit(habit)) {
+    const reading = "reading" in habit ? habit.reading : null;
+    if (reading?.book_id) {
+      return {
+        text:
+          reading.last_read_page > 1
+            ? "Прогресс обновляется при перелистывании страниц"
+            : "Нажмите «Читать» — откроется выбранная книга",
+        variant: "hint",
+      };
+    }
+
+    return {
+      text: "Выберите книгу или запустите таймер на «Начать»",
       variant: "hint",
     };
   }

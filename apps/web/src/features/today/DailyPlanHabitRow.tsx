@@ -27,7 +27,7 @@ import {
   bookPagesRemainingFromPosition,
   pagesReadTodayFromProgress,
 } from "../books/bookReadingProgress";
-import { formatBookReadingMinutesLabel } from "../books/bookReadingTimer";
+import { formatBookReadingMinutesLabel, formatBooksDailyProgressLabel } from "../books/bookReadingTimer";
 import {
   buildHabitBookEstimate,
   formatBookFinishedLabel,
@@ -217,7 +217,6 @@ export function DailyPlanHabitRow({
   const currentValue = habit.checkin?.value ?? 0;
   const todayPagesRead =
     isBooks && reading && planDate ? pagesReadTodayFromProgress(reading, planDate) : 0;
-  const booksDailyProgress = isBooks ? Math.max(currentValue, todayPagesRead) : currentValue;
   const pagesLeftInBook =
     isBooks && reading && selectedBookPageCount != null
       ? bookPagesRemainingFromPosition(reading.last_read_page, selectedBookPageCount)
@@ -322,6 +321,13 @@ export function DailyPlanHabitRow({
     !isStrengthWorkout;
   const sessionProgress = getLiveSessionProgress(habit.unit, sessionElapsedSeconds);
   const hasSessionProgress = sessionProgress > 0;
+  const booksSessionPages =
+    isBooks && hasSessionProgress
+      ? currentValue + getLiveSessionProgressLabel(habit.unit, sessionElapsedSeconds)
+      : 0;
+  const booksDailyProgress = isBooks
+    ? Math.max(currentValue, todayPagesRead, booksSessionPages)
+    : currentValue;
   const progressValue = hasSessionProgress
     ? currentValue + sessionProgress
     : isForeignLanguage
@@ -367,7 +373,9 @@ export function DailyPlanHabitRow({
   const strengthProgressLabel = `${displayProgressValue} / ${STRENGTH_WORKOUT_REPS_PER_ROUND} упражн.`;
   const progressLabelText = isStrengthWorkout
     ? strengthProgressLabel
-    : `${progressLabelValue} / ${habit.current_goal} ${formatUnit(habit.unit)}`;
+    : isBooks
+      ? formatBooksDailyProgressLabel(booksDailyProgress, habit.current_goal)
+      : `${progressLabelValue} / ${habit.current_goal} ${formatUnit(habit.unit)}`;
   const cardHint = isStrengthWorkout && !goalReached
     ? { text: "Нажмите «Упражнения»", variant: "hint" as const }
     : formatCardHint({
@@ -465,6 +473,34 @@ export function DailyPlanHabitRow({
     }
   };
 
+  const booksNeedsNewBook = isBooks && isBookFinished;
+  const opensBookReader =
+    isBooks && Boolean(reading?.book_id ?? selectedBook?.id) && !booksNeedsNewBook;
+  const booksStartLabel = booksNeedsNewBook
+    ? "Сменить книгу"
+    : reading && reading.last_read_page > 1
+      ? `Продолжить · стр. ${reading.last_read_page}`
+      : "Читать";
+
+  const handleStartClick = () => {
+    if (booksNeedsNewBook) {
+      setBookPickerOpen(true);
+      return;
+    }
+
+    if (isExtraSessionMode && !opensBookReader) {
+      setExtraSessionOpen(true);
+      return;
+    }
+
+    if (opensBookReader && !hasActiveFocus && !resumeSession) {
+      navigate(`/habits/${habit.id}/read`);
+      return;
+    }
+
+    onStart?.();
+  };
+
   const handleCardClick = (event: MouseEvent<HTMLElement>) => {
     if (isInteractiveTarget(event.target)) {
       return;
@@ -486,13 +522,18 @@ export function DailyPlanHabitRow({
         ? "Продолжить..."
       : block?.status === "active"
       ? `Продолжить · ${formatSessionDuration(block)}`
+      : booksNeedsNewBook
+        ? "Сменить книгу"
+      : opensBookReader
+        ? booksStartLabel
       : goalReached
       ? "Ещё сессия"
       : block
         ? `Начать · ${formatSessionDuration(block)}`
         : "Начать";
 
-  const quickAddChips = habit.unit === "minutes" ? [5, 10, 15] : [];
+  const quickAddChips =
+    habit.unit === "minutes" ? [5, 10, 15] : habit.unit === "pages" ? [1, 2, 5] : [];
 
   return (
     <>
@@ -594,11 +635,7 @@ export function DailyPlanHabitRow({
               disabled={startDisabled}
               onClick={(event) => {
                 event.stopPropagation();
-                if (isExtraSessionMode) {
-                  setExtraSessionOpen(true);
-                  return;
-                }
-                onStart?.();
+                handleStartClick();
               }}
             >
               {startLabel}
@@ -713,8 +750,8 @@ export function DailyPlanHabitRow({
                     ? selectedBook
                       ? isBookFinished
                         ? `«${selectedBook.title}» прочитана. Можно выбрать следующую книгу.`
-                        : `Читаешь «${selectedBook.title}». Ниже — сколько дней осталось по нашей системе.`
-                      : "Выбери книгу из рекомендаций — покажем срок чтения и остаток по мере прогресса."
+                        : `Читаешь «${selectedBook.title}». Нажми «${booksStartLabel}» на карточке — откроется книга.`
+                      : "Выбери книгу из рекомендаций — или нажми «Начать» для таймера фокуса."
                     : block
                       ? block.unit === "seconds"
                         ? `Следующая сессия: ${block.expected_yield} ${formatUnit(block.unit)}.`
@@ -771,20 +808,6 @@ export function DailyPlanHabitRow({
             ) : null}
             {isBooks ? (
               <div className="home__plan-book-actions">
-                {selectedBook ? (
-                  <button
-                    type="button"
-                    className="home__plan-drawer-btn home__plan-drawer-btn--primary"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      navigate(`/habits/${habit.id}/read`);
-                    }}
-                  >
-                    {reading && reading.last_read_page > 1
-                      ? `Продолжить · стр. ${reading.last_read_page}`
-                      : "Читать"}
-                  </button>
-                ) : null}
                 <button
                   type="button"
                   className="home__plan-drawer-btn"
