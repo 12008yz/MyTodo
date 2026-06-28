@@ -124,7 +124,7 @@ export function formatCardHint(params: {
   if (goalReached) {
     if (isForeignLanguageHabit(habit)) {
       return {
-        text: "Урок пройден — миссия на сегодня выполнена",
+        text: "Задание на сегодня выполнено",
         variant: "success",
       };
     }
@@ -201,6 +201,13 @@ export function formatCardHint(params: {
   if (resumeSession && !hasActiveFocus) {
     return {
       text: "Сессия на паузе — нажмите «Продолжить»",
+      variant: "hint",
+    };
+  }
+
+  if (isForeignLanguageHabit(habit)) {
+    return {
+      text: "Смотрите урок в «Подробнее» или запустите таймер на 25 мин",
       variant: "hint",
     };
   }

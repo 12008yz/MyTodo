@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { buildVkEmbedUrl, type VkVideoRef } from "./format";
-import { loadVkVideoPlayerApi, type VkVideoPlayerInstance, type VkVideoPlayerState } from "./vk-api";
+import { loadVkVideoPlayerApi, stopVkEmbedsInContainer, type VkVideoPlayerInstance, type VkVideoPlayerState } from "./vk-api";
 import "./VkLessonPlayer.css";
 
 /** Pause and lock before VK shows its own "next video" countdown. */
@@ -185,9 +185,15 @@ export function VkLessonPlayer({
         player.off("timeupdate", onTimeUpdate);
         player.off("ended", onEnded);
         player.off("error", onPlayerError);
+        try {
+          player.pause();
+        } catch {
+          // ignore
+        }
         player.destroy();
       }
       playerRef.current = null;
+      stopVkEmbedsInContainer(iframeRef.current?.parentElement ?? null);
     };
   }, [videoKey, lockPlaybackSurface]);
 

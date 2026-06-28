@@ -61,3 +61,16 @@ export function loadVkVideoPlayerApi(): Promise<void> {
 
   return loadPromise;
 }
+
+/** Stops any VK lesson iframes still mounted inside a container (e.g. during card collapse). */
+export function stopVkEmbedsInContainer(root: ParentNode | null | undefined): void {
+  if (!root) {
+    return;
+  }
+
+  root.querySelectorAll<HTMLIFrameElement>(".vk-lesson-player__frame iframe").forEach((iframe) => {
+    if (iframe.src && iframe.src !== "about:blank") {
+      iframe.src = "about:blank";
+    }
+  });
+}

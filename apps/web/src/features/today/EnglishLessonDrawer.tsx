@@ -229,20 +229,18 @@ export function EnglishLessonDrawer({
       setPlayerDurationSec((current) =>
         durationSec > current ? durationSec : current,
       );
-      if (goalMinutes != null) {
-        onWatchMinutesChange?.(goalMinutes);
-      }
       void finalizeLesson(finalSeconds, durationSec).then((completed) => {
         if (!completed) {
           autoCompletedRef.current = false;
           setPlayerSessionKey((key) => key + 1);
+          reportedMinuteRef.current = -1;
+          onWatchMinutesChange?.(0);
         }
       });
     },
     [
       complete.isPending,
       finalizeLesson,
-      goalMinutes,
       isFinishedToday,
       lesson,
       onWatchMinutesChange,
@@ -319,7 +317,7 @@ export function EnglishLessonDrawer({
       </EnglishInlineReveal>
 
       <EnglishInlineReveal open={playerOpen && Boolean(lesson && vkVideo)}>
-        {lesson && vkVideo ? (
+        {playerOpen && lesson && vkVideo ? (
           <div className="home__english-lesson-player">
             <VkLessonPlayer
               key={`${vkVideo.oid}:${vkVideo.id}:${playerSessionKey}`}

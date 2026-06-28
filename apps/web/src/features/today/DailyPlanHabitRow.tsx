@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import type { DailyPlanBlock, HabitReadingProgress, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
 import {
@@ -61,6 +61,7 @@ import { PlankTechniqueDemo } from "./PlankTechniqueDemo";
 import { WarmupTechniqueDemo } from "./WarmupTechniqueDemo";
 import { MeditationGuide } from "./MeditationGuide";
 import { EnglishLessonDrawer } from "./EnglishLessonDrawer";
+import { stopVkEmbedsInContainer } from "../english/vk-api";
 import { englishQueryKeys } from "../english/useEnglish";
 import { prefetchExerciseMedia } from "../../lib/exercise-media";
 
@@ -277,6 +278,7 @@ export function DailyPlanHabitRow({
     isStrengthWorkout ? isStrengthCircuitRoundComplete(habit.id, planDate, strengthReps) : false,
   );
   const [lessonWatchMinutes, setLessonWatchMinutes] = useState(0);
+  const habitCardRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!isStrengthWorkout) {
       setStrengthRoundComplete(false);
@@ -307,6 +309,7 @@ export function DailyPlanHabitRow({
   useEffect(() => {
     if (!expanded && isForeignLanguage) {
       setLessonWatchMinutes(0);
+      stopVkEmbedsInContainer(habitCardRef.current);
     }
   }, [expanded, isForeignLanguage]);
 
@@ -494,6 +497,7 @@ export function DailyPlanHabitRow({
   return (
     <>
       <article
+        ref={habitCardRef}
         className={[
           "home__plan-item",
           expandedLook ? "home__plan-item--expanded" : "",
