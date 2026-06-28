@@ -3,6 +3,7 @@ import {
   LESSON_MINUTES_ESTIMATE,
   PUSHUP_SECONDS_PER_REP,
   sessionBudgetMinutes,
+  sortLightHabitsForDisplay,
   type HabitTemplateId,
   type HabitUnit,
 } from "@mytodo/shared";
@@ -211,11 +212,13 @@ export function buildDailyPlan(input: {
   const {
     date,
     budgetMin,
-    habits,
+    habits: inputHabits,
     completedBlockIds = new Set(),
     activeBlockId = null,
     completedBlockMeta = new Map(),
   } = input;
+
+  const habits = sortLightHabitsForDisplay(inputHabits);
 
   const entries: HabitPlanEntry[] = [];
 

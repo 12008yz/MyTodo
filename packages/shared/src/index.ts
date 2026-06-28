@@ -83,6 +83,13 @@ export {
   isStrengthWorkoutHabit,
 } from "./habits/category.js";
 export {
+  LIGHT_HABIT_DISPLAY_ORDER,
+  compareLightHabitsForDisplay,
+  resolveLightHabitDisplayOrderKey,
+  sortLightHabitsForDisplay,
+  type LightHabitSortSource,
+} from "./habits/light-display-order.js";
+export {
   authTokensSchema,
   loginRequestSchema,
   logoutRequestSchema,

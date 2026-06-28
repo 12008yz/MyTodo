@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DailyPlan, DailyPlanBlock, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
-import { isCompanionLightHabit, isNonSessionLightCategory, isStrengthWorkoutHabit, PLANK_PREP_SECONDS } from "@mytodo/shared";
+import { compareLightHabitsForDisplay, isCompanionLightHabit, isNonSessionLightCategory, isStrengthWorkoutHabit, PLANK_PREP_SECONDS } from "@mytodo/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClientApiError } from "../../lib/api";
 import { FocusScreen } from "../sessions/FocusScreen";
@@ -88,7 +88,25 @@ function toErrorText(error: unknown): string {
 function orderHabits(
   habits: (TodayLightHabit | TodayDarkHabit)[],
   blocks: DailyPlanBlock[],
+  side: "light" | "dark",
 ): (TodayLightHabit | TodayDarkHabit)[] {
+  if (side === "light") {
+    return [...habits].sort((left, right) =>
+      compareLightHabitsForDisplay(
+        {
+          name: left.name,
+          template_id: left.template_id,
+          category_key: left.category_key,
+        },
+        {
+          name: right.name,
+          template_id: right.template_id,
+          category_key: right.category_key,
+        },
+      ),
+    );
+  }
+
   const blockOrder = new Map(blocks.map((block, index) => [block.habit_id, index]));
 
   return [...habits].sort((left, right) => {
@@ -197,7 +215,10 @@ function HabitListLayer({
     }
     return map;
   }, [blocks]);
-  const orderedHabits = useMemo(() => orderHabits(sideData.habits, blocks), [sideData.habits, blocks]);
+  const orderedHabits = useMemo(
+    () => orderHabits(sideData.habits, blocks, side),
+    [sideData.habits, blocks, side],
+  );
 
   let content: ReactNode;
 
