@@ -1134,6 +1134,30 @@
   gap: calc(10 * var(--s));
 }
 
+.home__plan-item-flight {
+  position: relative;
+  z-index: 5;
+  will-change: transform, opacity;
+}
+
+.home__plan-item-flight--active {
+  transition:
+    transform 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 520ms ease;
+}
+
+.home__plan-item-flight--active .home__plan-item {
+  box-shadow:
+    0 calc(12 * var(--s)) calc(40 * var(--s)) rgba(21, 128, 61, 0.16),
+    0 0 0 calc(1.5 * var(--s)) rgba(74, 222, 128, 0.24);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home__plan-item-flight--active {
+    transition: none;
+  }
+}
+
 .home__plan-lists-crossfade {
   display: grid;
 }

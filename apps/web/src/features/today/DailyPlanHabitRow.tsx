@@ -610,6 +610,7 @@ export function DailyPlanHabitRow({
     <>
       <article
         ref={habitCardRef}
+        data-habit-plan-item={habit.id}
         className={[
           "home__plan-item",
           expandedLook ? "home__plan-item--expanded" : "",

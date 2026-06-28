@@ -25,6 +25,16 @@ import {
 import { useFocusSession } from "../shell/FocusSessionContext";
 import { DailyPlanHabitRow } from "./DailyPlanHabitRow";
 import { CompanionHabitRow } from "./CompanionHabitRow";
+import {
+  captureHabitPlanItemRect,
+  HabitCompletionFlight,
+  type CompletionFlightRect,
+} from "./HabitCompletionFlight";
+import {
+  HABIT_COMPLETION_CELEBRATION_MS,
+  HABIT_COMPLETION_FLIGHT_MS,
+  waitForHabitCompletion,
+} from "./habitCompletionTiming";
 import type { TodaySide } from "./useTodayData";
 
 const EMPTY_PLAN: DailyPlan = {
@@ -207,6 +217,7 @@ type HabitListLayerProps = {
     overrides?: StartSessionOverrides,
   ) => void;
   onAbortSessionForBookChange: (habitId: string) => Promise<void>;
+  completionFlight: { habitId: string; fromRect: CompletionFlightRect | null } | null;
 };
 
 function HabitListLayer({
@@ -223,6 +234,7 @@ function HabitListLayer({
   warmupDay,
   onStart,
   onAbortSessionForBookChange,
+  completionFlight,
 }: HabitListLayerProps) {
   const plan = getPlan(sideData);
   const blocks = useMemo(
@@ -266,9 +278,8 @@ function HabitListLayer({
     const block = blockByHabitId.get(habit.id) ?? null;
     const hasActiveFocus = focusHabitId === habit.id;
 
-    return (
+    const habitRow = (
       <DailyPlanHabitRow
-        key={habit.id}
         habit={habit}
         block={block}
         side={side}
@@ -292,6 +303,16 @@ function HabitListLayer({
         onAbortSessionForBookChange={onAbortSessionForBookChange}
       />
     );
+
+    if (completionFlight?.habitId === habit.id) {
+      return (
+        <HabitCompletionFlight key={habit.id} fromRect={completionFlight.fromRect}>
+          {habitRow}
+        </HabitCompletionFlight>
+      );
+    }
+
+    return <div key={habit.id}>{habitRow}</div>;
   };
 
   let content: ReactNode;
@@ -387,6 +408,13 @@ export function DailyPlanList({
   const [backgroundSessions, setBackgroundSessions] = useState<Map<string, HabitSessionResponse>>(
     () => new Map(),
   );
+  const [completionBurst, setCompletionBurst] = useState(false);
+  const [completionFlight, setCompletionFlight] = useState<{
+    habitId: string;
+    fromRect: CompletionFlightRect | null;
+  } | null>(null);
+  const completionFlightTimeoutRef = useRef<number | null>(null);
+  const pendingCompletionFlightRef = useRef<CompletionFlightRect | null>(null);
   const sessionSyncGenerationRef = useRef(0);
   const { setActive: setFocusSessionActive } = useFocusSession();
 
@@ -428,7 +456,7 @@ export function DailyPlanList({
       sessionBlockId: string | null,
       isPlanBlock: boolean,
       payload: { value: number; endedEarly: boolean },
-    ) => {
+    ): Promise<boolean> => {
       setActionError(null);
       try {
         await completeSession.mutateAsync({
@@ -439,11 +467,42 @@ export function DailyPlanList({
             ended_early: payload.endedEarly,
           },
         });
+        await queryClient.refetchQueries({ queryKey: ["today", activeSide] });
+        return true;
       } catch (submitError) {
         setActionError(toErrorText(submitError));
+        return false;
       }
     },
-    [completeSession],
+    [activeSide, completeSession, queryClient],
+  );
+
+  const triggerCompletionFlight = useCallback(
+    (habitId: string, fromRect: CompletionFlightRect | null) => {
+      if (!fromRect || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        return;
+      }
+
+      if (completionFlightTimeoutRef.current != null) {
+        window.clearTimeout(completionFlightTimeoutRef.current);
+      }
+
+      setCompletionFlight({ habitId, fromRect });
+      completionFlightTimeoutRef.current = window.setTimeout(() => {
+        setCompletionFlight(null);
+        completionFlightTimeoutRef.current = null;
+      }, HABIT_COMPLETION_FLIGHT_MS);
+    },
+    [],
+  );
+
+  useEffect(
+    () => () => {
+      if (completionFlightTimeoutRef.current != null) {
+        window.clearTimeout(completionFlightTimeoutRef.current);
+      }
+    },
+    [],
   );
 
   const syncFocusFromSession = useCallback(
@@ -677,6 +736,16 @@ export function DailyPlanList({
 
       setIsEnding(true);
       const currentFocus = focusState;
+      let flightFromRect: CompletionFlightRect | null = null;
+
+      if (!endedEarly) {
+        setCompletionBurst(true);
+        flightFromRect = captureHabitPlanItemRect(currentFocus.habit.id);
+        pendingCompletionFlightRef.current = flightFromRect;
+        await waitForHabitCompletion(HABIT_COMPLETION_CELEBRATION_MS);
+        setCompletionBurst(false);
+      }
+
       setFocusState(null);
       setBackgroundSessions((prev) => {
         const next = new Map(prev);
@@ -724,19 +793,23 @@ export function DailyPlanList({
       }
 
       if (currentFocus.block.unit === "minutes") {
-        await submitCompletion(
+        const completed = await submitCompletion(
           currentFocus.habit.id,
           currentFocus.sessionBlockId,
           currentFocus.isPlanBlock,
           { value: currentFocus.plannedMin, endedEarly },
         );
+        if (completed) {
+          triggerCompletionFlight(currentFocus.habit.id, flightFromRect);
+        }
+        pendingCompletionFlightRef.current = null;
         setIsEnding(false);
         return;
       }
 
       if (currentFocus.block.unit === "seconds") {
         const fallbackSeconds = currentFocus.plannedSeconds ?? timer.elapsedSeconds;
-        await submitCompletion(
+        const completed = await submitCompletion(
           currentFocus.habit.id,
           currentFocus.sessionBlockId,
           currentFocus.isPlanBlock,
@@ -748,6 +821,10 @@ export function DailyPlanList({
             endedEarly,
           },
         );
+        if (completed) {
+          triggerCompletionFlight(currentFocus.habit.id, flightFromRect);
+        }
+        pendingCompletionFlightRef.current = null;
         setIsEnding(false);
         return;
       }
@@ -761,7 +838,14 @@ export function DailyPlanList({
       });
       setIsEnding(false);
     },
-    [focusState, isEnding, submitCompletion, timer.elapsedMin, timer.elapsedSeconds],
+    [
+      focusState,
+      isEnding,
+      submitCompletion,
+      timer.elapsedMin,
+      timer.elapsedSeconds,
+      triggerCompletionFlight,
+    ],
   );
 
   useEffect(() => {
@@ -892,6 +976,13 @@ export function DailyPlanList({
     setFocusState(null);
     setValuePrompt(null);
     setActionError(null);
+    setCompletionBurst(false);
+    setCompletionFlight(null);
+    pendingCompletionFlightRef.current = null;
+    if (completionFlightTimeoutRef.current != null) {
+      window.clearTimeout(completionFlightTimeoutRef.current);
+      completionFlightTimeoutRef.current = null;
+    }
   }, [activeSide]);
 
   return (
@@ -930,6 +1021,7 @@ export function DailyPlanList({
           warmupDay={warmupDay}
           onStart={(habit, block, overrides) => void handleStart(habit, block, overrides)}
           onAbortSessionForBookChange={abortSessionForBookChange}
+          completionFlight={activeSide === "light" ? completionFlight : null}
         />
         <HabitListLayer
           side="dark"
@@ -945,6 +1037,7 @@ export function DailyPlanList({
           warmupDay={warmupDay}
           onStart={(habit, block, overrides) => void handleStart(habit, block, overrides)}
           onAbortSessionForBookChange={abortSessionForBookChange}
+          completionFlight={activeSide === "dark" ? completionFlight : null}
         />
       </div>
 
@@ -982,6 +1075,7 @@ export function DailyPlanList({
         prepLabel="Встаньте в планку"
         sessionActive={Boolean(focusState?.sessionId)}
         canStopEarly={timer.elapsedSeconds >= MIN_STALE_SESSION_SECONDS}
+        showCompletionBurst={completionBurst}
         onBeginSession={() => void handleBeginExercise()}
         onTogglePause={() => void handleTogglePause()}
         onStopEarly={() => void finishCurrentSession(true)}
@@ -995,22 +1089,34 @@ export function DailyPlanList({
         expectedYield={valuePrompt?.block.expected_yield ?? 0}
         inputLabel={activeSide === "dark" ? "Сколько всего сегодня?" : "Сколько сделал?"}
         isSubmitting={completeSession.isPending}
-        onCancel={() => setValuePrompt(null)}
+        onCancel={() => {
+          pendingCompletionFlightRef.current = null;
+          setValuePrompt(null);
+        }}
         onSubmit={(value) => {
           if (!valuePrompt) {
             return;
           }
 
+          const promptState = valuePrompt;
+
           void (async () => {
-            await submitCompletion(
-              valuePrompt.habitId,
-              valuePrompt.sessionBlockId,
-              valuePrompt.isPlanBlock,
+            const completed = await submitCompletion(
+              promptState.habitId,
+              promptState.sessionBlockId,
+              promptState.isPlanBlock,
               {
                 value,
-                endedEarly: valuePrompt.endedEarly,
+                endedEarly: promptState.endedEarly,
               },
             );
+            if (completed && !promptState.endedEarly) {
+              triggerCompletionFlight(
+                promptState.habitId,
+                pendingCompletionFlightRef.current,
+              );
+            }
+            pendingCompletionFlightRef.current = null;
             setValuePrompt(null);
           })();
         }}

@@ -62,6 +62,12 @@
   outline-offset: 2px;
 }
 
+.focus-screen__close:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
 .focus-screen__eyebrow {
   margin: 0;
   font-size: 12px;
@@ -245,5 +251,139 @@
 
   .focus-screen__btn {
     width: 100%;
+  }
+}
+
+.focus-screen__success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 28px 0 20px;
+  text-align: center;
+}
+
+.focus-screen__success-burst {
+  animation: focus-success-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.focus-screen__success-icon {
+  display: block;
+  width: 120px;
+  height: 120px;
+}
+
+.focus-screen__success-circle {
+  fill: none;
+  stroke: #4ade80;
+  stroke-width: 3;
+  stroke-dasharray: 201;
+  stroke-dashoffset: 201;
+  animation: focus-success-circle 0.5s ease forwards 0.08s;
+}
+
+.focus-screen__success-check {
+  fill: none;
+  stroke: #4ade80;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: focus-success-check 0.38s ease forwards 0.42s;
+}
+
+.focus-screen__success-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #ecfdf5;
+  animation: focus-success-fade-up 0.45s ease forwards 0.35s;
+  opacity: 0;
+}
+
+.focus-screen__success-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(236, 253, 245, 0.78);
+  animation: focus-success-fade-up 0.45s ease forwards 0.5s;
+  opacity: 0;
+}
+
+.focus-screen__success-arrow {
+  display: inline-block;
+  font-size: 16px;
+  line-height: 1;
+  animation: focus-success-arrow 0.9s ease-in-out 0.72s infinite;
+}
+
+@keyframes focus-success-pop {
+  0% {
+    transform: scale(0.35);
+    opacity: 0;
+  }
+
+  70% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes focus-success-circle {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes focus-success-check {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes focus-success-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes focus-success-arrow {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.65;
+  }
+
+  50% {
+    transform: translateY(6px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focus-screen__success-burst,
+  .focus-screen__success-circle,
+  .focus-screen__success-check,
+  .focus-screen__success-title,
+  .focus-screen__success-hint,
+  .focus-screen__success-arrow {
+    animation: none;
+    opacity: 1;
+    stroke-dashoffset: 0;
+    transform: none;
   }
 }
