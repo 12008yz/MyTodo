@@ -24,6 +24,7 @@ export const userProfileSchema = z.object({
   harshness_level: z.number().int().min(1).max(3),
   role: z.enum(["user", "admin"]),
   onboarding_completed: z.boolean(),
+  onboarding_completed_at: z.string().datetime().nullable(),
   trial_ends_at: z.string().datetime(),
   silence_mode_until: z.string().datetime().nullable(),
   silence_mode_active: z.boolean(),

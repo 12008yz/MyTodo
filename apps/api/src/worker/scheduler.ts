@@ -5,6 +5,7 @@ import { syncAllPendingTimezones } from "../lib/user-timezone.js";
 import type { BillingService } from "../services/billing.js";
 import type { PledgeService } from "../services/pledges.js";
 import type { PushService } from "../services/push.js";
+import type { CheckinService } from "../services/checkins.js";
 import type { DayCloseService } from "../services/day-close.js";
 
 export const WORKER_QUEUE_NAME = "mytodo-worker";
@@ -47,6 +48,7 @@ export async function ensureMinuteTickSchedule(queue: Queue): Promise<void> {
 export function createMinuteTickWorker(
   redis: Redis,
   db: Database,
+  checkinService: CheckinService,
   dayCloseService: DayCloseService,
   billingService: BillingService,
   pledgeService: PledgeService,
@@ -62,6 +64,7 @@ export function createMinuteTickWorker(
       await billingService.processPastDueRetries(now);
       await pledgeService.processExpiredPledges(now);
       await pushService.runScheduledPushes(now);
+      await checkinService.processExpiredEarlyRiseWindows(now);
       const summaries = await dayCloseService.runMinuteTick(now);
 
       for (const summary of summaries) {
@@ -88,6 +91,7 @@ export function createMinuteTickWorker(
 export async function startWorker(
   redis: Redis,
   db: Database,
+  checkinService: CheckinService,
   dayCloseService: DayCloseService,
   billingService: BillingService,
   pledgeService: PledgeService,
@@ -100,6 +104,7 @@ export async function startWorker(
   const worker = createMinuteTickWorker(
     redis,
     db,
+    checkinService,
     dayCloseService,
     billingService,
     pledgeService,

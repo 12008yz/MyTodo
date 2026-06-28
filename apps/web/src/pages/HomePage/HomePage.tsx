@@ -35,6 +35,7 @@ export function HomePage() {
   const weekDays = week?.days ?? placeholderWeek;
   const lightData = lightDashboard.dashboard;
   const darkData = darkDashboard.dashboard;
+  const warmupDay = lightData?.warmup_day ?? darkData?.warmup_day;
 
   return (
     <>
@@ -56,6 +57,12 @@ export function HomePage() {
       {isDemoMode() ? (
         <p className="home__demo-banner" role="status">
           Демо-режим — всё работает локально в браузере, без сервера.
+        </p>
+      ) : null}
+
+      {warmupDay?.active ? (
+        <p className="home__warmup-banner" role="status">
+          {warmupDay.message}
         </p>
       ) : null}
 
@@ -126,6 +133,8 @@ export function HomePage() {
         dailyBudgetMin={isLightDashboard(lightData) ? lightData.daily_budget_min : undefined}
         trialEndsAt={user?.trial_ends_at}
         wakeTime={user?.wake_time}
+        timezone={user?.timezone}
+        warmupDay={warmupDay}
       />
     </>
   );

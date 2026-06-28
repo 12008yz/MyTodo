@@ -508,7 +508,7 @@ export function getLightHabitSummary(habit: SelectedHabit, wakeTime?: string): s
     if (wakeTime) {
       return getEarlyRiseSummary(habit, wakeTime);
     }
-    return "От времени подъёма";
+    return "";
   }
 
   if (habit.activityId === "mindfulness-meditation") {

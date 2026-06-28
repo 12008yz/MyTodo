@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { DailyPlan, DailyPlanBlock, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
+import type { DailyPlan, DailyPlanBlock, HabitSessionResponse, TodayDarkHabit, TodayLightHabit, WarmupDay } from "@mytodo/shared";
 import { compareLightHabitsForDisplay, isCompanionLightHabit, isNonSessionLightCategory, isStrengthWorkoutHabit, PLANK_PREP_SECONDS } from "@mytodo/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClientApiError } from "../../lib/api";
@@ -52,6 +52,8 @@ type DailyPlanListProps = {
   dailyBudgetMin?: number;
   trialEndsAt?: string | null;
   wakeTime?: string | null;
+  timezone?: string | null;
+  warmupDay?: WarmupDay | null;
 };
 
 type ValuePromptState = {
@@ -180,6 +182,8 @@ type HabitListLayerProps = {
   focusElapsedByHabitId: Map<string, number>;
   isRecoveringSessions: boolean;
   wakeTime?: string | null;
+  timezone?: string | null;
+  warmupDay?: WarmupDay | null;
   onStart: (
     habit: TodayLightHabit | TodayDarkHabit,
     block: DailyPlanBlock | null,
@@ -198,6 +202,8 @@ function HabitListLayer({
   focusElapsedByHabitId,
   isRecoveringSessions,
   wakeTime,
+  timezone,
+  warmupDay,
   onStart,
   onAbortSessionForBookChange,
 }: HabitListLayerProps) {
@@ -272,6 +278,8 @@ function HabitListLayer({
               sessionBusy={sessionBusy}
               focusLocked={Boolean(focusHabitId && !hasActiveFocus)}
               wakeTime={wakeTime}
+              timezone={timezone}
+              warmupDay={warmupDay}
               onStart={
                 habit.type !== "abstinence" &&
                 !isNonSessionLightCategory(habit.category_key) &&
@@ -311,6 +319,8 @@ export function DailyPlanList({
   dailyBudgetMin,
   trialEndsAt,
   wakeTime,
+  timezone,
+  warmupDay,
 }: DailyPlanListProps) {
   const activeData = activeSide === "light" ? light : dark;
   const plan = getPlan(activeData);
@@ -865,6 +875,8 @@ export function DailyPlanList({
           focusElapsedByHabitId={focusElapsedByHabitId}
           isRecoveringSessions={isRecovering}
           wakeTime={wakeTime}
+          timezone={timezone}
+          warmupDay={warmupDay}
           onStart={(habit, block, overrides) => void handleStart(habit, block, overrides)}
           onAbortSessionForBookChange={abortSessionForBookChange}
         />
@@ -878,6 +890,8 @@ export function DailyPlanList({
           focusElapsedByHabitId={focusElapsedByHabitId}
           isRecoveringSessions={isRecovering}
           wakeTime={wakeTime}
+          timezone={timezone}
+          warmupDay={warmupDay}
           onStart={(habit, block, overrides) => void handleStart(habit, block, overrides)}
           onAbortSessionForBookChange={abortSessionForBookChange}
         />

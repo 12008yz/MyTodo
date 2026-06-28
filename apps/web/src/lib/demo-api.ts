@@ -1,4 +1,4 @@
-import { buildDailyPlan, calibrateHabit, canSkipThisWeek, computeNextEnglishDay, computeNextGoal, recalculateLightGoal, type CalibrationProfile } from "@mytodo/domain";
+import { buildDailyPlan, calibrateHabit, canSkipThisWeek, computeEarlyRiseWindowState, computeNextEnglishDay, computeNextGoal, isHabitEnforcementActive, isWarmupDay, recalculateLightGoal, resolveWarmupAnchor, resolveWarmupDayInfo, type CalibrationProfile } from "@mytodo/domain";
 import {
   AWARENESS_SESSION_MIN,
   SESSION_TARGET_MIN,
@@ -8,6 +8,7 @@ import {
   SOCIAL_MEDIA_MIN_GOAL,
   computeDailyBudgetMin,
   ENGLISH_WATCH_THRESHOLD,
+  getWarmupDayMessage,
   ENGLISH_LESSON_COUNT,
   getEnglishLessonByDay,
   seedToEnglishLessonResponse,
@@ -15,6 +16,7 @@ import {
   HABIT_TEMPLATES,
   isStrengthWorkoutHabit,
   isNutritionHabit,
+  isEarlyRiseCategoryKey,
   isMeditationHabit,
   isKnownNutritionIngredientId,
   isKnownNutritionRecipeId,
@@ -175,6 +177,7 @@ function buildUser(input: {
     pending_timezone: null,
     pending_timezone_from: null,
     created_at: nowIso(),
+    onboarding_completed_at: null,
   };
 }
 
@@ -426,6 +429,7 @@ function createHabitResponse(
 
 function applyPatchMe(user: UserProfile, patch: PatchMeRequest): UserProfile {
   const next: UserProfile = { ...user, ...patch };
+  const wasCompleted = user.onboarding_completed;
 
   if (patch.free_time_min !== undefined) {
     next.daily_budget_min = computeDailyBudgetMin(patch.free_time_min);
@@ -449,6 +453,10 @@ function applyPatchMe(user: UserProfile, patch: PatchMeRequest): UserProfile {
     merged.free_time_min !== null &&
     merged.wake_time !== null &&
     merged.sleep_time !== null;
+
+  if (next.onboarding_completed && !wasCompleted) {
+    next.onboarding_completed_at = nowIso();
+  }
 
   return next;
 }
@@ -1046,6 +1054,8 @@ function buildShowcaseState(): DemoState {
   user.effective_harshness_level = 2;
 
   const createdAt = addDaysLocal(todayDate(), -21) + "T10:00:00.000Z";
+  user.created_at = createdAt;
+  user.onboarding_completed_at = createdAt;
   const habits = buildShowcaseHabits(user, createdAt);
   const today = todayDate();
   const weekStart = weekStartMonday(today);
@@ -1068,12 +1078,96 @@ function todayDate(): string {
   return formatLocalDate(new Date());
 }
 
+function resolveDemoWarmupAnchor(state: DemoState): Date {
+  return resolveWarmupAnchor(
+    state.user.onboarding_completed_at ? new Date(state.user.onboarding_completed_at) : null,
+    new Date(state.user.created_at),
+  );
+}
+
+function isDemoWarmupDay(state: DemoState, date: string): boolean {
+  return isWarmupDay(resolveDemoWarmupAnchor(state), date, state.user.timezone);
+}
+
 function resolveDemoCheckinStatus(
   habit: HabitResponse,
   data: CreateCheckinRequest,
+  state: DemoState,
 ): { status: CheckinResponse["status"]; value: number | null } {
+  const date = data.date ?? todayDate();
+
   if (data.status === "skipped") {
+    if (!isDemoWarmupDay(state, date)) {
+      const skippedDates = state.checkins
+        .filter((row) => row.habit_id === habit.id && row.status === "skipped")
+        .map((row) => row.date)
+        .filter((skipDate) => skipDate !== date);
+      if (!canSkipThisWeek(skippedDates, date)) {
+        throw new Error("Максимум 2 пропуска в неделю");
+      }
+    }
     return { status: "skipped", value: null };
+  }
+
+  if (isEarlyRiseCategoryKey(habit.category_key)) {
+    const wakeTime = state.user.wake_time;
+
+    const anchor = resolveDemoWarmupAnchor(state);
+
+    if (!isHabitEnforcementActive(anchor, date, state.user.timezone)) {
+      if (data.status === "fail") {
+        throw new Error("Сегодня разгонный день — штрафов нет");
+      }
+
+      if (!wakeTime) {
+        throw new Error("Укажите время подъёма в профиле");
+      }
+
+      const window = computeEarlyRiseWindowState(
+        wakeTime,
+        habit.current_goal,
+        new Date(),
+        state.user.timezone,
+      );
+
+      if (window.phase === "window") {
+        return { status: "success", value: habit.current_goal };
+      }
+
+      throw new Error(
+        window.phase === "before"
+          ? `Рано. Окно откроется в ${window.target_wake_time}`
+          : "Сегодня подъём по желанию — окно уже закрыто",
+      );
+    }
+
+    if (!wakeTime) {
+      throw new Error("Укажите время подъёма в профиле");
+    }
+
+    const window = computeEarlyRiseWindowState(
+      wakeTime,
+      habit.current_goal,
+      new Date(),
+      state.user.timezone,
+    );
+
+    if (data.status === "fail") {
+      if (window.phase !== "expired") {
+        throw new Error("Провал доступен только после окончания окна");
+      }
+      return { status: "fail", value: null };
+    }
+
+    if (window.phase === "before") {
+      throw new Error(`Рано. Окно откроется в ${window.target_wake_time}`);
+    }
+
+    if (window.phase === "expired") {
+      throw new Error("Время вышло — отметка недоступна");
+    }
+
+    return { status: "success", value: habit.current_goal };
   }
 
   if (data.status === "fail") {
@@ -1119,10 +1213,12 @@ function weekStartMonday(date: string): string {
   return `${year}-${month}-${dayNum}`;
 }
 
-function buildTodayStats(checkinsToday: CheckinResponse[], habitIds: Set<string>) {
+function buildTodayStats(state: DemoState, checkinsToday: CheckinResponse[], habitIds: Set<string>) {
   const scoped = checkinsToday.filter((checkin) => habitIds.has(checkin.habit_id));
   const completedToday = scoped.filter((c) => c.status === "success").length;
-  const relapsesThisWeek = scoped.filter((c) => c.status === "fail").length;
+  const relapsesThisWeek = scoped.filter(
+    (c) => c.status === "fail" && !isDemoWarmupDay(state, c.date),
+  ).length;
   const minutesToday = scoped.reduce((sum, c) => sum + (c.value ?? 0), 0);
 
   return {
@@ -1361,13 +1457,33 @@ function mapHabitToTodayDark(
   };
 }
 
+function buildDemoWarmupDay(user: UserProfile, planDate: string) {
+  const info = resolveWarmupDayInfo({
+    onboardingCompletedAt: user.onboarding_completed_at
+      ? new Date(user.onboarding_completed_at)
+      : null,
+    registeredAt: new Date(user.created_at),
+    planDate,
+    timezone: user.timezone,
+    wakeTime: user.wake_time,
+    sleepTime: user.sleep_time,
+  });
+  const harshness = Math.min(3, Math.max(1, user.harshness_level)) as 1 | 2 | 3;
+
+  return {
+    active: info.active,
+    slot: info.slot,
+    message: getWarmupDayMessage(info.slot, harshness),
+  };
+}
+
 function buildLightTodayResponse(): TodayLightResponse {
   const state = ensureState();
   const date = todayDate();
   const sideHabits = state.habits.filter((h) => h.side === "light" && h.is_active);
   const habitIds = new Set(sideHabits.map((habit) => habit.id));
   const todayCheckins = state.checkins.filter((c) => c.date === date);
-  const stats = buildTodayStats(todayCheckins, habitIds);
+  const stats = buildTodayStats(state, todayCheckins, habitIds);
 
   return todayLightResponseSchema.parse({
     date,
@@ -1382,6 +1498,7 @@ function buildLightTodayResponse(): TodayLightResponse {
       return mapHabitToTodayLight(habit, checkin, reading, nutritionLog);
     }),
     daily_plan: buildDemoDailyPlan(state, "light", date),
+    warmup_day: buildDemoWarmupDay(state.user, date),
   });
 }
 
@@ -1391,7 +1508,7 @@ function buildDarkTodayResponse(): TodayDarkResponse {
   const sideHabits = state.habits.filter((h) => h.side === "dark" && h.is_active);
   const habitIds = new Set(sideHabits.map((habit) => habit.id));
   const todayCheckins = state.checkins.filter((c) => c.date === date);
-  const stats = buildTodayStats(todayCheckins, habitIds);
+  const stats = buildTodayStats(state, todayCheckins, habitIds);
 
   return todayDarkResponseSchema.parse({
     date,
@@ -1402,6 +1519,7 @@ function buildDarkTodayResponse(): TodayDarkResponse {
       return mapHabitToTodayDark(habit, checkin);
     }),
     daily_plan: buildDemoDailyPlan(state, "dark", date),
+    warmup_day: buildDemoWarmupDay(state.user, date),
   });
 }
 
@@ -1717,7 +1835,7 @@ export function demoCreateCheckin(data: CreateCheckinRequest): CheckinResponse {
     (c) => c.habit_id === data.habit_id && c.date === date,
   );
 
-  const { status: resolvedStatus, value: resolvedValue } = resolveDemoCheckinStatus(habit, data);
+  const { status: resolvedStatus, value: resolvedValue } = resolveDemoCheckinStatus(habit, data, state);
   const previewNextGoal = demoPreviewNextGoal(habit, resolvedStatus);
 
   const checkin: CheckinResponse = {

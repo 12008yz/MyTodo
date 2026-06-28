@@ -50,6 +50,7 @@ export function toUserProfile(user: User, now: Date = new Date()): UserProfile {
     harshness_level: user.harshnessLevel,
     role: user.role as UserProfile["role"],
     onboarding_completed: user.onboardingCompleted,
+    onboarding_completed_at: user.onboardingCompletedAt?.toISOString() ?? null,
     trial_ends_at: user.trialEndsAt.toISOString(),
     silence_mode_until: user.silenceModeUntil?.toISOString() ?? null,
     silence_mode_active: isSilenceModeActive(user.silenceModeUntil, now),

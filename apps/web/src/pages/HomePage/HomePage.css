@@ -65,6 +65,7 @@
 .home__task-time,
 .home__task-progress,
 .home__demo-banner,
+.home__warmup-banner,
 .home__tasks-count,
 .home__week-day-label,
 .home__task-manual-input,
@@ -2649,6 +2650,16 @@
   color: #ffb89e;
 }
 
+.home[data-side="dark"] .home__warmup-banner {
+  background: rgba(72, 187, 120, 0.14);
+  color: #9ae6b4;
+}
+
+.home[data-side="dark"] .home__plan-badge--warmup {
+  background: rgba(72, 187, 120, 0.18);
+  color: #9ae6b4;
+}
+
 .home[data-side="dark"] .home__plan-summary,
 .home[data-side="dark"] .home__value-prompt-hint,
 .home[data-side="dark"] .home__value-prompt-label {
@@ -2920,6 +2931,22 @@
   line-height: 1.35;
   color: var(--color-primary);
   flex-shrink: 0;
+}
+
+.home__warmup-banner {
+  margin: 0 0 calc(14 * var(--s));
+  padding: calc(10 * var(--s)) calc(12 * var(--s));
+  border-radius: calc(12 * var(--s));
+  background: rgba(34, 139, 87, 0.12);
+  font-size: calc(12 * var(--s));
+  line-height: 1.35;
+  color: #1f6b45;
+  flex-shrink: 0;
+}
+
+.home__plan-badge--warmup {
+  background: rgba(34, 139, 87, 0.14);
+  color: #1f6b45;
 }
 
 /* --- Page headers (Progress, Profile) --- */

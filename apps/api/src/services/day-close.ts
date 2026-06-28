@@ -23,6 +23,7 @@ import {
 } from "../db/schema/index.js";
 import type { DoomScrollService } from "./doom-scroll.js";
 import { applyPendingTimezoneIfDue } from "../lib/user-timezone.js";
+import { isWarmupDayForUser } from "../lib/warmup.js";
 import type { PledgeService } from "./pledges.js";
 
 export type DayCloseSummary = {
@@ -105,6 +106,10 @@ export class DayCloseService {
     date: string,
     options: { silenceMode: boolean; hasActivePledge: boolean },
   ): Promise<boolean> {
+    if (isWarmupDayForUser(user, date)) {
+      return false;
+    }
+
     if (isCompanionLightHabit({ category_key: habit.categoryKey, name: habit.name })) {
       return false;
     }
@@ -224,6 +229,10 @@ export class DayCloseService {
   }
 
   private async closeEnglishDayForUser(user: User, date: string): Promise<boolean> {
+    if (isWarmupDayForUser(user, date)) {
+      return false;
+    }
+
     const [settings] = await this.db
       .select()
       .from(englishSettings)

@@ -21,6 +21,7 @@ import type { HabitSessionService } from "./habit-sessions.js";
 import type { ReadingProgressService } from "./reading-progress.js";
 import type { NutritionLogService } from "./nutrition-log.js";
 import type { PomodoroService } from "./pomodoro.js";
+import { buildWarmupDayPayload, isWarmupDayForUser } from "../lib/warmup.js";
 
 type Side = "light" | "dark";
 
@@ -63,6 +64,7 @@ export class TodayService {
       greeting_name: user.name,
       stats: dashboard.stats,
       daily_plan: dashboard.daily_plan,
+      warmup_day: dashboard.warmup_day,
       habits: dashboard.habits.map((habit) => ({
         ...habit,
         timer: isAbstinenceTimerHabit(habit.phase)
@@ -131,6 +133,7 @@ export class TodayService {
       budgetMin: user.dailyBudgetMin,
       habits: [],
     });
+    const warmup_day = buildWarmupDayPayload(user, today);
 
     return {
       date: today,
@@ -140,6 +143,7 @@ export class TodayService {
       stats,
       habits: habitsPayload,
       daily_plan: side === "light" ? (dailyPlan ?? emptyPlan) : (dailyPlan ?? undefined),
+      warmup_day,
     };
   }
 
@@ -235,6 +239,7 @@ export class TodayService {
       (row) =>
         row.status === "fail" &&
         isDateInRange(row.date, weekStart, today) &&
+        !isWarmupDayForUser(user, row.date) &&
         userHabits.some((habit) => habit.id === row.habitId),
     ).length;
 

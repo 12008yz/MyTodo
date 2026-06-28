@@ -157,6 +157,7 @@ export function OnboardingPage() {
   }, []);
 
   const [stepIndex, setStepIndex] = useState(0);
+  const [furthestStepIndex, setFurthestStepIndex] = useState(0);
   const [lightHabits, setLightHabits] = useState<SelectedHabit[]>([]);
   const [darkHabits, setDarkHabits] = useState<SelectedHabit[]>([]);
   const [body, setBody] = useState<BodyFormData>(DEFAULT_BODY);
@@ -168,6 +169,8 @@ export function OnboardingPage() {
   const [isLightPathTransitioning, setIsLightPathTransitioning] = useState(false);
 
   const step = ONBOARDING_STEPS[stepIndex] ?? "welcome";
+  const bodyStepIndex = ONBOARDING_STEPS.indexOf("body");
+  const scheduleConfigured = furthestStepIndex >= bodyStepIndex;
   const activeLightPathId = LIGHT_PATHS[lightPathIndex]?.id ?? "mindfulness";
   const isLastLightPath = lightPathIndex >= LIGHT_PATHS.length - 1;
   const progress = Math.round((stepIndex / (ONBOARDING_STEPS.length - 1)) * 100);
@@ -176,6 +179,7 @@ export function OnboardingPage() {
     const nextIndex = ONBOARDING_STEPS.indexOf(nextStep);
     if (nextIndex >= 0) {
       setStepIndex(nextIndex);
+      setFurthestStepIndex((current) => Math.max(current, nextIndex));
       scrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
     }
   }, []);
@@ -485,7 +489,7 @@ export function OnboardingPage() {
             ref={lightPathStepRef}
             lightHabits={lightHabits}
             activePathId={activeLightPathId}
-            wakeTime={body.wakeTime}
+            wakeTime={scheduleConfigured ? body.wakeTime : undefined}
             onActivePathChange={handleActivePathChange}
             onChange={setLightHabits}
             onPathTransitionChange={handlePathTransitionChange}

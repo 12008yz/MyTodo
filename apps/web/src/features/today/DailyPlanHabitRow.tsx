@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import type { DailyPlanBlock, HabitReadingProgress, HabitSessionResponse, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
+import type { DailyPlanBlock, HabitReadingProgress, HabitSessionResponse, TodayDarkHabit, TodayLightHabit, WarmupDay } from "@mytodo/shared";
 import {
   isEarlyRiseCategoryKey,
   isMeditationHabit,
@@ -64,6 +64,7 @@ import { EnglishLessonDrawer } from "./EnglishLessonDrawer";
 import { stopVkEmbedsInContainer } from "../english/vk-api";
 import { englishQueryKeys } from "../english/useEnglish";
 import { prefetchExerciseMedia } from "../../lib/exercise-media";
+import { useEarlyRiseWindow } from "./useEarlyRiseWindow";
 
 function PlanInfoIcon({ className }: { className?: string }) {
   return (
@@ -121,6 +122,8 @@ type DailyPlanHabitRowProps = {
   sessionBusy: boolean;
   focusLocked: boolean;
   wakeTime?: string | null;
+  timezone?: string | null;
+  warmupDay?: WarmupDay | null;
   onStart?: (overrides?: StartSessionOverrides) => void;
   onAbortSessionForBookChange?: (habitId: string) => Promise<void>;
 };
@@ -144,6 +147,7 @@ function habitReading(
 function resolveBadge(
   habit: TodayLightHabit | TodayDarkHabit,
   _block: DailyPlanBlock | null,
+  options?: { earlyRiseEnforcementActive?: boolean; warmupDayActive?: boolean },
 ): { label: string; className: string } {
   const status = habit.checkin?.status;
 
@@ -152,11 +156,24 @@ function resolveBadge(
   }
 
   if (status === "fail") {
+    if (
+      isEarlyRiseCategoryKey(habit.category_key) &&
+      (options?.earlyRiseEnforcementActive === false || options?.warmupDayActive)
+    ) {
+      return { label: statusLabel(undefined, habit.type), className: "home__plan-badge--pending" };
+    }
+    if (isEarlyRiseCategoryKey(habit.category_key)) {
+      return { label: "GG", className: "home__plan-badge--fail" };
+    }
     return { label: statusLabel(status, habit.type), className: "home__plan-badge--fail" };
   }
 
   if (status === "skipped") {
     return { label: statusLabel(status, habit.type), className: "home__plan-badge--pending" };
+  }
+
+  if (options?.warmupDayActive) {
+    return { label: "Разгон", className: "home__plan-badge--warmup" };
   }
 
   return { label: statusLabel(status, habit.type), className: "home__plan-badge--pending" };
@@ -181,6 +198,8 @@ export function DailyPlanHabitRow({
   sessionBusy,
   focusLocked,
   wakeTime,
+  timezone,
+  warmupDay,
   onStart,
   onAbortSessionForBookChange,
 }: DailyPlanHabitRowProps) {
@@ -211,6 +230,19 @@ export function DailyPlanHabitRow({
   );
   const reading = habitReading(habit);
   const isEarlyRise = isEarlyRiseCategoryKey(habit.category_key);
+  const warmupDayActive = warmupDay?.active === true;
+  const earlyRiseEnforcementActive =
+    isEarlyRise && warmupDay !== undefined && !warmupDayActive;
+  const earlyRiseWindow = useEarlyRiseWindow({
+    enabled:
+      earlyRiseEnforcementActive &&
+      status !== "success" &&
+      status !== "skipped" &&
+      status !== "fail",
+    wakeTime,
+    shiftMinutes: habit.current_goal,
+    timezone,
+  });
   const isNonSessionHabit = isNonSessionLightCategory(habit.category_key);
   const selectedBookPageCount =
     reading?.page_count ?? (selectedBook ? getBookPageCount(selectedBook.id) : null);
@@ -376,7 +408,9 @@ export function DailyPlanHabitRow({
     : isBooks
       ? formatBooksDailyProgressLabel(booksDailyProgress, habit.current_goal)
       : `${progressLabelValue} / ${habit.current_goal} ${formatUnit(habit.unit)}`;
-  const cardHint = isStrengthWorkout && !goalReached
+  const cardHint = isEarlyRise
+    ? null
+    : isStrengthWorkout && !goalReached
     ? { text: "Нажмите «Упражнения»", variant: "hint" as const }
     : formatCardHint({
         habit,
@@ -401,6 +435,30 @@ export function DailyPlanHabitRow({
       );
     }
   };
+
+  const earlyRiseFailSentRef = useRef(false);
+
+  useEffect(() => {
+    earlyRiseFailSentRef.current = false;
+  }, [habit.id, planDate]);
+
+  useEffect(() => {
+    if (
+      !isEarlyRise ||
+      !earlyRiseEnforcementActive ||
+      !earlyRiseWindow ||
+      status === "success" ||
+      status === "fail" ||
+      status === "skipped" ||
+      earlyRiseWindow.phase !== "expired" ||
+      earlyRiseFailSentRef.current
+    ) {
+      return;
+    }
+
+    earlyRiseFailSentRef.current = true;
+    void runCheckin({ habit_id: habit.id, status: "fail" });
+  }, [isEarlyRise, earlyRiseEnforcementActive, earlyRiseWindow?.phase, status, habit.id, planDate]);
 
   const handleQuickAdd = async (amount: number) => {
     setActionError(null);
@@ -512,7 +570,7 @@ export function DailyPlanHabitRow({
     ? { label: "Фокус", className: "home__plan-badge--active" }
     : resumeSession
       ? { label: "В процессе", className: "home__plan-badge--active" }
-      : resolveBadge(habit, block);
+      : resolveBadge(habit, block, { earlyRiseEnforcementActive, warmupDayActive });
 
   const startLabel = hasActiveFocus
     ? "Идёт фокус"
@@ -642,11 +700,21 @@ export function DailyPlanHabitRow({
             </button>
           ) : null}
 
-          {isEarlyRise && status !== "success" && status !== "skipped" ? (
+          {isEarlyRise &&
+          earlyRiseEnforcementActive &&
+          wakeTime &&
+          status !== "success" &&
+          status !== "skipped" &&
+          status !== "fail" ? (
             <button
               type="button"
               className="home__task-btn home__task-btn--start"
-              disabled={isPending || sessionBusy}
+              disabled={
+                isPending ||
+                sessionBusy ||
+                !earlyRiseWindow ||
+                earlyRiseWindow.phase !== "window"
+              }
               onClick={(event) => {
                 event.stopPropagation();
                 void runCheckin({
@@ -655,7 +723,9 @@ export function DailyPlanHabitRow({
                 });
               }}
             >
-              Подъём выполнен
+              {earlyRiseWindow?.phase === "before"
+                ? `Ждём ${earlyRiseWindow.target_wake_time}`
+                : "Я проснулся"}
             </button>
           ) : null}
 
@@ -741,7 +811,10 @@ export function DailyPlanHabitRow({
             ) : (
               <p className="home__plan-item-drawer-text">
                 {isEarlyRise
-                  ? "Цель — проснуться не позже указанного времени. После 3 успешных дней подъём сдвинется на 5 минут раньше."
+                  ? earlyRiseEnforcementActive
+                    ? "В целевое время откроется 5 минут — нажмите «Я проснулся». Не успели — GG и день не засчитан. После 3 успешных дней подъём сдвинется на 5 минут раньше."
+                    : warmupDay?.message ??
+                      "Сегодня разгонный день — подъём по желанию, без штрафов. С завтрашнего утра — полный режим."
                   : isPlank
                     ? "Посмотрите технику ниже, затем нажмите «Начать» — будет короткий отсчёт и таймер планки."
                   : isWarmup

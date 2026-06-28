@@ -32,6 +32,7 @@ import "../../components/ContentPanels/ContentPanels.css";
 type LightPathStepProps = {
   lightHabits: SelectedHabit[];
   activePathId: LightPathId;
+  /** Set only after the body step (wake/sleep schedule) is reached in onboarding. */
   wakeTime?: string;
   onActivePathChange: (pathId: LightPathId) => void;
   onChange: (habits: SelectedHabit[]) => void;

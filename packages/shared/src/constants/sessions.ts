@@ -56,6 +56,8 @@ export const NUTRITION_HABIT_NAME = "Правильное питание";
 
 /** Early rise — shift wake time earlier, not a timed session. */
 export const EARLY_RISE_SHIFT_MIN = 5;
+/** Minutes after target wake time to confirm «Я проснулся» before auto-fail. */
+export const EARLY_RISE_CONFIRM_WINDOW_MIN = 5;
 export const EARLY_RISE_HABIT_NAME = "Ранний подъём";
 
 export function maxLightHabitsForBudget(freeTimeMin: number): number {

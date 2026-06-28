@@ -1,6 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import {
   canSkipThisWeek,
+  computeEarlyRiseWindowState,
   computeNextGoal,
   getUserLocalDate,
   resolveCheckinStatus,
@@ -9,13 +10,18 @@ import {
   ApiError,
   ERROR_CODES,
   HTTP_STATUS,
+  isEarlyRiseCategoryKey,
   type BatchCheckinRequest,
   type CreateCheckinRequest,
 } from "@mytodo/shared";
 import type { DbExecutor } from "../db/index.js";
-import { checkins, habits, type Habit, type User } from "../db/schema/index.js";
+import { checkins, habits, users, type Habit, type User } from "../db/schema/index.js";
 import { toCheckinResponse } from "../lib/checkin-mapper.js";
 import { previewStatusFromCheckin, toProgressionHabit } from "../lib/habit-progression.js";
+import {
+  isEnforcementActiveForUser,
+  isWarmupDayForUser,
+} from "../lib/warmup.js";
 
 type UpsertResult = {
   checkin: typeof checkins.$inferSelect;
@@ -59,7 +65,7 @@ export class CheckinService {
     const habit = await this.getOwnedHabit(user.id, body.habit_id);
     const date = body.date ?? getUserLocalDate(new Date(), user.timezone);
     const existing = await this.findExistingCheckin(habit.id, date);
-    const { status, value } = await this.resolveStatus(habit, body, date);
+    const { status, value } = await this.resolveStatus(habit, body, date, user);
 
     if (habit.type === "abstinence" && status === "fail") {
       await this.db
@@ -253,16 +259,72 @@ export class CheckinService {
     }
   }
 
+  async processExpiredEarlyRiseWindows(now: Date = new Date()): Promise<number> {
+    const rows = await this.db
+      .select({ habit: habits, user: users })
+      .from(habits)
+      .innerJoin(users, eq(habits.userId, users.id))
+      .where(and(eq(habits.isActive, true), eq(habits.categoryKey, "early_rise")));
+
+    let failed = 0;
+
+    for (const { habit, user } of rows) {
+      if (!user.wakeTime) {
+        continue;
+      }
+
+      const date = getUserLocalDate(now, user.timezone);
+
+      if (!isEnforcementActiveForUser(user, date)) {
+        continue;
+      }
+
+      const existing = await this.findExistingCheckin(habit.id, date);
+
+      if (
+        existing &&
+        (existing.status === "success" ||
+          existing.status === "fail" ||
+          existing.status === "skipped")
+      ) {
+        continue;
+      }
+
+      const window = computeEarlyRiseWindowState(
+        user.wakeTime,
+        Number(habit.currentGoal),
+        now,
+        user.timezone,
+      );
+
+      if (window.phase !== "expired") {
+        continue;
+      }
+
+      await this.upsert(user, { habit_id: habit.id, status: "fail", date });
+      failed += 1;
+    }
+
+    return failed;
+  }
+
   private async resolveStatus(
     habit: Habit,
     body: CreateCheckinRequest,
     date: string,
+    user: User,
   ) {
     if (body.status === "skipped") {
       this.assertSkipAllowed(habit);
-      await this.assertCanSkip(habit.id, date);
+      if (!isWarmupDayForUser(user, date)) {
+        await this.assertCanSkip(habit.id, date);
+      }
       await this.assertNoActivePledge(habit.id);
       return { status: "skipped" as const, value: null };
+    }
+
+    if (isEarlyRiseCategoryKey(habit.categoryKey)) {
+      return this.resolveEarlyRiseStatus(habit, body, date, user);
     }
 
     if (habit.type === "abstinence") {
@@ -281,7 +343,7 @@ export class CheckinService {
       throw new ApiError(
         HTTP_STATUS.BAD_REQUEST,
         ERROR_CODES.VALIDATION_ERROR,
-        "Explicit fail status is only allowed for abstinence habits",
+        "Explicit fail status is only allowed for abstinence and early rise habits",
       );
     }
 
@@ -297,6 +359,98 @@ export class CheckinService {
       value: body.value,
     });
     return { status, value: body.value };
+  }
+
+  private resolveEarlyRiseStatus(
+    habit: Habit,
+    body: CreateCheckinRequest,
+    date: string,
+    user: User,
+  ) {
+    const today = getUserLocalDate(new Date(), user.timezone);
+    if (date !== today) {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
+        "Early rise checkins are only allowed for today",
+      );
+    }
+
+    if (!user.wakeTime) {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
+        "Set wake time in profile to use early rise",
+      );
+    }
+
+    const enforcementActive = isEnforcementActiveForUser(user, date);
+
+    if (!enforcementActive) {
+      if (body.status === "fail") {
+        throw new ApiError(
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_CODES.VALIDATION_ERROR,
+          "Сегодня разгонный день — штрафов нет",
+        );
+      }
+
+      const window = computeEarlyRiseWindowState(
+        user.wakeTime,
+        Number(habit.currentGoal),
+        new Date(),
+        user.timezone,
+      );
+
+      if (window.phase === "window") {
+        return { status: "success" as const, value: Number(habit.currentGoal) };
+      }
+
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
+        window.phase === "before"
+          ? `Рано. Окно откроется в ${window.target_wake_time}`
+          : "Сегодня подъём по желанию — окно уже закрыто",
+      );
+    }
+
+    const window = computeEarlyRiseWindowState(
+      user.wakeTime,
+      Number(habit.currentGoal),
+      new Date(),
+      user.timezone,
+    );
+
+    if (body.status === "fail") {
+      if (window.phase !== "expired") {
+        throw new ApiError(
+          HTTP_STATUS.BAD_REQUEST,
+          ERROR_CODES.VALIDATION_ERROR,
+          "Early rise fail is only allowed after the confirmation window",
+        );
+      }
+
+      return { status: "fail" as const, value: null };
+    }
+
+    if (window.phase === "before") {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
+        `Рано. Окно откроется в ${window.target_wake_time}`,
+      );
+    }
+
+    if (window.phase === "expired") {
+      throw new ApiError(
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
+        "Время вышло — отметиться уже нельзя",
+      );
+    }
+
+    return { status: "success" as const, value: Number(habit.currentGoal) };
   }
 
   private assertSkipAllowed(habit: Habit) {

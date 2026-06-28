@@ -83,6 +83,8 @@ export async function seedDatabase(db: Database): Promise<SeedResult> {
 
     const passwordHash = await hashPassword(seedUser.password);
 
+    const now = new Date();
+
     await db.insert(users).values({
       email: seedUser.email,
       passwordHash,
@@ -93,6 +95,7 @@ export async function seedDatabase(db: Database): Promise<SeedResult> {
       timezone: "Europe/Moscow",
       trialEndsAt: addDays(new Date(), seedUser.trialDaysRemaining),
       onboardingCompleted: seedUser.onboarding,
+      onboardingCompletedAt: seedUser.onboarding ? now : null,
       weightKg: seedUser.onboarding ? "75.0" : null,
       heightCm: seedUser.onboarding ? "175.0" : null,
       freeTimeMin: seedUser.onboarding ? 60 : null,

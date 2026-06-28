@@ -321,6 +321,9 @@ export class UserService {
 
     if (hasCompletedOnboarding(merged)) {
       updates.onboardingCompleted = true;
+      if (!current.onboardingCompletedAt) {
+        updates.onboardingCompletedAt = now;
+      }
     }
 
     if (Object.keys(updates).length === 0) {

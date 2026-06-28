@@ -6,6 +6,14 @@ import { doomScrollSessionSchema } from "./doom-scroll.js";
 import { habitReadingProgressSchema } from "./reading.js";
 import { habitNutritionLogSchema } from "./nutrition.js";
 
+export const warmupDaySchema = z.object({
+  active: z.boolean(),
+  slot: z.enum(["morning", "day", "evening", "night"]),
+  message: z.string(),
+});
+
+export type WarmupDay = z.infer<typeof warmupDaySchema>;
+
 export const todayStatsSchema = z.object({
   completed_today: z.number().int().min(0),
   relapses_this_week: z.number().int().min(0),
@@ -46,6 +54,7 @@ export const todayLightResponseSchema = z.object({
   stats: todayStatsSchema,
   habits: z.array(todayLightHabitSchema),
   daily_plan: dailyPlanSchema,
+  warmup_day: warmupDaySchema,
 });
 
 export type TodayLightResponse = z.infer<typeof todayLightResponseSchema>;
@@ -79,6 +88,7 @@ export const todayDarkResponseSchema = z.object({
   stats: todayStatsSchema,
   habits: z.array(todayDarkHabitSchema),
   daily_plan: dailyPlanSchema.optional(),
+  warmup_day: warmupDaySchema,
 });
 
 export type TodayDarkResponse = z.infer<typeof todayDarkResponseSchema>;

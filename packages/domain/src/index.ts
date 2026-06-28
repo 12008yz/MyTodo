@@ -8,6 +8,13 @@ export {
   type HabitPlanInput,
 } from "./habits/daily-plan.js";
 export {
+  computeEarlyRiseWindowState,
+  formatEarlyRiseCountdown,
+  isEarlyRiseEnforcementActive,
+  type EarlyRisePhase,
+  type EarlyRiseWindowState,
+} from "./habits/early-rise.js";
+export {
   computeBmi,
   distributeGoalsAcrossBudget,
   estimateHabitComfortMinutes,
@@ -112,6 +119,15 @@ export {
   SILENCE_MODE_DURATION_MS,
   SILENCE_MODE_HARSHNESS_LEVEL,
 } from "./user/silence-mode.js";
+export {
+  isHabitEnforcementActive,
+  isWarmupDay,
+  resolveDayStartSlot,
+  resolveWarmupAnchor,
+  resolveWarmupDayInfo,
+  type DayStartSlot,
+  type WarmupDayInfo,
+} from "./user/warmup-day.js";
 export {
   resolveEffectiveTimezone,
   scheduleTimezoneChange,

@@ -44,10 +44,10 @@ export function formatGoalLabel(
   }
 
   if (isEarlyRiseCategoryKey(habit.category_key)) {
-    if (wakeTime) {
-      return `цель: подъём в ${formatEarlyRiseTargetWakeTime(wakeTime, habit.current_goal)}`;
+    if (!wakeTime) {
+      return "цель: по времени подъёма из профиля";
     }
-    return "цель: подъём в ваше время";
+    return `цель: подъём в ${formatEarlyRiseTargetWakeTime(wakeTime, habit.current_goal)}`;
   }
 
   const unit = formatUnit(habit.unit);

@@ -43,6 +43,7 @@ async function main(): Promise<void> {
   const { worker } = await startWorker(
     redis,
     db,
+    checkinService,
     dayCloseService,
     billingService,
     pledgeService,
