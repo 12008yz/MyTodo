@@ -16,6 +16,8 @@ type AuthState = {
   user: UserProfile | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  authExitBlocked: boolean;
+  setAuthExitBlocked: (blocked: boolean) => void;
   login: (data: LoginRequest) => Promise<UserProfile>;
   register: (data: RegisterRequest) => Promise<UserProfile>;
   logout: () => Promise<void>;
@@ -52,6 +54,7 @@ async function fetchMeWithRetry(): Promise<UserProfile> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authExitBlocked, setAuthExitBlocked] = useState(false);
 
   const refreshUser = useCallback(async () => {
     if (!getAccessToken()) {
@@ -113,6 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       isLoading,
       isAuthenticated: user !== null,
+      authExitBlocked,
+      setAuthExitBlocked,
       login,
       register,
       logout,
@@ -120,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updateProfile,
       enterDemoShowcase,
     }),
-    [user, isLoading, login, register, logout, refreshUser, updateProfile, enterDemoShowcase],
+    [user, isLoading, authExitBlocked, login, register, logout, refreshUser, updateProfile, enterDemoShowcase],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -29,13 +29,13 @@ export function AuthGuard() {
 }
 
 export function GuestGuard() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, authExitBlocked } = useAuth();
 
   if (isLoading) {
     return <LoadingScreen />;
   }
 
-  if (isAuthenticated) {
+  if (isAuthenticated && !authExitBlocked) {
     if (user && !user.onboarding_completed) {
       return <Navigate to="/onboarding" replace />;
     }

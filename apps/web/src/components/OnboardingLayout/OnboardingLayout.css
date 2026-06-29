@@ -1,5 +1,8 @@
 .onboarding-shell {
   --content-transition-duration: 350ms;
+  --auth-page-enter-duration: 780ms;
+  --auth-page-enter-translate-y: 12px;
+  --auth-page-enter-ease: cubic-bezier(0.33, 1, 0.68, 1);
   --collapse-transition-duration: 420ms;
   --collapse-fade-duration: 360ms;
   --collapse-transition-easing: cubic-bezier(0.22, 1, 0.36, 1);
@@ -11,6 +14,9 @@
   width: 100%;
   max-width: var(--container-max, 26.25rem);
   margin-inline: auto;
+  transition:
+    opacity var(--auth-page-enter-duration) var(--auth-page-enter-ease),
+    transform var(--auth-page-enter-duration) var(--auth-page-enter-ease);
   background:
     radial-gradient(
       ellipse 140% 100% at 0% 0%,
@@ -25,6 +31,19 @@
       transparent 70%
     ),
     linear-gradient(165deg, #f8fffb 0%, #fafdfb 35%, #fefefe 68%, #f7f3ff 100%);
+}
+
+.onboarding-shell--enter-pending {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(0, var(--auth-page-enter-translate-y), 0);
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-shell {
+    transition: none;
+  }
 }
 
 .onboarding-shell:has(.onboarding--welcome) {

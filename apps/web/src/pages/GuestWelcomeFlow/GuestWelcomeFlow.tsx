@@ -5,6 +5,7 @@ import { PrimaryButton } from "../../components/PrimaryButton";
 import { WelcomeLayout } from "../../components/WelcomeLayout";
 import type { IconAnimationPhase, IconTransition } from "../../constants/transitions";
 import { useAuth } from "../../features/auth/AuthProvider";
+import { useAuthPageTransition } from "../../hooks/useAuthPageTransition";
 import { ClientApiError } from "../../lib/api";
 import { isDemoMode } from "../../lib/demo-mode";
 
@@ -23,6 +24,7 @@ function pathnameToPanel(pathname: string): AuthPanel {
 
 export function GuestWelcomeFlow() {
   const { login, register, enterDemoShowcase } = useAuth();
+  const { exitTo, leavePhase, isAuthExiting, onLeaveTransitionEnd } = useAuthPageTransition();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -33,7 +35,7 @@ export function GuestWelcomeFlow() {
 
   const activePanel = pathnameToPanel(location.pathname);
   const isLogin = page === "login";
-  const isTransitioning = transitionPhase !== "idle";
+  const isTransitioning = transitionPhase !== "idle" || isAuthExiting;
 
   useEffect(() => {
     if (!GUEST_PATHS.has(location.pathname)) {
@@ -72,9 +74,9 @@ export function GuestWelcomeFlow() {
 
   const afterAuth = useCallback(
     (onboardingCompleted: boolean) => {
-      navigate(onboardingCompleted ? "/" : "/onboarding", { replace: true });
+      exitTo(onboardingCompleted ? "/" : "/onboarding");
     },
-    [navigate],
+    [exitTo],
   );
 
   const handleLogin = useCallback(
@@ -149,6 +151,8 @@ export function GuestWelcomeFlow() {
       iconTransition={iconTransition}
       contentHidden={contentHidden}
       contentEntering={contentEntering}
+      leavePhase={leavePhase}
+      onLeaveTransitionEnd={onLeaveTransitionEnd}
       onIconsAnimationComplete={handleIconsAnimationComplete}
     >
       <div className="welcome__page-stack">

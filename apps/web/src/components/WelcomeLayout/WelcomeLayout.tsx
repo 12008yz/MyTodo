@@ -1,5 +1,6 @@
-import { useRef, type ReactNode } from 'react'
+import { useRef, type ReactNode, type TransitionEvent } from 'react'
 import { HABIT_TEMPLATES } from '@mytodo/shared'
+import type { AuthLeavePhase } from '../../hooks/useAuthPageTransition'
 import type { IconAnimationPhase, IconTransition } from '../../constants/transitions'
 import { FLOAT_ITEM_COUNT } from '../../constants/transitions'
 import { useContentEnterAnimation } from './useContentEnterAnimation'
@@ -157,6 +158,8 @@ type WelcomeLayoutProps = {
   iconTransition?: IconTransition
   contentHidden?: boolean
   contentEntering?: boolean
+  leavePhase?: AuthLeavePhase
+  onLeaveTransitionEnd?: (event: TransitionEvent<HTMLDivElement>) => void
   onIconsAnimationComplete?: (phase: IconAnimationPhase) => void
 }
 
@@ -166,6 +169,8 @@ export function WelcomeLayout({
   iconTransition = 'idle',
   contentHidden = false,
   contentEntering = false,
+  leavePhase = 'idle',
+  onLeaveTransitionEnd,
   onIconsAnimationComplete,
 }: WelcomeLayoutProps) {
   const contentRef = useRef<HTMLDivElement>(null)
@@ -184,6 +189,8 @@ export function WelcomeLayout({
   const contentClassName = [
     'welcome__content',
     contentHidden ? 'welcome__content--hidden' : '',
+    leavePhase !== 'idle' ? 'welcome__content--auth-leaving' : '',
+    leavePhase === 'active' ? 'welcome__content--auth-leave-active' : '',
     contentEnterPending ? 'welcome__content--enter-pending' : '',
   ]
     .filter(Boolean)
@@ -195,9 +202,12 @@ export function WelcomeLayout({
         'welcome',
         variant === 'login' ? 'welcome--login' : '',
         iconTransition !== 'idle' ? 'welcome--animating-icons' : '',
+        leavePhase !== 'idle' ? 'welcome--auth-leaving' : '',
+        leavePhase === 'active' ? 'welcome--auth-leave-active' : '',
       ]
         .filter(Boolean)
         .join(' ')}
+      onTransitionEnd={onLeaveTransitionEnd}
     >
       <svg className="welcome__svg-defs" aria-hidden="true" width="0" height="0">
         <defs>

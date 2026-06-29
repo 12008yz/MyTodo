@@ -15,6 +15,11 @@
   --float-item-count: 12;
   --icon-transition-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --content-transition-duration: 350ms;
+  --auth-exit-content-duration: 320ms;
+  --auth-page-transition-duration: 780ms;
+  --auth-page-shell-delay: 100ms;
+  --auth-page-exit-translate-y: 24px;
+  --auth-page-transition-ease: cubic-bezier(0.33, 1, 0.68, 1);
   --icon-travel: 120vh;
   --side-light: #ecfdf3;
   --side-light-glow: rgba(70, 240, 138, 0.22);
@@ -495,6 +500,36 @@
   opacity: 0.01;
   pointer-events: none;
   transition: none;
+}
+
+.welcome__content--auth-leaving {
+  pointer-events: none;
+  transition: opacity var(--auth-exit-content-duration) var(--auth-page-transition-ease);
+}
+
+.welcome__content--auth-leaving.welcome__content--auth-leave-active {
+  opacity: 0;
+}
+
+.welcome--auth-leaving {
+  pointer-events: none;
+  will-change: opacity, transform;
+  transition:
+    opacity var(--auth-page-transition-duration) var(--auth-page-transition-ease),
+    transform var(--auth-page-transition-duration) var(--auth-page-transition-ease);
+  transition-delay: var(--auth-page-shell-delay);
+}
+
+.welcome--auth-leaving.welcome--auth-leave-active {
+  opacity: 0;
+  transform: translate3d(0, calc(-1 * var(--auth-page-exit-translate-y)), 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome__content--auth-leaving,
+  .welcome--auth-leaving {
+    transition: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
