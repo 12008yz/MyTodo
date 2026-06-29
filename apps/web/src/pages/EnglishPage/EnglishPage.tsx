@@ -1,14 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { ENGLISH_LESSON_COUNT, ENGLISH_WATCH_THRESHOLD } from "@mytodo/shared";
+import { ENGLISH_LESSON_COUNT } from "@mytodo/shared";
 import { isDemoMode } from "../../lib/demo-mode";
 import {
   formatEnglishLessonLabel,
   formatLessonDuration,
-  formatWatchProgress,
   parseVkVideoRef,
   resolveDisplayLessonDuration,
-  resolveEnglishWatchRequirement,
 } from "../../features/english/format";
 import { useHorizontalSwipe } from "../../features/english/useHorizontalSwipe";
 import { useEnglishCatalog, useEnglishMutations, useEnglishToday } from "../../features/english/useEnglish";
@@ -56,17 +54,6 @@ export function EnglishPage() {
     setPlayerDurationSec(null);
     setPlayerSessionKey(0);
   }, [catalog, lessons]);
-
-  const { requiredWatchSec } = useMemo(() => {
-    if (!lesson) {
-      return { requiredWatchSec: 0 };
-    }
-    return resolveEnglishWatchRequirement(lesson.duration_sec, playerDurationSec);
-  }, [lesson, playerDurationSec]);
-
-  const watchProgress = lesson
-    ? formatWatchProgress(lesson.today_watched_sec, requiredWatchSec)
-    : 0;
 
   const displayDurationSec = lesson
     ? resolveDisplayLessonDuration(lesson.duration_sec, playerDurationSec)
@@ -124,18 +111,10 @@ export function EnglishPage() {
     return (
       <EnglishShell onBack={() => navigate("/profile")}>
         <div className="english-page__welcome">
-          <div className="english-page__welcome-badge" aria-hidden="true">
-            🇬🇧
-          </div>
           <h1 className="english-page__welcome-title">Английский с нуля</h1>
           <p className="english-page__welcome-lead">
-            Выберите уроки в каталоге — смотреть и засчитывать прогресс можно на главной.
+            Выберите уроки в каталоге — смотреть и засчитывать прогресс можно на главной странице.
           </p>
-          <ul className="english-page__welcome-list">
-            <li>{ENGLISH_LESSON_COUNT} уроков по порядку</li>
-            <li>1 видео в день · до 2 пропусков в неделю</li>
-            <li>Урок засчитывается после просмотра ≥ {Math.round(ENGLISH_WATCH_THRESHOLD * 100)}%</li>
-          </ul>
           {actionError ? (
             <p className="english-page__error" role="alert">
               {actionError}
@@ -201,7 +180,9 @@ export function EnglishPage() {
           {lesson ? formatEnglishLessonLabel(lesson.day_number) : "Уроки"}
         </h1>
         <p className="english-page__catalog-lead">
-          Листайте уроки и выберите, какой показывать на главной. Смотреть и засчитывать — только там.
+          Листайте каталог и выберите урок для главной цели на сегодня. Счётчик задания{" "}
+          <strong>обнулится</strong>, для успешного завершения дня{" "}
+          <strong>необходимо</strong> выполнить задание.
         </p>
         <p className="english-page__course-counter" aria-live="polite">
           Курс: день {catalog.current_day} из {ENGLISH_LESSON_COUNT}
@@ -274,19 +255,6 @@ export function EnglishPage() {
           </p>
         )}
 
-        {requiredWatchSec > 0 ? (
-          <div className="english-page__watch-card">
-            <div className="english-page__watch-row">
-              <span className="english-page__watch-label">Прогресс сегодня</span>
-              <span className="english-page__watch-value">
-                {Math.min(lesson?.today_watched_sec ?? 0, requiredWatchSec)} / {requiredWatchSec} сек
-              </span>
-            </div>
-            <div className="english-page__watch-track" aria-hidden="true">
-              <div className="english-page__watch-fill" style={{ width: `${watchProgress}%` }} />
-            </div>
-          </div>
-        ) : null}
       </section>
 
       {actionError ? (

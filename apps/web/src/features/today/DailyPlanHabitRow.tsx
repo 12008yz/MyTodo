@@ -51,7 +51,7 @@ import {
   getLiveSessionProgressLabel,
 } from "../sessions/sessionProgress";
 import { ExtraSessionModal } from "../sessions/ExtraSessionModal";
-import { getSessionRemainingSeconds } from "../sessions/sessionRecovery";
+import { getSessionElapsedSeconds, getSessionRemainingSeconds } from "../sessions/sessionRecovery";
 import {
   resolveSessionPlan,
   type StartSessionOverrides,
@@ -63,6 +63,16 @@ import { WarmupTechniqueDemo } from "./WarmupTechniqueDemo";
 import { MeditationGuide } from "./MeditationGuide";
 import { EnglishLessonDrawer } from "./EnglishLessonDrawer";
 import { stopVkEmbedsInContainer } from "../english/vk-api";
+import {
+  clearEnglishLessonManualMinutes,
+  readEnglishLessonManualMinutes,
+  resolveEnglishCardMinutes,
+  writeEnglishLessonManualMinutes,
+} from "../english/englishLessonManual";
+import {
+  resolveEnglishHabitGoalMinutes,
+  resolveEnglishLessonDuration,
+} from "../english/format";
 import { englishQueryKeys } from "../english/useEnglish";
 import { prefetchExerciseMedia } from "../../lib/exercise-media";
 import { useEarlyRiseWindow } from "./useEarlyRiseWindow";
@@ -228,7 +238,8 @@ export function DailyPlanHabitRow({
     queryKey: englishQueryKeys.today,
     queryFn: getEnglishToday,
     enabled: isForeignLanguage,
-    staleTime: 5 * 60_000,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
   const strengthReps = strengthRepsPerExercise(
     resolveStrengthProgressionLevel(habit.baseline_value, habit.current_goal),
@@ -323,6 +334,7 @@ export function DailyPlanHabitRow({
     isStrengthWorkout ? isStrengthCircuitRoundComplete(habit.id, planDate, strengthReps) : false,
   );
   const [lessonWatchMinutes, setLessonWatchMinutes] = useState(0);
+  const [lessonManualMinutes, setLessonManualMinutes] = useState(0);
   const [englishPlayerOpen, setEnglishPlayerOpen] = useState(false);
   const habitCardRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -353,10 +365,19 @@ export function DailyPlanHabitRow({
   };
 
   useEffect(() => {
-    if (!expanded && isForeignLanguage && !englishPlayerOpen) {
+    if (!expanded && englishPlayerOpen) {
+      setEnglishPlayerOpen(false);
+    }
+  }, [expanded, englishPlayerOpen]);
+
+  useEffect(() => {
+    if (!isForeignLanguage) {
+      return;
+    }
+    if (!expanded || !englishPlayerOpen) {
       stopVkEmbedsInContainer(habitCardRef.current);
     }
-  }, [expanded, isForeignLanguage, englishPlayerOpen]);
+  }, [expanded, englishPlayerOpen, isForeignLanguage]);
 
   const englishLessonKeyRef = useRef<string | null>(null);
   useEffect(() => {
@@ -372,13 +393,29 @@ export function DailyPlanHabitRow({
     englishLessonKeyRef.current = lessonKey;
     const lessonSucceeded = englishToday.day_status === "success";
 
+    if (lessonSucceeded) {
+      clearEnglishLessonManualMinutes(planDate, englishToday.lesson.id);
+      setLessonManualMinutes(0);
+    }
+
     if (!lessonSucceeded && status === "success") {
       void reopenTodayCheckin(habit.id, planDate).then(() => {
         void queryClient.invalidateQueries({ queryKey: ["today", side] });
       });
+      return;
+    }
+
+    if (lessonSucceeded && status !== "success") {
+      void checkinMutation.mutateAsync({
+        habit_id: habit.id,
+        value: Math.max(currentValue, habit.current_goal),
+      });
     }
   }, [
+    checkinMutation,
+    currentValue,
     englishToday,
+    habit.current_goal,
     habit.id,
     isForeignLanguage,
     planDate,
@@ -402,16 +439,14 @@ export function DailyPlanHabitRow({
     const hadPreviousLesson = englishLessonIdRef.current != null;
     englishLessonIdRef.current = nextLessonId;
 
-    const lessonMinutes = Math.min(
-      habit.current_goal,
-      Math.ceil(englishToday.watched_sec / 60),
-    );
+    const lessonMinutes = Math.ceil(englishToday.watched_sec / 60);
     setLessonWatchMinutes(lessonMinutes);
+    setLessonManualMinutes(readEnglishLessonManualMinutes(planDate, nextLessonId));
 
     if (hadPreviousLesson) {
       setEnglishPlayerOpen(false);
     }
-  }, [englishToday, habit.current_goal, isForeignLanguage]);
+  }, [englishToday, habit.current_goal, isForeignLanguage, planDate]);
 
   const startDisabled =
     sessionBusy || focusLocked || hasActiveFocus || !canStartSession;
@@ -429,19 +464,42 @@ export function DailyPlanHabitRow({
   const booksDailyProgress = isBooks
     ? Math.max(currentValue, todayPagesRead, booksSessionPages)
     : currentValue;
-  const englishLessonWatchedMinutes =
-    englishToday?.enabled === true
-      ? Math.min(habit.current_goal, Math.ceil(englishToday.watched_sec / 60))
+  const englishVideoMinutes =
+    isForeignLanguage && englishToday?.enabled === true
+      ? Math.max(
+          lessonWatchMinutes,
+          resolveEnglishHabitGoalMinutes(
+            englishToday.watched_sec,
+            resolveEnglishLessonDuration(englishToday.lesson.duration_sec, null),
+            habit.current_goal,
+            englishToday.day_status === "success",
+          ),
+        )
       : 0;
-  const foreignLanguageCardMinutes = isForeignLanguage
-    ? goalReached
-      ? habit.current_goal
-      : Math.max(lessonWatchMinutes, englishLessonWatchedMinutes)
-    : 0;
+  const englishInLessonMinutes =
+    isForeignLanguage && englishToday?.enabled === true
+      ? resolveEnglishCardMinutes(
+          englishVideoMinutes,
+          lessonManualMinutes,
+          habit.current_goal,
+        )
+      : 0;
+  const pausedSessionMinutes =
+    isForeignLanguage && resumeSession
+      ? Math.floor(getSessionElapsedSeconds(resumeSession) / 60)
+      : 0;
+  const foreignLanguageProgressValue = Math.min(
+    habit.current_goal,
+    hasSessionProgress
+      ? englishInLessonMinutes + sessionProgress
+      : Math.max(englishInLessonMinutes, pausedSessionMinutes),
+  );
   const progressValue = hasSessionProgress
-    ? currentValue + sessionProgress
+    ? isForeignLanguage
+      ? foreignLanguageProgressValue
+      : currentValue + sessionProgress
     : isForeignLanguage
-      ? foreignLanguageCardMinutes
+      ? foreignLanguageProgressValue
       : currentValue;
   const effectiveProgressValue = isBooks ? booksDailyProgress : progressValue;
   const effectiveProgressPercent =
@@ -470,16 +528,22 @@ export function DailyPlanHabitRow({
   const progressLabelValue = isBooks
     ? String(booksDailyProgress)
     : hasSessionProgress
-    ? habit.unit === "minutes" && progressValue < 10
-      ? progressValue.toFixed(1)
-      : String(
-          Math.floor(
-            currentValue + getLiveSessionProgressLabel(habit.unit, sessionElapsedSeconds),
-          ),
-        )
-    : isForeignLanguage
-      ? String(foreignLanguageCardMinutes)
-    : String(currentValue);
+      ? habit.unit === "minutes" && progressValue < 10
+        ? progressValue.toFixed(1)
+        : String(
+            Math.floor(
+              isForeignLanguage
+                ? Math.min(
+                    habit.current_goal,
+                    englishInLessonMinutes +
+                      getLiveSessionProgressLabel(habit.unit, sessionElapsedSeconds),
+                  )
+                : currentValue + getLiveSessionProgressLabel(habit.unit, sessionElapsedSeconds),
+            ),
+          )
+      : habit.unit === "minutes" && isForeignLanguage && progressValue < 10
+        ? progressValue.toFixed(1)
+        : String(Math.floor(isForeignLanguage ? progressValue : currentValue));
   const strengthProgressLabel = `${displayProgressValue} / ${STRENGTH_WORKOUT_REPS_PER_ROUND} упражн.`;
   const progressLabelText = isStrengthWorkout
     ? strengthProgressLabel
@@ -545,6 +609,13 @@ export function DailyPlanHabitRow({
         habit_id: habit.id,
         value: currentValue + amount,
       });
+      if (isForeignLanguage && englishToday?.enabled === true) {
+        setLessonManualMinutes((minutes) => {
+          const next = minutes + amount;
+          writeEnglishLessonManualMinutes(planDate, englishToday.lesson.id, next);
+          return next;
+        });
+      }
       setQuickAddOpen(false);
     } catch (err) {
       setActionError(
@@ -860,7 +931,10 @@ export function DailyPlanHabitRow({
         <CollapsibleReveal
           open={expanded}
           scrollBehavior="none"
-          onCollapsed={() => setExpandedLook(false)}
+          onCollapsed={() => {
+            setExpandedLook(false);
+            setEnglishPlayerOpen(false);
+          }}
           className="home__plan-item-drawer"
           contentClassName="home__plan-item-drawer-inner"
         >
@@ -980,6 +1054,7 @@ export function DailyPlanHabitRow({
         habitName={habit.name}
         unit={habit.unit}
         chips={quickAddChips}
+        hint={isForeignLanguage ? "Добавить минуты к сегодняшнему прогрессу" : undefined}
         isSubmitting={checkinMutation.isPending}
         onCancel={() => setQuickAddOpen(false)}
         onAdd={(amount) => void handleQuickAdd(amount)}

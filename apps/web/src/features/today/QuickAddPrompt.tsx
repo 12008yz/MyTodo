@@ -7,6 +7,7 @@ type QuickAddPromptProps = {
   habitName: string;
   unit: HabitUnit;
   chips?: number[];
+  hint?: string;
   isSubmitting?: boolean;
   onCancel: () => void;
   onAdd: (amount: number) => void;
@@ -17,6 +18,7 @@ export function QuickAddPrompt({
   habitName,
   unit,
   chips = [],
+  hint = "Добавить сверх плана",
   isSubmitting = false,
   onCancel,
   onAdd,
@@ -55,7 +57,7 @@ export function QuickAddPrompt({
         <h3 id="quick-add-title" className="home__value-prompt-title">
           {habitName}
         </h3>
-        <p className="home__value-prompt-hint">Добавить сверх плана</p>
+        <p className="home__value-prompt-hint">{hint}</p>
 
         {chips.length > 0 ? (
           <div className="home__quick-add-chips">

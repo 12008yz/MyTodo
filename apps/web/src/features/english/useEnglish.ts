@@ -88,7 +88,32 @@ export function useEnglishMutations() {
 
   const selectLesson = useMutation({
     mutationFn: (lessonId: string) => selectEnglishLesson({ lesson_id: lessonId }),
-    onSuccess: async () => {
+    onSuccess: async (result) => {
+      queryClient.setQueryData(
+        englishQueryKeys.today,
+        (current: Awaited<ReturnType<typeof getEnglishToday>> | undefined) => {
+          if (!current?.enabled) {
+            return {
+              enabled: true as const,
+              current_day: result.current_day,
+              lesson: result.lesson,
+              selected_lesson_id: result.selected_lesson_id,
+              day_status: result.day_status,
+              watched_sec: result.watched_sec,
+              preview_next_day: result.preview_next_day,
+            };
+          }
+          return {
+            ...current,
+            current_day: result.current_day,
+            lesson: result.lesson,
+            selected_lesson_id: result.selected_lesson_id,
+            day_status: result.day_status,
+            watched_sec: result.watched_sec,
+            preview_next_day: result.preview_next_day,
+          };
+        },
+      );
       await invalidate();
       await queryClient.invalidateQueries({ queryKey: ["today"] });
     },

@@ -672,16 +672,25 @@ function reconcileDemoForeignLanguageMinutes(state: DemoState): DemoState {
   const existingIndex = state.checkins.findIndex(
     (checkin) => checkin.habit_id === habit.id && checkin.date === today,
   );
-  const previewNextGoal = demoPreviewNextGoal(
-    habit,
-    expectedMinutes >= habit.current_goal ? "success" : "pending",
-  );
+  const currentValue = existingIndex >= 0 ? (state.checkins[existingIndex]!.value ?? 0) : 0;
+  const nextValue = Math.max(currentValue, expectedMinutes);
+  if (existingIndex >= 0 && currentValue === nextValue) {
+    return state;
+  }
+  const existingStatus = existingIndex >= 0 ? state.checkins[existingIndex]!.status : null;
+  const status =
+    existingStatus === "pending"
+      ? "pending"
+      : nextValue >= habit.current_goal
+        ? "success"
+        : "pending";
+  const previewNextGoal = demoPreviewNextGoal(habit, status);
   const checkin: CheckinResponse = {
     id: existingIndex >= 0 ? state.checkins[existingIndex]!.id : crypto.randomUUID(),
     habit_id: habit.id,
     date: today,
-    status: expectedMinutes >= habit.current_goal ? "success" : "pending",
-    value: expectedMinutes,
+    status,
+    value: nextValue,
     updated_at: nowIso(),
     current_goal: habit.current_goal,
     preview_next_goal: previewNextGoal,
@@ -708,7 +717,10 @@ function creditDemoForeignLanguageLessonMinutes(state: DemoState): DemoState {
   );
   const currentValue = existingIndex >= 0 ? (state.checkins[existingIndex]!.value ?? 0) : 0;
   const nextValue = currentValue + habit.current_goal;
-  const status = nextValue >= habit.current_goal ? "success" : "pending";
+  const lessonDay = resolveDemoActiveLessonDay(state);
+  const progress = getDemoEnglishProgressForLesson(state, today, lessonDay);
+  const lessonComplete = progress?.status === "success";
+  const status = lessonComplete && nextValue >= habit.current_goal ? "success" : "pending";
   const checkin: CheckinResponse = {
     id: existingIndex >= 0 ? state.checkins[existingIndex]!.id : crypto.randomUUID(),
     habit_id: habit.id,
@@ -1396,6 +1408,17 @@ function resolveDemoCheckinStatus(
 
   if (data.value === undefined) {
     return { status: "pending", value: null };
+  }
+
+  if (isForeignLanguageHabit({ category_key: habit.category_key, name: habit.name })) {
+    const lessonDay = resolveDemoActiveLessonDay(state);
+    const progress = getDemoEnglishProgressForLesson(state, date, lessonDay);
+    const lessonComplete = progress?.status === "success";
+    const value = data.value;
+    return {
+      status: lessonComplete && value >= habit.current_goal ? "success" : "pending",
+      value,
+    };
   }
 
   if (habit.type === "target") {

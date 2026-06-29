@@ -169,6 +169,35 @@ export function canAutoCompleteEnglishLesson(
   return watchedSec >= apiMinimumSec - 1;
 }
 
+/**
+ * Maps video watch time to habit goal minutes on the daily plan bar.
+ * A fully watched video always credits the full goal (e.g. 23 min video → 25/25).
+ * Longer videos credit the goal only after the entire video is watched.
+ */
+export function resolveEnglishHabitGoalMinutes(
+  watchedSec: number,
+  lessonDurationSec: number,
+  goalMinutes: number,
+  isLessonComplete: boolean,
+): number {
+  if (goalMinutes <= 0) {
+    return 0;
+  }
+
+  if (isLessonComplete) {
+    return goalMinutes;
+  }
+
+  if (
+    lessonDurationSec > CATALOG_DURATION_PLACEHOLDER_MAX_SEC &&
+    watchedSec >= lessonDurationSec - 1
+  ) {
+    return goalMinutes;
+  }
+
+  return Math.min(Math.ceil(watchedSec / 60), goalMinutes);
+}
+
 export function shortenLessonTitle(title: string, maxLength = 72): string {
   const normalized = title.replace(/\s+/g, " ").trim();
   if (normalized.length <= maxLength) {

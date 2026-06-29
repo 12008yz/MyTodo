@@ -1245,6 +1245,10 @@
   padding: calc(10 * var(--s)) 0 calc(2 * var(--s));
 }
 
+.home__plan-item-drawer-body:has(.home__english-lesson) {
+  padding-bottom: calc(6 * var(--s));
+}
+
 .home__plan-item-drawer-title {
   margin: 0;
   font-size: calc(12 * var(--s));
@@ -1430,6 +1434,10 @@
 }
 
 .home__plan-drawer-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(36 * var(--s));
   margin-top: calc(10 * var(--s));
   padding: calc(8 * var(--s)) calc(12 * var(--s));
   border: calc(1.5 * var(--s)) solid rgba(95, 51, 225, 0.18);
@@ -1439,6 +1447,7 @@
   font: inherit;
   font-size: calc(12 * var(--s));
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .home__plan-drawer-btn--primary {
@@ -2249,6 +2258,7 @@
     transition: none;
   }
 
+  .home__english-open-lesson-btn-wrap,
   .home__english-inline-reveal,
   .home__english-inline-reveal-inner,
   .home__english-inline-reveal-content {
@@ -3420,6 +3430,25 @@
   animation: home__shimmer 1.2s ease-in-out infinite;
 }
 
+.home__english-open-lesson-btn-wrap {
+  overflow: hidden;
+  max-height: calc(52 * var(--s));
+  opacity: 1;
+  transition:
+    max-height 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home__english-open-lesson-btn-wrap .home__plan-drawer-btn {
+  margin-top: 0;
+}
+
+.home__english-open-lesson-btn-wrap--collapsed {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .home__english-inline-reveal {
   display: grid;
   grid-template-rows: 0fr;
@@ -3496,6 +3525,5 @@
   gap: calc(10 * var(--s));
   width: 100%;
   min-width: 0;
-  margin-top: calc(10 * var(--s));
 }
 

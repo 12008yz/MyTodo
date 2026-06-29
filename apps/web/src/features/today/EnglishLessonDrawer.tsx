@@ -7,10 +7,12 @@ import {
   canAutoCompleteEnglishLesson,
   parseVkVideoRef,
   resolveEnglishCompleteWatchSec,
+  resolveEnglishHabitGoalMinutes,
   resolveEnglishLessonDuration,
   resolveEnglishWatchRequirement,
 } from "../english/format";
 import { VkLessonPlayer } from "../english/VkLessonPlayer";
+import { stopVkEmbedsInContainer } from "../english/vk-api";
 import { englishQueryKeys, useEnglishMutations } from "../english/useEnglish";
 
 const WATCH_SAVE_DEBOUNCE_MS = 3000;
@@ -49,18 +51,20 @@ export function EnglishLessonDrawer({
     queryKey: englishQueryKeys.today,
     queryFn: getEnglishToday,
     enabled: shouldLoad,
-    staleTime: 5 * 60_000,
+    staleTime: 0,
   });
   const { enable, complete, watch } = useEnglishMutations();
   const [watchedSec, setWatchedSec] = useState(0);
   const [playerDurationSec, setPlayerDurationSec] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isOpening, setIsOpening] = useState(false);
+  const [playerRevealed, setPlayerRevealed] = useState(false);
   const [playerSessionKey, setPlayerSessionKey] = useState(0);
   const autoCompletedRef = useRef(false);
   const reportedMinuteRef = useRef(-1);
   const pendingWatchSecRef = useRef(0);
   const watchSaveTimerRef = useRef<number | null>(null);
+  const playerRootRef = useRef<HTMLDivElement>(null);
 
   const lesson = today?.enabled ? today.lesson : null;
   const vkVideo = lesson ? parseVkVideoRef(lesson.video_url) : null;
@@ -121,9 +125,47 @@ export function EnglishLessonDrawer({
     if (!expanded && !playerOpen) {
       setActionError(null);
       reportedMinuteRef.current = -1;
-      onWatchMinutesChange?.(0);
     }
-  }, [expanded, playerOpen, onWatchMinutesChange]);
+  }, [expanded, playerOpen]);
+
+  useEffect(() => {
+    if (!playerOpen) {
+      setPlayerRevealed(false);
+      return;
+    }
+
+    let cancelled = false;
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!cancelled) {
+          setPlayerRevealed(true);
+        }
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
+  }, [playerOpen]);
+
+  useEffect(() => {
+    if (playerOpen) {
+      return;
+    }
+
+    if (watchSaveTimerRef.current != null) {
+      window.clearTimeout(watchSaveTimerRef.current);
+      watchSaveTimerRef.current = null;
+    }
+
+    stopVkEmbedsInContainer(playerRootRef.current);
+
+    const pendingSeconds = pendingWatchSecRef.current;
+    if (pendingSeconds > 0 && today?.enabled && today.day_status !== "success") {
+      void flushWatchProgress(pendingSeconds);
+    }
+  }, [playerOpen, today?.enabled, today?.day_status, flushWatchProgress]);
 
   useEffect(() => {
     if (!lessonIdentityKey) {
@@ -168,7 +210,9 @@ export function EnglishLessonDrawer({
         );
         await complete.mutateAsync(watchedForApi);
         await onPlanComplete?.();
-        onWatchMinutesChange?.(0);
+        if (goalMinutes != null) {
+          onWatchMinutesChange?.(goalMinutes);
+        }
         onLessonComplete?.();
         onPlayerOpenChange(false);
         return true;
@@ -202,15 +246,24 @@ export function EnglishLessonDrawer({
         scheduleWatchSave(next);
         return next;
       });
-      if (goalMinutes != null) {
-        const minutes = Math.min(goalMinutes, Math.ceil(seconds / 60));
+      if (goalMinutes != null && lesson) {
+        const lessonDuration = resolveEnglishLessonDuration(
+          lesson.duration_sec,
+          playerDurationSec,
+        );
+        const minutes = resolveEnglishHabitGoalMinutes(
+          seconds,
+          lessonDuration,
+          goalMinutes,
+          false,
+        );
         if (minutes !== reportedMinuteRef.current) {
           reportedMinuteRef.current = minutes;
           onWatchMinutesChange?.(minutes);
         }
       }
     },
-    [goalMinutes, onWatchMinutesChange, scheduleWatchSave],
+    [goalMinutes, lesson, onWatchMinutesChange, playerDurationSec, scheduleWatchSave],
   );
 
   const handleOpenLesson = async () => {
@@ -344,7 +397,14 @@ export function EnglishLessonDrawer({
             </p>
           ) : null}
 
-          {!playerOpen ? (
+          <div
+            className={[
+              "home__english-open-lesson-btn-wrap",
+              playerOpen ? "home__english-open-lesson-btn-wrap--collapsed" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
             <button
               type="button"
               className="home__plan-drawer-btn home__plan-drawer-btn--primary"
@@ -356,52 +416,74 @@ export function EnglishLessonDrawer({
             >
               {isOpening ? "Открываем…" : isFinishedToday ? "Пересмотреть урок" : "Открыть урок"}
             </button>
-          ) : null}
+          </div>
         </>
       ) : null}
 
-      {playerOpen ? (
-        lesson && vkVideo ? (
-          <div className="home__english-lesson-player">
-            <VkLessonPlayer
-              key={`${vkVideo.oid}:${vkVideo.id}:${playerSessionKey}`}
-              video={vkVideo}
-              pageUrl={lesson.video_url}
-              durationSec={lesson.duration_sec}
-              suppressDoneOverlay
-              onDurationReady={handleDurationReady}
-              onWatchProgress={handleWatchProgress}
-              onVideoEnded={handleVideoEnded}
-              onRewatch={() => {
-                onPlayerOpenChange(true);
-                setPlayerSessionKey((key) => key + 1);
-              }}
-            />
-
-            {!isFinishedToday && requiredWatchSec > 0 ? (
-              <>
-                <div className="home__english-lesson-progress" aria-hidden="true">
-                  <div
-                    className="home__english-lesson-progress-fill"
-                    style={{ width: `${watchProgress}%` }}
+      <div
+        ref={playerRootRef}
+        className={[
+          "home__english-inline-reveal",
+          playerOpen ? "home__english-inline-reveal--open" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        aria-hidden={!playerOpen}
+      >
+        <div className="home__english-inline-reveal-inner">
+          <div
+            className={[
+              "home__english-inline-reveal-content",
+              playerRevealed ? "home__english-inline-reveal-content--visible" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            {playerOpen ? (
+              lesson && vkVideo ? (
+                <div className="home__english-lesson-player">
+                  <VkLessonPlayer
+                    key={`${vkVideo.oid}:${vkVideo.id}:${playerSessionKey}`}
+                    video={vkVideo}
+                    pageUrl={lesson.video_url}
+                    durationSec={lesson.duration_sec}
+                    suppressDoneOverlay
+                    onDurationReady={handleDurationReady}
+                    onWatchProgress={handleWatchProgress}
+                    onVideoEnded={handleVideoEnded}
+                    onRewatch={() => {
+                      onPlayerOpenChange(true);
+                      setPlayerSessionKey((key) => key + 1);
+                    }}
                   />
+
+                  {!isFinishedToday && requiredWatchSec > 0 ? (
+                    <>
+                      <div className="home__english-lesson-progress" aria-hidden="true">
+                        <div
+                          className="home__english-lesson-progress-fill"
+                          style={{ width: `${watchProgress}%` }}
+                        />
+                      </div>
+                      <p className="home__plan-item-hint">
+                        {complete.isPending
+                          ? "Сохраняем…"
+                          : requiredWatchSec > 0
+                            ? `Просмотрено ${watchProgress}%`
+                            : "Нажмите play и смотрите до конца"}
+                      </p>
+                    </>
+                  ) : null}
                 </div>
-                <p className="home__plan-item-hint">
-                  {complete.isPending
-                    ? "Сохраняем…"
-                    : requiredWatchSec > 0
-                      ? `Просмотрено ${watchProgress}%`
-                      : "Нажмите play и смотрите до конца"}
+              ) : (
+                <p className="home__task-error" role="alert">
+                  {actionError ?? "Не удалось загрузить видео урока."}
                 </p>
-              </>
+              )
             ) : null}
           </div>
-        ) : (
-          <p className="home__task-error" role="alert">
-            {actionError ?? "Не удалось загрузить видео урока."}
-          </p>
-        )
-      ) : null}
+        </div>
+      </div>
 
       {expanded && actionError ? (
         <p className="home__task-error" role="alert">

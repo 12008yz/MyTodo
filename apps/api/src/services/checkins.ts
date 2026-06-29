@@ -6,6 +6,7 @@ import {
   getUserLocalDate,
   isWeekendDate,
   resolveCheckinStatus,
+  type CheckinStatus,
 } from "@mytodo/domain";
 import {
   ApiError,
@@ -17,7 +18,16 @@ import {
   type CreateCheckinRequest,
 } from "@mytodo/shared";
 import type { DbExecutor } from "../db/index.js";
-import { checkins, englishProgress, habits, users, type Habit, type User } from "../db/schema/index.js";
+import {
+  checkins,
+  englishLessons,
+  englishProgress,
+  englishSettings,
+  habits,
+  users,
+  type Habit,
+  type User,
+} from "../db/schema/index.js";
 import { toCheckinResponse } from "../lib/checkin-mapper.js";
 import { previewStatusFromCheckin, toProgressionHabit } from "../lib/habit-progression.js";
 import {
@@ -103,7 +113,20 @@ export class CheckinService {
     }
 
     const expectedMinutes = completedLessons * Number(habit.currentGoal);
-    await this.applySessionValue(user, habit.id, expectedMinutes, { mode: "set" });
+    const existing = await this.findExistingCheckin(habit.id, today);
+    const currentValue = existing?.value == null ? 0 : Number(existing.value);
+    const nextValue = Math.max(currentValue, expectedMinutes);
+
+    if (existing && currentValue === nextValue) {
+      return;
+    }
+
+    if (existing?.status === "pending") {
+      await this.saveCheckin(habit.id, today, "pending", nextValue);
+      return;
+    }
+
+    await this.applySessionValue(user, habit.id, nextValue, { mode: "set" });
   }
 
   async findForeignLanguageHabitForUser(userId: string) {
@@ -207,7 +230,7 @@ export class CheckinService {
 
     const currentValue = existing?.value == null ? 0 : Number(existing.value);
     const newValue = mode === "set" ? value : currentValue + value;
-    const status = resolveCheckinStatus(this.toCheckinHabit(habit), { value: newValue });
+    const status = await this.resolveTargetHabitCheckinStatus(user, habit, date, newValue);
     const checkin = await this.saveCheckin(habit.id, date, status, newValue);
 
     if (habit.templateId === "books") {
@@ -450,10 +473,67 @@ export class CheckinService {
       );
     }
 
-    const status = resolveCheckinStatus(this.toCheckinHabit(habit), {
-      value: body.value,
-    });
+    const status = await this.resolveTargetHabitCheckinStatus(
+      user,
+      habit,
+      date,
+      body.value,
+    );
     return { status, value: body.value };
+  }
+
+  private async resolveTargetHabitCheckinStatus(
+    user: User,
+    habit: Habit,
+    date: string,
+    value: number,
+  ): Promise<CheckinStatus> {
+    if (isForeignLanguageHabit({ category_key: habit.categoryKey, name: habit.name })) {
+      const lessonComplete = await this.isActiveEnglishLessonComplete(user.id, date);
+      return lessonComplete && value >= Number(habit.currentGoal) ? "success" : "pending";
+    }
+
+    return resolveCheckinStatus(this.toCheckinHabit(habit), { value });
+  }
+
+  private async isActiveEnglishLessonComplete(userId: string, date: string): Promise<boolean> {
+    const [settings] = await this.db
+      .select()
+      .from(englishSettings)
+      .where(eq(englishSettings.userId, userId))
+      .limit(1);
+
+    if (!settings?.isEnabled) {
+      return false;
+    }
+
+    let lessonId = settings.selectedLessonId;
+    if (!lessonId) {
+      const [lesson] = await this.db
+        .select({ id: englishLessons.id })
+        .from(englishLessons)
+        .where(eq(englishLessons.dayNumber, settings.currentDay))
+        .limit(1);
+      lessonId = lesson?.id ?? null;
+    }
+
+    if (!lessonId) {
+      return false;
+    }
+
+    const [progress] = await this.db
+      .select({ status: englishProgress.status })
+      .from(englishProgress)
+      .where(
+        and(
+          eq(englishProgress.userId, userId),
+          eq(englishProgress.date, date),
+          eq(englishProgress.lessonId, lessonId),
+        ),
+      )
+      .limit(1);
+
+    return progress?.status === "success";
   }
 
   private resolveEarlyRiseStatus(
