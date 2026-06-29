@@ -28,6 +28,15 @@ export function formatUnit(unit: HabitUnit | null): string {
   return UNIT_LABELS[unit] ?? unit;
 }
 
+function formatPagesGoalLabel(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 14) return "страниц";
+  if (mod10 === 1) return "страница";
+  if (mod10 >= 2 && mod10 <= 4) return "страницы";
+  return "страниц";
+}
+
 export function formatSessionDuration(block: DailyPlanBlock): string {
   if (block.unit === "seconds" && block.expected_yield > 0) {
     return `${block.expected_yield} сек`;
@@ -55,10 +64,10 @@ export function formatGoalLabel(
     return `цель: подъём в ${formatEarlyRiseTargetWakeTime(wakeTime, habit.current_goal)}`;
   }
 
-  const unit = formatUnit(habit.unit);
   const goal = habit.current_goal;
 
   if (habit.type === "limit") {
+    const unit = formatUnit(habit.unit);
     return `лимит: ≤ ${goal} ${unit}`.trim();
   }
 
@@ -66,6 +75,11 @@ export function formatGoalLabel(
     return "полный отказ";
   }
 
+  if (habit.unit === "pages") {
+    return `цель: ${goal} ${formatPagesGoalLabel(goal)}`;
+  }
+
+  const unit = formatUnit(habit.unit);
   return `цель: ${goal} ${unit}`.trim();
 }
 

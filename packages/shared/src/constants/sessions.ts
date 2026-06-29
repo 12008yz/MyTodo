@@ -1,7 +1,3 @@
-import { MAX_ACTIVE_HABITS } from "./habits.js";
-
-export const MIN_MINUTES_PER_LIGHT_HABIT = 10;
-export const MAX_LIGHT_HABITS = 20;
 export const SESSION_MIN_MIN = 10;
 export const SESSION_MAX_MIN = 15;
 export const SESSION_TARGET_MIN = 12;
@@ -63,11 +59,6 @@ export const EARLY_RISE_HABIT_NAME = "Ранний подъём";
 /** Shown when early rise is auto-skipped on Saturday and Sunday. */
 export const EARLY_RISE_WEEKEND_MESSAGE =
   "В выходные можно не вставать рано — привычка засчитана автоматически.";
-
-export function maxLightHabitsForBudget(freeTimeMin: number): number {
-  if (freeTimeMin < MIN_MINUTES_PER_LIGHT_HABIT) return 0;
-  return Math.min(MAX_LIGHT_HABITS, MAX_ACTIVE_HABITS);
-}
 
 export function sessionBudgetMinutes(seconds: number): number {
   return Math.max(1, Math.ceil(seconds / 60));

@@ -67,7 +67,6 @@ import {
   clearEnglishLessonManualMinutes,
   readEnglishLessonManualMinutes,
   resolveEnglishCardMinutes,
-  writeEnglishLessonManualMinutes,
 } from "../english/englishLessonManual";
 import {
   resolveEnglishHabitGoalMinutes,
@@ -454,7 +453,8 @@ export function DailyPlanHabitRow({
     habit.type === "target" &&
     status !== "skipped" &&
     !isNonSessionHabit &&
-    !isStrengthWorkout;
+    !isStrengthWorkout &&
+    !isForeignLanguage;
   const sessionProgress = getLiveSessionProgress(habit.unit, sessionElapsedSeconds);
   const hasSessionProgress = sessionProgress > 0;
   const booksSessionPages =
@@ -609,13 +609,6 @@ export function DailyPlanHabitRow({
         habit_id: habit.id,
         value: currentValue + amount,
       });
-      if (isForeignLanguage && englishToday?.enabled === true) {
-        setLessonManualMinutes((minutes) => {
-          const next = minutes + amount;
-          writeEnglishLessonManualMinutes(planDate, englishToday.lesson.id, next);
-          return next;
-        });
-      }
       setQuickAddOpen(false);
     } catch (err) {
       setActionError(
@@ -1054,7 +1047,6 @@ export function DailyPlanHabitRow({
         habitName={habit.name}
         unit={habit.unit}
         chips={quickAddChips}
-        hint={isForeignLanguage ? "Добавить минуты к сегодняшнему прогрессу" : undefined}
         isSubmitting={checkinMutation.isPending}
         onCancel={() => setQuickAddOpen(false)}
         onAdd={(amount) => void handleQuickAdd(amount)}

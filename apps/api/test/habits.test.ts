@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { buildApp } from "../src/app.js";
 import { loadEnv } from "../src/config/env.js";
-import { authResponseSchema, habitResponseSchema, MAX_ACTIVE_HABITS, MAX_LIGHT_HABITS } from "@mytodo/shared";
+import { authResponseSchema, habitResponseSchema } from "@mytodo/shared";
 import { habits } from "../src/db/schema/index.js";
 import { ensureMigrated, truncateAuthTables } from "./helpers/db.js";
 
@@ -288,57 +288,6 @@ describe("Habits", () => {
     });
 
     expect(second.statusCode).toBe(201);
-  });
-
-  it("rejects habit when active habit limit is reached", async () => {
-    const auth = await createOnboardedUser("limit@example.com");
-    const headers = { authorization: `Bearer ${auth.access_token}` };
-
-    for (let i = 0; i < MAX_LIGHT_HABITS; i += 1) {
-      const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/habits",
-        headers,
-        payload: {
-          name: `Custom light ${i}`,
-          unit: "minutes",
-          baseline_value: 10,
-        },
-      });
-      expect(response.statusCode).toBe(201);
-    }
-
-    const darkTemplates = ["smoking", "sugar", "sweets", "social_media", "nail_biting"] as const;
-    const darkSlots = MAX_ACTIVE_HABITS - MAX_LIGHT_HABITS;
-    for (let i = 0; i < darkSlots; i += 1) {
-      const templateId = darkTemplates[i];
-      if (!templateId) {
-        throw new Error(`Expected dark template at index ${i}`);
-      }
-      const response = await app.inject({
-        method: "POST",
-        url: "/api/v1/habits",
-        headers,
-        payload: {
-          template_id: templateId,
-          ...(templateId === "nail_biting" ? {} : { baseline_value: 5 + i }),
-        },
-      });
-      expect(response.statusCode).toBe(201);
-    }
-
-    const overLimit = await app.inject({
-      method: "POST",
-      url: "/api/v1/habits",
-      headers,
-      payload: {
-        name: "One too many",
-        unit: "minutes",
-        baseline_value: 10,
-      },
-    });
-
-    expect(overLimit.statusCode).toBe(400);
   });
 
   it("snapshots harshness_level from profile at creation time", async () => {

@@ -5,8 +5,6 @@ import {
   ERROR_CODES,
   HABIT_TEMPLATES,
   HTTP_STATUS,
-  MAX_ACTIVE_HABITS,
-  MAX_LIGHT_HABITS,
   type CreateHabitRequest,
   type HabitTemplateId,
   type HabitUnit,
@@ -40,14 +38,6 @@ function isTemplateRequest(
   return "template_id" in body;
 }
 
-function willCreateLightHabit(body: CreateHabitRequest): boolean {
-  if (isTemplateRequest(body)) {
-    return HABIT_TEMPLATES[body.template_id].side === "light";
-  }
-
-  return true;
-}
-
 export class HabitService {
   constructor(private readonly db: Database) {}
 
@@ -69,27 +59,7 @@ export class HabitService {
   async create(user: User, body: CreateHabitRequest) {
     this.assertOnboardingCompleted(user);
 
-    const activeCount = await this.countActiveHabits(user.id);
-    if (activeCount >= MAX_ACTIVE_HABITS) {
-      throw new ApiError(
-        HTTP_STATUS.BAD_REQUEST,
-        ERROR_CODES.VALIDATION_ERROR,
-        `Maximum ${MAX_ACTIVE_HABITS} active habits allowed`,
-      );
-    }
-
     const activeLightCount = await this.countActiveLightHabits(user.id);
-
-    if (willCreateLightHabit(body)) {
-      const maxLight = MAX_LIGHT_HABITS;
-      if (activeLightCount >= maxLight) {
-        throw new ApiError(
-          HTTP_STATUS.BAD_REQUEST,
-          ERROR_CODES.VALIDATION_ERROR,
-          "Слишком много полезных привычек для выбранного времени",
-        );
-      }
-    }
 
     const calibrated = isTemplateRequest(body)
       ? this.calibrateFromTemplate(body, user, activeLightCount)
@@ -331,15 +301,6 @@ export class HabitService {
           .where(eq(habits.id, habit.id));
       }),
     );
-  }
-
-  private async countActiveHabits(userId: string): Promise<number> {
-    const [row] = await this.db
-      .select({ value: count() })
-      .from(habits)
-      .where(and(eq(habits.userId, userId), eq(habits.isActive, true)));
-
-    return Number(row?.value ?? 0);
   }
 
   private async countActiveLightHabits(userId: string): Promise<number> {

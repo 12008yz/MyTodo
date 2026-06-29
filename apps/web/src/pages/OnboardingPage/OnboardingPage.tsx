@@ -12,7 +12,6 @@ import { validateDarkHabits } from "../../features/onboarding/darkPaths";
 import {
   LIGHT_PATHS,
   LIGHT_PATH_TAB_LABELS,
-  estimateLightHabitsComfortMinutes,
   validateLightHabits,
 } from "../../features/onboarding/lightPaths";
 import type {
@@ -123,10 +122,6 @@ function validateHabits(habits: SelectedHabit[], side: "light" | "dark"): string
   }
 
   return validateDarkHabits(habits);
-}
-
-function validateLightHabitBudget(_habits: SelectedHabit[], _freeTimeMin: number): string | null {
-  return null;
 }
 
 const DEFAULT_BODY: BodyFormData = {
@@ -293,13 +288,6 @@ export function OnboardingPage() {
       return;
     }
 
-    const lightBudgetValidation = validateLightHabitBudget(lightHabits, body.freeTimeMin);
-    if (lightBudgetValidation) {
-      setError(lightBudgetValidation);
-      goToStepIndex(ONBOARDING_STEPS.indexOf("body"));
-      return;
-    }
-
     const darkValidation = validateHabits(darkHabits, "dark");
     if (darkValidation) {
       setError(darkValidation);
@@ -381,12 +369,6 @@ export function OnboardingPage() {
           setError(validation);
           return;
         }
-
-        const budgetValidation = validateLightHabitBudget(lightHabits, body.freeTimeMin);
-        if (budgetValidation) {
-          setError(budgetValidation);
-          return;
-        }
         goNext();
         return;
       }
@@ -406,12 +388,6 @@ export function OnboardingPage() {
           const validation = validateBodyForm(body);
           if (validation) {
             setError(validation);
-            return;
-          }
-
-          const budgetValidation = validateLightHabitBudget(lightHabits, body.freeTimeMin);
-          if (budgetValidation) {
-            setError(budgetValidation);
             return;
           }
           goNext();
@@ -699,14 +675,6 @@ export function OnboardingPage() {
                   {isFreeTimeTooLow ? (
                     <p className="onboarding__slider-warning" role="alert">
                       Минимум 15 минут — меньше выбрать нельзя
-                    </p>
-                  ) : null}
-                  {estimateLightHabitsComfortMinutes(lightHabits) > body.freeTimeMin &&
-                  !isFreeTimeTooLow ? (
-                    <p className="onboarding__slider-warning" role="alert">
-                      Для выбранных привычек нужно примерно{" "}
-                      {estimateLightHabitsComfortMinutes(lightHabits)} мин —
-                      увеличь время или убери лишнее на светлой стороне.
                     </p>
                   ) : null}
                   <div className="onboarding__slider-labels">
