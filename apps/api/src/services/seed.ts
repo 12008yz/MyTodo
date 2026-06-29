@@ -64,6 +64,36 @@ export type SeedResult = {
   push_templates_seeded: boolean;
 };
 
+export async function seedEnglishLessons(db: Database): Promise<number> {
+  let lessonsCreated = 0;
+
+  for (const lesson of buildEnglishLessons()) {
+    const [existing] = await db
+      .select({ id: englishLessons.id })
+      .from(englishLessons)
+      .where(eq(englishLessons.dayNumber, lesson.dayNumber))
+      .limit(1);
+
+    if (existing) {
+      await db
+        .update(englishLessons)
+        .set({
+          title: lesson.title,
+          videoUrl: lesson.videoUrl,
+          durationSec: lesson.durationSec,
+          description: lesson.description,
+        })
+        .where(eq(englishLessons.id, existing.id));
+      continue;
+    }
+
+    await db.insert(englishLessons).values(lesson);
+    lessonsCreated += 1;
+  }
+
+  return lessonsCreated;
+}
+
 export async function seedDatabase(db: Database): Promise<SeedResult> {
   let usersCreated = 0;
   let lessonsCreated = 0;
@@ -107,29 +137,7 @@ export async function seedDatabase(db: Database): Promise<SeedResult> {
     usersCreated += 1;
   }
 
-  for (const lesson of buildEnglishLessons()) {
-    const [existing] = await db
-      .select({ id: englishLessons.id })
-      .from(englishLessons)
-      .where(eq(englishLessons.dayNumber, lesson.dayNumber))
-      .limit(1);
-
-    if (existing) {
-      await db
-        .update(englishLessons)
-        .set({
-          title: lesson.title,
-          videoUrl: lesson.videoUrl,
-          durationSec: lesson.durationSec,
-          description: lesson.description,
-        })
-        .where(eq(englishLessons.id, existing.id));
-      continue;
-    }
-
-    await db.insert(englishLessons).values(lesson);
-    lessonsCreated += 1;
-  }
+  lessonsCreated = await seedEnglishLessons(db);
 
   return {
     users_created: usersCreated,

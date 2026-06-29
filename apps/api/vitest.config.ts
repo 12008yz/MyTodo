@@ -5,5 +5,6 @@ export default defineConfig({
     environment: "node",
     fileParallelism: false,
     include: ["test/**/*.test.ts", "src/**/*.test.ts"],
+    globalTeardown: "./test/helpers/global-teardown.ts",
   },
 });

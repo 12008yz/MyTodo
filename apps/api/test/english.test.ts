@@ -13,6 +13,7 @@ import { buildApp } from "../src/app.js";
 import { loadEnv } from "../src/config/env.js";
 import { englishLessons, englishProgress, englishSettings } from "../src/db/schema/index.js";
 import { ensureMigrated, truncateAuthTables } from "./helpers/db.js";
+import { seedEnglishLessons } from "../src/services/seed.js";
 
 const env = loadEnv({
   ...process.env,
@@ -53,6 +54,7 @@ describe("English", () => {
   });
 
   afterAll(async () => {
+    await seedEnglishLessons(db);
     await app.close();
   });
 
@@ -185,6 +187,34 @@ describe("English", () => {
     expect(response.statusCode).toBe(400);
   });
 
+  it("completes a catalog placeholder lesson at real player duration", async () => {
+    const auth = await createOnboardedUser("english-placeholder@example.com");
+    await enableEnglish(auth.access_token);
+
+    const [lesson] = await db
+      .select()
+      .from(englishLessons)
+      .where(eq(englishLessons.dayNumber, 1))
+      .limit(1);
+
+    await db
+      .update(englishLessons)
+      .set({ durationSec: 1 })
+      .where(eq(englishLessons.id, lesson!.id));
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/english/complete",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: { watched_sec: 551 },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = englishCompleteResponseSchema.parse(JSON.parse(response.body));
+    expect(body.day_status).toBe("success");
+    expect(body.watched_sec).toBe(551);
+  });
+
   it.skipIf(!hasTwoPriorDaysInWeek())("rejects the third skip in the same week", async () => {
     const today = getUserLocalDate(new Date(), TIMEZONE);
     const weekStart = getWeekStartMonday(today);
@@ -291,6 +321,102 @@ describe("English", () => {
     expect(body.items).toHaveLength(1);
     expect(body.items[0]?.status).toBe("success");
     expect(body.items[0]?.lesson?.day_number).toBe(1);
+  });
+
+  it("records watch progress with Math.max per lesson", async () => {
+    const auth = await createOnboardedUser("english-watch-save@example.com");
+    await enableEnglish(auth.access_token);
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+
+    const first = await app.inject({
+      method: "POST",
+      url: "/api/v1/english/watch",
+      headers,
+      payload: { watched_sec: 120 },
+    });
+    expect(first.statusCode).toBe(200);
+
+    const second = await app.inject({
+      method: "POST",
+      url: "/api/v1/english/watch",
+      headers,
+      payload: { watched_sec: 90 },
+    });
+    expect(second.statusCode).toBe(200);
+    expect(JSON.parse(second.body).watched_sec).toBe(120);
+
+    const today = await app.inject({
+      method: "GET",
+      url: "/api/v1/english/today",
+      headers,
+    });
+    const body = englishTodayResponseSchema.parse(JSON.parse(today.body));
+    if (body.enabled) {
+      expect(body.watched_sec).toBe(120);
+    }
+  });
+
+  it("selects a lesson and restores its progress for today", async () => {
+    const auth = await createOnboardedUser("english-select@example.com");
+    await enableEnglish(auth.access_token);
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+
+    const [lesson2] = await db
+      .select()
+      .from(englishLessons)
+      .where(eq(englishLessons.dayNumber, 2))
+      .limit(1);
+
+    const [settings] = await db.select().from(englishSettings).limit(1);
+    const today = getUserLocalDate(new Date(), TIMEZONE);
+
+    await db.insert(englishProgress).values({
+      userId: settings!.userId,
+      lessonId: lesson2!.id,
+      date: today,
+      status: "pending",
+      watchedSec: 240,
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/english/select",
+      headers,
+      payload: { lesson_id: lesson2!.id },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.selected_lesson_id).toBe(lesson2!.id);
+    expect(body.watched_sec).toBe(240);
+    expect(body.habit_complete).toBe(false);
+
+    const todayResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/english/today",
+      headers,
+    });
+    const todayBody = englishTodayResponseSchema.parse(JSON.parse(todayResponse.body));
+    if (todayBody.enabled) {
+      expect(todayBody.lesson.day_number).toBe(2);
+      expect(todayBody.watched_sec).toBe(240);
+    }
+  });
+
+  it("returns lesson catalog with today progress", async () => {
+    const auth = await createOnboardedUser("english-catalog@example.com");
+    await enableEnglish(auth.access_token);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/english/catalog",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.lessons.length).toBeGreaterThan(0);
+    expect(body.lessons[0]).toHaveProperty("today_watched_sec");
   });
 
   it("can disable the module via settings", async () => {

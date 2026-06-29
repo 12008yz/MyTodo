@@ -98,6 +98,9 @@ export class TodayService {
   private async getDashboard(user: User, side: Side) {
     const today = getUserLocalDate(new Date(), user.timezone);
     await this.checkinService.ensureEarlyRiseWeekendSkips(user, today);
+    if (side === "light") {
+      await this.checkinService.reconcileForeignLanguageMinutes(user);
+    }
     const weekStart = getWeekStartMonday(today);
     const userHabits = await this.listHabits(user.id, side);
     const habitIds = userHabits.map((habit) => habit.id);

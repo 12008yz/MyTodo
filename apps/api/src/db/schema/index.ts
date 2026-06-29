@@ -341,6 +341,9 @@ export const englishSettings = pgTable("english_settings", {
     .references(() => users.id, { onDelete: "cascade" }),
   isEnabled: boolean("is_enabled").notNull().default(false),
   currentDay: integer("current_day").notNull().default(1),
+  selectedLessonId: uuid("selected_lesson_id").references(() => englishLessons.id, {
+    onDelete: "set null",
+  }),
   startedAt: date("started_at"),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
     .notNull()
@@ -366,7 +369,11 @@ export const englishProgress = pgTable(
       .defaultNow(),
   },
   (table) => ({
-    userDateUnique: unique("english_progress_user_id_date_unique").on(table.userId, table.date),
+    userDateLessonUnique: unique("english_progress_user_id_date_lesson_id_unique").on(
+      table.userId,
+      table.date,
+      table.lessonId,
+    ),
     statusCheck: check(
       "english_progress_status_check",
       sql`${table.status} IN ('success', 'fail', 'pending', 'skipped')`,

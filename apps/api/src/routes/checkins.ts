@@ -65,6 +65,23 @@ export async function registerCheckinRoutes(
   );
 
   app.post(
+    "/api/v1/checkins/reopen",
+    { preHandler: checkinPreHandlers },
+    async (request) => {
+      const body = z
+        .object({
+          habit_id: z.string().uuid(),
+          date: z.string().date().optional(),
+        })
+        .parse(request.body);
+      const user = await userService.getById(request.userId);
+      const date = body.date ?? getUserLocalDate(new Date(), user.timezone);
+      await checkinService.reopenForDate(request.userId, body.habit_id, date);
+      return { reopened: true };
+    },
+  );
+
+  app.post(
     "/api/v1/checkins/batch",
     { preHandler: checkinPreHandlers },
     async (request, reply) => {

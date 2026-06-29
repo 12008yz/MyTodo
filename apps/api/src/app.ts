@@ -38,6 +38,7 @@ import { EnglishService } from "./services/english.js";
 import { BillingService } from "./services/billing.js";
 import { PledgeService } from "./services/pledges.js";
 import { PushService, seedPushTemplates } from "./services/push.js";
+import { seedEnglishLessons } from "./services/seed.js";
 import { AdminService } from "./services/admin.js";
 import { createYukassaClient } from "./lib/yukassa/client.js";
 import { resolveWebPushClient, type WebPushClient } from "./lib/web-push/index.js";
@@ -89,6 +90,11 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
   const webPush = resolveWebPushClient(env, webPushClient);
   const pushService = new PushService(db, webPush, app.log);
   await seedPushTemplates(db);
+  if (env.NODE_ENV === "development") {
+    const { migrate } = await import("drizzle-orm/postgres-js/migrator");
+    await migrate(db, { migrationsFolder: "./drizzle" });
+    await seedEnglishLessons(db);
+  }
   const { authService, userService } = createAuthServices(app, db, pledgeService);
   const billingService = new BillingService(db, yukassa, pledgeService);
   const readingProgressService = new ReadingProgressService(db);
@@ -108,7 +114,7 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
     checkinService,
   );
   const statsService = new StatsService(db);
-  const englishService = new EnglishService(db);
+  const englishService = new EnglishService(db, checkinService);
   const requireAccess = createRequireAccess(db, billingService);
   const requireAdmin = createRequireAdmin(db);
   const adminService = new AdminService(db, billingService, pledgeService);

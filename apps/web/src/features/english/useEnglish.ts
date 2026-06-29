@@ -1,14 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   completeEnglishLesson,
+  getEnglishCatalog,
   getEnglishHistory,
   getEnglishToday,
+  recordEnglishWatch,
+  selectEnglishLesson,
   skipEnglishLesson,
   updateEnglishSettings,
 } from "../../lib/api";
 
 export const englishQueryKeys = {
   today: ["english", "today"] as const,
+  catalog: ["english", "catalog"] as const,
   history: ["english", "history"] as const,
 };
 
@@ -16,6 +20,14 @@ export function useEnglishToday() {
   return useQuery({
     queryKey: englishQueryKeys.today,
     queryFn: getEnglishToday,
+  });
+}
+
+export function useEnglishCatalog(enabled = true) {
+  return useQuery({
+    queryKey: englishQueryKeys.catalog,
+    queryFn: getEnglishCatalog,
+    enabled,
   });
 }
 
@@ -33,6 +45,7 @@ export function useEnglishMutations() {
   const invalidate = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: englishQueryKeys.today }),
+      queryClient.invalidateQueries({ queryKey: englishQueryKeys.catalog }),
       queryClient.invalidateQueries({ queryKey: englishQueryKeys.history }),
     ]);
   };
@@ -44,7 +57,10 @@ export function useEnglishMutations() {
 
   const complete = useMutation({
     mutationFn: (watchedSec: number) => completeEnglishLesson({ watched_sec: watchedSec }),
-    onSuccess: invalidate,
+    onSuccess: async () => {
+      await invalidate();
+      await queryClient.invalidateQueries({ queryKey: ["today"] });
+    },
   });
 
   const skip = useMutation({
@@ -52,5 +68,31 @@ export function useEnglishMutations() {
     onSuccess: invalidate,
   });
 
-  return { enable, complete, skip };
+  const watch = useMutation({
+    mutationFn: (watchedSec: number) => recordEnglishWatch({ watched_sec: watchedSec }),
+    onSuccess: async (result) => {
+      queryClient.setQueryData(englishQueryKeys.today, (current: Awaited<ReturnType<typeof getEnglishToday>> | undefined) => {
+        if (!current || !current.enabled) {
+          return current;
+        }
+        if (current.lesson.id !== result.lesson_id) {
+          return current;
+        }
+        return {
+          ...current,
+          watched_sec: Math.max(current.watched_sec, result.watched_sec),
+        };
+      });
+    },
+  });
+
+  const selectLesson = useMutation({
+    mutationFn: (lessonId: string) => selectEnglishLesson({ lesson_id: lessonId }),
+    onSuccess: async () => {
+      await invalidate();
+      await queryClient.invalidateQueries({ queryKey: ["today"] });
+    },
+  });
+
+  return { enable, complete, skip, watch, selectLesson };
 }

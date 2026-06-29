@@ -6,11 +6,16 @@ import {
   createHabitRequestSchema,
   createCheckinRequestSchema,
   englishSettingsResponseSchema,
+  englishCatalogResponseSchema,
   englishTodayResponseSchema,
   englishCompleteRequestSchema,
   englishCompleteResponseSchema,
   englishSkipResponseSchema,
   englishHistoryResponseSchema,
+  englishSelectLessonRequestSchema,
+  englishSelectLessonResponseSchema,
+  englishWatchRequestSchema,
+  englishWatchResponseSchema,
   habitSessionActiveResponseSchema,
   habitSessionCompleteResponseSchema,
   habitSessionSchema,
@@ -69,6 +74,11 @@ import {
   type EnglishCompleteResponse,
   type EnglishSkipResponse,
   type EnglishHistoryResponse,
+  type EnglishCatalogResponse,
+  type EnglishSelectLessonRequest,
+  type EnglishSelectLessonResponse,
+  type EnglishWatchRequest,
+  type EnglishWatchResponse,
 } from "@mytodo/shared";
 import {
   clearTokens,
@@ -101,10 +111,14 @@ import {
   demoGetNutritionTodayLog,
   demoClearHabitBook,
   demoResetTodayCheckin,
+  demoReopenTodayCheckin,
   demoUpdateReadingBookmark,
   demoSubscribePush,
   demoUpdateEnglishSettings,
   demoGetEnglishToday,
+  demoGetEnglishCatalog,
+  demoRecordEnglishWatch,
+  demoSelectEnglishLesson,
   demoCompleteEnglishLesson,
   demoSkipEnglishLesson,
   demoGetEnglishHistory,
@@ -324,6 +338,47 @@ export async function updateEnglishSettings(
   return englishSettingsResponseSchema.parse(response);
 }
 
+export async function getEnglishCatalog(): Promise<EnglishCatalogResponse> {
+  if (isDemoMode()) {
+    return demoGetEnglishCatalog();
+  }
+
+  const response = await apiFetch<unknown>("/api/v1/english/catalog");
+  return englishCatalogResponseSchema.parse(response);
+}
+
+export async function recordEnglishWatch(
+  data: EnglishWatchRequest,
+): Promise<EnglishWatchResponse> {
+  englishWatchRequestSchema.parse(data);
+
+  if (isDemoMode()) {
+    return demoRecordEnglishWatch(data);
+  }
+
+  const response = await apiFetch<unknown>("/api/v1/english/watch", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return englishWatchResponseSchema.parse(response);
+}
+
+export async function selectEnglishLesson(
+  data: EnglishSelectLessonRequest,
+): Promise<EnglishSelectLessonResponse> {
+  englishSelectLessonRequestSchema.parse(data);
+
+  if (isDemoMode()) {
+    return demoSelectEnglishLesson(data);
+  }
+
+  const response = await apiFetch<unknown>("/api/v1/english/select", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return englishSelectLessonResponseSchema.parse(response);
+}
+
 export async function getEnglishToday(): Promise<EnglishTodayResponse> {
   if (isDemoMode()) {
     return demoGetEnglishToday();
@@ -486,6 +541,21 @@ export async function resetTodayCheckin(habitId: string, date?: string): Promise
 
   await apiFetch<unknown>(`/api/v1/checkins?${params.toString()}`, {
     method: "DELETE",
+  });
+}
+
+export async function reopenTodayCheckin(habitId: string, date?: string): Promise<void> {
+  if (isDemoMode()) {
+    demoReopenTodayCheckin(habitId, date);
+    return;
+  }
+
+  await apiFetch<unknown>("/api/v1/checkins/reopen", {
+    method: "POST",
+    body: JSON.stringify({
+      habit_id: habitId,
+      ...(date ? { date } : {}),
+    }),
   });
 }
 

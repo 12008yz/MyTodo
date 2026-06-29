@@ -1,4 +1,4 @@
-import { ENGLISH_COURSE_TITLE, ENGLISH_WATCH_THRESHOLD } from "@mytodo/shared";
+import { ENGLISH_CATALOG_DURATION_PLACEHOLDER_MAX_SEC, ENGLISH_COURSE_TITLE, ENGLISH_WATCH_THRESHOLD } from "@mytodo/shared";
 
 export type VkVideoRef = {
   oid: string;
@@ -11,16 +11,38 @@ export function formatEnglishLessonLabel(dayNumber: number): string {
 
 /** Parses VK / VK Video page or embed URLs. */
 export function parseVkVideoRef(url: string): VkVideoRef | null {
+  const VK_VIDEO_REF_PATTERN = /video(-?\d+)_(\d+)/;
+
   try {
-    const parsed = new URL(url);
-    const host = parsed.hostname;
-    if (!host.includes("vk.com") && !host.includes("vkvideo.ru")) {
+    const trimmed = url.trim();
+    if (!trimmed) {
       return null;
     }
 
-    const fromPath = parsed.pathname.match(/\/video(-?\d+)_(\d+)/);
+    const parsed = new URL(trimmed);
+    const host = parsed.hostname.toLowerCase();
+    const isVkHost =
+      host.includes("vk.com") ||
+      host.includes("vkvideo.ru") ||
+      host === "vk.ru" ||
+      host.endsWith(".vk.ru");
+
+    if (!isVkHost) {
+      const fromText = trimmed.match(VK_VIDEO_REF_PATTERN);
+      return fromText ? { oid: fromText[1], id: fromText[2] } : null;
+    }
+
+    const fromPath = parsed.pathname.match(VK_VIDEO_REF_PATTERN);
     if (fromPath) {
       return { oid: fromPath[1], id: fromPath[2] };
+    }
+
+    const zParam = parsed.searchParams.get("z");
+    if (zParam) {
+      const fromZ = zParam.match(VK_VIDEO_REF_PATTERN);
+      if (fromZ) {
+        return { oid: fromZ[1], id: fromZ[2] };
+      }
     }
 
     if (parsed.pathname.includes("video_ext.php")) {
@@ -31,9 +53,15 @@ export function parseVkVideoRef(url: string): VkVideoRef | null {
       }
     }
 
+    const fromHref = trimmed.match(VK_VIDEO_REF_PATTERN);
+    if (fromHref) {
+      return { oid: fromHref[1], id: fromHref[2] };
+    }
+
     return null;
   } catch {
-    return null;
+    const fromPlain = url.trim().match(/video(-?\d+)_(\d+)/);
+    return fromPlain ? { oid: fromPlain[1], id: fromPlain[2] } : null;
   }
 }
 
@@ -60,7 +88,7 @@ export function formatLessonDuration(totalSec: number): string {
 }
 
 /** Catalog entries from fast VK import use 1s until the player reports real duration. */
-export const CATALOG_DURATION_PLACEHOLDER_MAX_SEC = 60;
+export const CATALOG_DURATION_PLACEHOLDER_MAX_SEC = ENGLISH_CATALOG_DURATION_PLACEHOLDER_MAX_SEC;
 
 export function isCatalogDurationPlaceholder(catalogDurationSec: number): boolean {
   return catalogDurationSec <= CATALOG_DURATION_PLACEHOLDER_MAX_SEC;

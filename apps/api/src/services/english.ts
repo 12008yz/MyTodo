@@ -6,9 +6,9 @@ import {
 } from "@mytodo/domain";
 import {
   ApiError,
-  ENGLISH_WATCH_THRESHOLD,
   ERROR_CODES,
   HTTP_STATUS,
+  resolveEnglishMinimumWatchSec,
   type PatchEnglishSettingsRequest,
 } from "@mytodo/shared";
 import { and, asc, desc, eq } from "drizzle-orm";
@@ -18,14 +18,19 @@ import {
   englishProgress,
   englishSettings,
   type EnglishLesson,
+  type EnglishProgress,
   type EnglishSettings,
   type User,
 } from "../db/schema/index.js";
+import type { CheckinService } from "./checkins.js";
 
 type FinalEnglishStatus = EnglishDayStatus | null;
 
 export class EnglishService {
-  constructor(private readonly db: Database) {}
+  constructor(
+    private readonly db: Database,
+    private readonly checkinService: CheckinService,
+  ) {}
 
   async getToday(user: User) {
     const settings = await this.getSettings(user.id);
@@ -34,34 +39,118 @@ export class EnglishService {
       return { enabled: false as const };
     }
 
-    const lesson = await this.getLessonByDay(settings.currentDay);
+    await this.ensureEnglishLessonCatalog();
+    await this.checkinService.reconcileForeignLanguageMinutes(user);
 
-    if (!lesson) {
-      throw new ApiError(
-        HTTP_STATUS.NOT_FOUND,
-        ERROR_CODES.NOT_FOUND,
-        "Lesson for current day not found",
-      );
-    }
-
+    const lesson = await this.resolveActiveLesson(settings);
     const today = getUserLocalDate(new Date(), user.timezone);
-    const progress = await this.getProgressForDate(user.id, today);
+    const progress = await this.getProgressForLesson(user.id, today, lesson.id);
+
+    return this.buildTodayPayload(settings, lesson, progress);
+  }
+
+  async getCatalog(user: User) {
+    const settings = await this.requireEnabledSettings(user.id);
+    await this.ensureEnglishLessonCatalog();
+    const today = getUserLocalDate(new Date(), user.timezone);
+
+    const lessons = await this.db
+      .select()
+      .from(englishLessons)
+      .orderBy(asc(englishLessons.dayNumber));
+
+    const progressRows = await this.db
+      .select()
+      .from(englishProgress)
+      .where(and(eq(englishProgress.userId, user.id), eq(englishProgress.date, today)));
+
+    const progressByLesson = new Map(progressRows.map((row) => [row.lessonId, row]));
 
     return {
-      enabled: true as const,
       current_day: settings.currentDay,
+      selected_lesson_id: settings.selectedLessonId,
+      lessons: lessons.map((lesson) => {
+        const progress = progressByLesson.get(lesson.id);
+        return {
+          ...this.toLessonResponse(lesson),
+          today_watched_sec: progress?.watchedSec ?? 0,
+          today_status: this.toDayStatus(progress?.status),
+        };
+      }),
+    };
+  }
+
+  async recordWatch(user: User, watchedSec: number) {
+    const settings = await this.requireEnabledSettings(user.id);
+    const lesson = await this.resolveActiveLesson(settings);
+    const today = getUserLocalDate(new Date(), user.timezone);
+    const existing = await this.getProgressForLesson(user.id, today, lesson.id);
+
+    if (existing?.status === "success" || existing?.status === "skipped" || existing?.status === "fail") {
+      return {
+        lesson_id: lesson.id,
+        watched_sec: existing.watchedSec,
+      };
+    }
+
+    const nextWatchedSec = Math.max(existing?.watchedSec ?? 0, watchedSec);
+
+    if (existing) {
+      await this.db
+        .update(englishProgress)
+        .set({
+          watchedSec: nextWatchedSec,
+          updatedAt: new Date(),
+        })
+        .where(eq(englishProgress.id, existing.id));
+    } else {
+      await this.db.insert(englishProgress).values({
+        userId: user.id,
+        lessonId: lesson.id,
+        date: today,
+        status: "pending",
+        watchedSec: nextWatchedSec,
+      });
+    }
+
+    return {
+      lesson_id: lesson.id,
+      watched_sec: nextWatchedSec,
+    };
+  }
+
+  async selectLesson(user: User, lessonId: string) {
+    const settings = await this.requireEnabledSettings(user.id);
+    const lesson = await this.requireLessonById(lessonId);
+    const today = getUserLocalDate(new Date(), user.timezone);
+
+    await this.db
+      .update(englishSettings)
+      .set({ selectedLessonId: lesson.id })
+      .where(eq(englishSettings.userId, user.id));
+
+    const progress = await this.getProgressForLesson(user.id, today, lesson.id);
+    const dayStatus = this.toDayStatus(progress?.status);
+
+    return {
+      selected_lesson_id: lesson.id,
       lesson: this.toLessonResponse(lesson),
-      day_status: this.toDayStatus(progress?.status),
+      current_day: settings.currentDay,
+      day_status: dayStatus,
       watched_sec: progress?.watchedSec ?? 0,
-      preview_next_day: this.previewNextDay(settings.currentDay, this.toDayStatus(progress?.status)),
+      preview_next_day: this.previewNextDay(
+        settings.currentDay,
+        this.coursePreviewStatus(settings.currentDay, lesson.dayNumber, dayStatus),
+      ),
+      habit_complete: dayStatus === "success",
     };
   }
 
   async complete(user: User, watchedSec: number) {
     const settings = await this.requireEnabledSettings(user.id);
-    const lesson = await this.requireLessonForDay(settings.currentDay);
+    const lesson = await this.resolveActiveLesson(settings);
     const today = getUserLocalDate(new Date(), user.timezone);
-    const existing = await this.getProgressForDate(user.id, today);
+    const existing = await this.getProgressForLesson(user.id, today, lesson.id);
 
     if (existing?.status === "skipped") {
       throw new ApiError(
@@ -79,10 +168,7 @@ export class EnglishService {
       );
     }
 
-    const minimumWatchSec =
-      lesson.durationSec <= 60
-        ? Math.max(600, Math.floor(watchedSec * 0.95))
-        : Math.ceil(lesson.durationSec * ENGLISH_WATCH_THRESHOLD);
+    const minimumWatchSec = resolveEnglishMinimumWatchSec(lesson.durationSec, watchedSec);
 
     if (watchedSec < minimumWatchSec) {
       throw new ApiError(
@@ -92,13 +178,20 @@ export class EnglishService {
       );
     }
 
-    await this.saveProgress(user.id, lesson.id, today, "success", watchedSec);
+    await this.saveLessonProgress(user.id, lesson.id, today, "success", watchedSec);
+
+    if (existing?.status !== "success") {
+      await this.creditForeignLanguageLessonMinutes(user);
+    }
 
     return {
       current_day: settings.currentDay,
       day_status: "success" as const,
       watched_sec: watchedSec,
-      preview_next_day: computeNextEnglishDay(settings.currentDay, "success"),
+      preview_next_day:
+        lesson.dayNumber === settings.currentDay
+          ? computeNextEnglishDay(settings.currentDay, "success")
+          : settings.currentDay,
     };
   }
 
@@ -106,7 +199,7 @@ export class EnglishService {
     const settings = await this.requireEnabledSettings(user.id);
     const lesson = await this.requireLessonForDay(settings.currentDay);
     const today = getUserLocalDate(new Date(), user.timezone);
-    const existing = await this.getProgressForDate(user.id, today);
+    const existing = await this.getProgressForLesson(user.id, today, lesson.id);
 
     if (existing?.status === "success") {
       throw new ApiError(
@@ -128,7 +221,13 @@ export class EnglishService {
       }
     }
 
-    await this.saveProgress(user.id, lesson.id, today, "skipped", existing?.watchedSec ?? 0);
+    await this.saveLessonProgress(
+      user.id,
+      lesson.id,
+      today,
+      "skipped",
+      existing?.watchedSec ?? 0,
+    );
 
     return {
       current_day: settings.currentDay,
@@ -200,6 +299,39 @@ export class EnglishService {
     };
   }
 
+  private coursePreviewStatus(
+    currentDay: number,
+    lessonDayNumber: number,
+    dayStatus: FinalEnglishStatus,
+  ): FinalEnglishStatus {
+    if (lessonDayNumber !== currentDay) {
+      return null;
+    }
+
+    return dayStatus;
+  }
+
+  private buildTodayPayload(
+    settings: EnglishSettings,
+    lesson: EnglishLesson,
+    progress: EnglishProgress | null,
+  ) {
+    const dayStatus = this.toDayStatus(progress?.status);
+
+    return {
+      enabled: true as const,
+      current_day: settings.currentDay,
+      lesson: this.toLessonResponse(lesson),
+      selected_lesson_id: settings.selectedLessonId,
+      day_status: dayStatus,
+      watched_sec: progress?.watchedSec ?? 0,
+      preview_next_day: this.previewNextDay(
+        settings.currentDay,
+        this.coursePreviewStatus(settings.currentDay, lesson.dayNumber, dayStatus),
+      ),
+    };
+  }
+
   private previewNextDay(currentDay: number, dayStatus: FinalEnglishStatus): number {
     if (dayStatus === "success" || dayStatus === "fail" || dayStatus === "skipped") {
       return computeNextEnglishDay(currentDay, dayStatus);
@@ -227,6 +359,29 @@ export class EnglishService {
     };
   }
 
+  private async ensureEnglishLessonCatalog(): Promise<void> {
+    if (process.env.NODE_ENV !== "development") {
+      return;
+    }
+
+    const [row] = await this.db.select({ id: englishLessons.id }).from(englishLessons).limit(1);
+    if (row) {
+      return;
+    }
+
+    const { seedEnglishLessons } = await import("./seed.js");
+    await seedEnglishLessons(this.db);
+  }
+
+  private async creditForeignLanguageLessonMinutes(user: User) {
+    const habit = await this.checkinService.findForeignLanguageHabitForUser(user.id);
+    if (!habit) {
+      return;
+    }
+
+    await this.checkinService.applySessionMinutes(user, habit.id, Number(habit.currentGoal));
+  }
+
   private async getSettings(userId: string): Promise<EnglishSettings | null> {
     const [settings] = await this.db
       .select()
@@ -251,6 +406,17 @@ export class EnglishService {
     return settings;
   }
 
+  private async resolveActiveLesson(settings: EnglishSettings): Promise<EnglishLesson> {
+    if (settings.selectedLessonId) {
+      const selected = await this.getLessonById(settings.selectedLessonId);
+      if (selected) {
+        return selected;
+      }
+    }
+
+    return this.requireLessonForDay(settings.currentDay);
+  }
+
   private async getLessonByDay(dayNumber: number): Promise<EnglishLesson | null> {
     const [lesson] = await this.db
       .select()
@@ -259,6 +425,26 @@ export class EnglishService {
       .limit(1);
 
     return lesson ?? null;
+  }
+
+  private async getLessonById(lessonId: string): Promise<EnglishLesson | null> {
+    const [lesson] = await this.db
+      .select()
+      .from(englishLessons)
+      .where(eq(englishLessons.id, lessonId))
+      .limit(1);
+
+    return lesson ?? null;
+  }
+
+  private async requireLessonById(lessonId: string): Promise<EnglishLesson> {
+    const lesson = await this.getLessonById(lessonId);
+
+    if (!lesson) {
+      throw new ApiError(HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND, "Lesson not found");
+    }
+
+    return lesson;
   }
 
   private async requireLessonForDay(dayNumber: number): Promise<EnglishLesson> {
@@ -275,11 +461,17 @@ export class EnglishService {
     return lesson;
   }
 
-  private async getProgressForDate(userId: string, date: string) {
+  private async getProgressForLesson(userId: string, date: string, lessonId: string) {
     const [progress] = await this.db
       .select()
       .from(englishProgress)
-      .where(and(eq(englishProgress.userId, userId), eq(englishProgress.date, date)))
+      .where(
+        and(
+          eq(englishProgress.userId, userId),
+          eq(englishProgress.date, date),
+          eq(englishProgress.lessonId, lessonId),
+        ),
+      )
       .limit(1);
 
     return progress ?? null;
@@ -295,20 +487,19 @@ export class EnglishService {
     return rows.map((row) => row.date);
   }
 
-  private async saveProgress(
+  private async saveLessonProgress(
     userId: string,
     lessonId: string,
     date: string,
     status: "success" | "skipped",
     watchedSec: number,
   ) {
-    const existing = await this.getProgressForDate(userId, date);
+    const existing = await this.getProgressForLesson(userId, date, lessonId);
 
     if (existing) {
       await this.db
         .update(englishProgress)
         .set({
-          lessonId,
           status,
           watchedSec,
           updatedAt: new Date(),
@@ -317,12 +508,26 @@ export class EnglishService {
       return;
     }
 
-    await this.db.insert(englishProgress).values({
-      userId,
-      lessonId,
-      date,
-      status,
-      watchedSec,
-    });
+    await this.db
+      .insert(englishProgress)
+      .values({
+        userId,
+        lessonId,
+        date,
+        status,
+        watchedSec,
+      })
+      .onConflictDoUpdate({
+        target: [
+          englishProgress.userId,
+          englishProgress.date,
+          englishProgress.lessonId,
+        ],
+        set: {
+          status,
+          watchedSec,
+          updatedAt: new Date(),
+        },
+      });
   }
 }

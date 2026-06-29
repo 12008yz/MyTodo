@@ -23,6 +23,7 @@ import {
 } from "../src/db/schema/index.js";
 import { toProgressionHabit } from "../src/lib/habit-progression.js";
 import { ensureMigrated, truncateAuthTables } from "./helpers/db.js";
+import { seedEnglishLessons } from "../src/services/seed.js";
 
 const env = loadEnv({
   ...process.env,
@@ -58,6 +59,7 @@ describe("Day close worker", () => {
   });
 
   afterAll(async () => {
+    await seedEnglishLessons(db);
     await app.close();
   });
 

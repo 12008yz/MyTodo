@@ -7,9 +7,11 @@ import {
   sessionTotalSeconds,
   SOCIAL_MEDIA_MIN_GOAL,
   computeDailyBudgetMin,
-  ENGLISH_WATCH_THRESHOLD,
+  resolveEnglishMinimumWatchSec,
   getWarmupDayMessage,
   ENGLISH_LESSON_COUNT,
+  ENGLISH_LESSON_CATALOG,
+  englishLessonSeedId,
   getEnglishLessonByDay,
   seedToEnglishLessonResponse,
   HABIT_TEMPLATE_IDS,
@@ -17,6 +19,7 @@ import {
   isStrengthWorkoutHabit,
   isNutritionHabit,
   isEarlyRiseCategoryKey,
+  isForeignLanguageHabit,
   isCompanionLightHabit,
   isMeditationHabit,
   isKnownNutritionIngredientId,
@@ -108,16 +111,20 @@ function normalizeReadingByHabitId(
 
 type DemoEnglishProgress = {
   date: string;
-  status: "success" | "fail" | "skipped";
+  lesson_day_number: number;
+  status: "success" | "fail" | "skipped" | "pending";
   watched_sec: number;
-  day_number: number;
+};
+
+type DemoEnglishState = EnglishSettingsResponse & {
+  selected_lesson_day?: number | null;
 };
 
 type DemoState = {
   version: number;
   user: UserProfile;
   habits: HabitResponse[];
-  english: EnglishSettingsResponse;
+  english: DemoEnglishState;
   englishProgress: DemoEnglishProgress[];
   checkins: CheckinResponse[];
   sessions: DemoHabitSession[];
@@ -182,11 +189,12 @@ function buildUser(input: {
   };
 }
 
-function defaultEnglish(): EnglishSettingsResponse {
+function defaultEnglish(): DemoEnglishState {
   return {
     is_enabled: false,
     current_day: 1,
     started_at: null,
+    selected_lesson_day: null,
   };
 }
 
@@ -545,15 +553,25 @@ export function demoUpdateEnglishSettings(
   return state.english;
 }
 
-function getDemoEnglishProgressForDate(state: DemoState, date: string) {
-  return state.englishProgress.find((row) => row.date === date) ?? null;
+function resolveDemoActiveLessonDay(state: DemoState): number {
+  return state.english.selected_lesson_day ?? state.english.current_day;
+}
+
+function getDemoEnglishProgressForLesson(state: DemoState, date: string, lessonDayNumber: number) {
+  return (
+    state.englishProgress.find(
+      (row) => row.date === date && row.lesson_day_number === lessonDayNumber,
+    ) ?? null
+  );
 }
 
 function upsertDemoEnglishProgress(
   state: DemoState,
   entry: DemoEnglishProgress,
 ): DemoState {
-  const without = state.englishProgress.filter((row) => row.date !== entry.date);
+  const without = state.englishProgress.filter(
+    (row) => !(row.date === entry.date && row.lesson_day_number === entry.lesson_day_number),
+  );
   return {
     ...state,
     englishProgress: [...without, entry],
@@ -593,7 +611,7 @@ function syncDemoEnglishDay(state: DemoState): DemoState {
 
   while (currentDay < ENGLISH_LESSON_COUNT) {
     const completedOn = state.englishProgress
-      .filter((row) => row.status === "success" && row.day_number === currentDay)
+      .filter((row) => row.status === "success" && row.lesson_day_number === currentDay)
       .map((row) => row.date)
       .sort()
       .at(-1);
@@ -620,13 +638,100 @@ function syncDemoEnglishDay(state: DemoState): DemoState {
     english: {
       ...state.english,
       current_day: currentDay,
+      selected_lesson_day: null,
     },
   };
 }
 
+function findDemoForeignLanguageHabit(state: DemoState) {
+  return (
+    state.habits.find(
+      (habit) =>
+        habit.is_active &&
+        isForeignLanguageHabit({ category_key: habit.category_key, name: habit.name }),
+    ) ?? null
+  );
+}
+
+function reconcileDemoForeignLanguageMinutes(state: DemoState): DemoState {
+  const habit = findDemoForeignLanguageHabit(state);
+  if (!habit) {
+    return state;
+  }
+
+  const today = todayDate();
+  const completedLessons = state.englishProgress.filter(
+    (row) => row.date === today && row.status === "success",
+  ).length;
+
+  if (completedLessons === 0) {
+    return state;
+  }
+
+  const expectedMinutes = completedLessons * habit.current_goal;
+  const existingIndex = state.checkins.findIndex(
+    (checkin) => checkin.habit_id === habit.id && checkin.date === today,
+  );
+  const previewNextGoal = demoPreviewNextGoal(
+    habit,
+    expectedMinutes >= habit.current_goal ? "success" : "pending",
+  );
+  const checkin: CheckinResponse = {
+    id: existingIndex >= 0 ? state.checkins[existingIndex]!.id : crypto.randomUUID(),
+    habit_id: habit.id,
+    date: today,
+    status: expectedMinutes >= habit.current_goal ? "success" : "pending",
+    value: expectedMinutes,
+    updated_at: nowIso(),
+    current_goal: habit.current_goal,
+    preview_next_goal: previewNextGoal,
+  };
+
+  if (existingIndex >= 0) {
+    state.checkins[existingIndex] = checkin;
+  } else {
+    state.checkins.push(checkin);
+  }
+
+  return state;
+}
+
+function creditDemoForeignLanguageLessonMinutes(state: DemoState): DemoState {
+  const habit = findDemoForeignLanguageHabit(state);
+  if (!habit) {
+    return state;
+  }
+
+  const today = todayDate();
+  const existingIndex = state.checkins.findIndex(
+    (checkin) => checkin.habit_id === habit.id && checkin.date === today,
+  );
+  const currentValue = existingIndex >= 0 ? (state.checkins[existingIndex]!.value ?? 0) : 0;
+  const nextValue = currentValue + habit.current_goal;
+  const status = nextValue >= habit.current_goal ? "success" : "pending";
+  const checkin: CheckinResponse = {
+    id: existingIndex >= 0 ? state.checkins[existingIndex]!.id : crypto.randomUUID(),
+    habit_id: habit.id,
+    date: today,
+    status,
+    value: nextValue,
+    updated_at: nowIso(),
+    current_goal: habit.current_goal,
+    preview_next_goal: demoPreviewNextGoal(habit, status),
+  };
+
+  if (existingIndex >= 0) {
+    state.checkins[existingIndex] = checkin;
+  } else {
+    state.checkins.push(checkin);
+  }
+
+  return state;
+}
+
 export function demoGetEnglishToday(): EnglishTodayResponse {
   const before = ensureState();
-  const state = syncDemoEnglishDay(before);
+  let state = syncDemoEnglishDay(before);
   if (state.english.current_day !== before.english.current_day) {
     saveState(state);
   }
@@ -635,25 +740,130 @@ export function demoGetEnglishToday(): EnglishTodayResponse {
     return { enabled: false };
   }
 
-  const seed = getEnglishLessonByDay(state.english.current_day);
+  state = reconcileDemoForeignLanguageMinutes(state);
+  saveState(state);
+
+  const lessonDay = resolveDemoActiveLessonDay(state);
+  const seed = getEnglishLessonByDay(lessonDay);
   if (!seed) {
-    throw new Error("Lesson for current day not found");
+    throw new Error("Lesson not found");
   }
 
   const today = todayDate();
-  const progress = getDemoEnglishProgressForDate(state, today);
+  const progress = getDemoEnglishProgressForLesson(state, today, lessonDay);
   const dayStatus = toDemoDayStatus(progress?.status);
+  const selectedLessonId =
+    state.english.selected_lesson_day != null
+      ? englishLessonSeedId(state.english.selected_lesson_day)
+      : null;
 
   return {
     enabled: true,
     current_day: state.english.current_day,
     lesson: seedToEnglishLessonResponse(seed),
+    selected_lesson_id: selectedLessonId,
     day_status: dayStatus,
     watched_sec: progress?.watched_sec ?? 0,
     preview_next_day:
-      dayStatus !== null
+      lessonDay === state.english.current_day && dayStatus !== null
         ? computeNextEnglishDay(state.english.current_day, dayStatus)
         : state.english.current_day,
+  };
+}
+
+export function demoGetEnglishCatalog(): import("@mytodo/shared").EnglishCatalogResponse {
+  const state = ensureState();
+  requireDemoEnglishEnabled(state);
+
+  const today = todayDate();
+  const selectedLessonId =
+    state.english.selected_lesson_day != null
+      ? englishLessonSeedId(state.english.selected_lesson_day)
+      : null;
+
+  return {
+    current_day: state.english.current_day,
+    selected_lesson_id: selectedLessonId,
+    lessons: ENGLISH_LESSON_CATALOG.map((seed) => {
+      const progress = getDemoEnglishProgressForLesson(state, today, seed.dayNumber);
+      return {
+        ...seedToEnglishLessonResponse(seed),
+        today_watched_sec: progress?.watched_sec ?? 0,
+        today_status: toDemoDayStatus(progress?.status),
+      };
+    }),
+  };
+}
+
+export function demoRecordEnglishWatch(
+  data: import("@mytodo/shared").EnglishWatchRequest,
+): import("@mytodo/shared").EnglishWatchResponse {
+  let state = ensureState();
+  requireDemoEnglishEnabled(state);
+
+  const lessonDay = resolveDemoActiveLessonDay(state);
+  const seed = getEnglishLessonByDay(lessonDay);
+  if (!seed) {
+    throw new Error("Lesson not found");
+  }
+
+  const today = todayDate();
+  const existing = getDemoEnglishProgressForLesson(state, today, lessonDay);
+
+  if (existing?.status === "success" || existing?.status === "skipped" || existing?.status === "fail") {
+    saveState(state);
+    return { lesson_id: englishLessonSeedId(lessonDay), watched_sec: existing.watched_sec };
+  }
+
+  const watchedSec = Math.max(existing?.watched_sec ?? 0, data.watched_sec);
+  state = upsertDemoEnglishProgress(state, {
+    date: today,
+    lesson_day_number: lessonDay,
+    status: "pending",
+    watched_sec: watchedSec,
+  });
+  saveState(state);
+
+  return { lesson_id: englishLessonSeedId(lessonDay), watched_sec: watchedSec };
+}
+
+export function demoSelectEnglishLesson(
+  data: import("@mytodo/shared").EnglishSelectLessonRequest,
+): import("@mytodo/shared").EnglishSelectLessonResponse {
+  let state = ensureState();
+  requireDemoEnglishEnabled(state);
+
+  const seed = ENGLISH_LESSON_CATALOG.find(
+    (lesson) => englishLessonSeedId(lesson.dayNumber) === data.lesson_id,
+  );
+  if (!seed) {
+    throw new Error("Lesson not found");
+  }
+
+  const today = todayDate();
+  const progress = getDemoEnglishProgressForLesson(state, today, seed.dayNumber);
+  const dayStatus = toDemoDayStatus(progress?.status);
+
+  state = {
+    ...state,
+    english: {
+      ...state.english,
+      selected_lesson_day: seed.dayNumber,
+    },
+  };
+  saveState(state);
+
+  return {
+    selected_lesson_id: englishLessonSeedId(seed.dayNumber),
+    lesson: seedToEnglishLessonResponse(seed),
+    current_day: state.english.current_day,
+    day_status: dayStatus,
+    watched_sec: progress?.watched_sec ?? 0,
+    preview_next_day:
+      seed.dayNumber === state.english.current_day && dayStatus !== null
+        ? computeNextEnglishDay(state.english.current_day, dayStatus)
+        : state.english.current_day,
+    habit_complete: dayStatus === "success",
   };
 }
 
@@ -663,13 +873,14 @@ export function demoCompleteEnglishLesson(
   let state = ensureState();
   requireDemoEnglishEnabled(state);
 
-  const seed = getEnglishLessonByDay(state.english.current_day);
+  const lessonDay = resolveDemoActiveLessonDay(state);
+  const seed = getEnglishLessonByDay(lessonDay);
   if (!seed) {
-    throw new Error("Lesson for current day not found");
+    throw new Error("Lesson not found");
   }
 
   const today = todayDate();
-  const existing = getDemoEnglishProgressForDate(state, today);
+  const existing = getDemoEnglishProgressForLesson(state, today, lessonDay);
 
   if (existing?.status === "skipped") {
     throw new Error("Cannot complete a skipped day");
@@ -679,27 +890,34 @@ export function demoCompleteEnglishLesson(
     throw new Error("Cannot complete a failed day");
   }
 
-  const minimumWatchSec =
-    seed.durationSec <= 60
-      ? Math.max(600, Math.floor(data.watched_sec * 0.95))
-      : Math.ceil(seed.durationSec * ENGLISH_WATCH_THRESHOLD);
+  const minimumWatchSec = resolveEnglishMinimumWatchSec(seed.durationSec, data.watched_sec);
   if (data.watched_sec < minimumWatchSec) {
     throw new Error(`watched_sec must be at least ${minimumWatchSec}`);
   }
+
+  const wasAlreadySuccess = existing?.status === "success";
 
   state = upsertDemoEnglishProgress(state, {
     date: today,
     status: "success",
     watched_sec: data.watched_sec,
-    day_number: state.english.current_day,
+    lesson_day_number: lessonDay,
   });
+
+  if (!wasAlreadySuccess) {
+    state = creditDemoForeignLanguageLessonMinutes(state);
+  }
+
   saveState(state);
 
   return {
     current_day: state.english.current_day,
     day_status: "success",
     watched_sec: data.watched_sec,
-    preview_next_day: computeNextEnglishDay(state.english.current_day, "success"),
+    preview_next_day:
+      lessonDay === state.english.current_day
+        ? computeNextEnglishDay(state.english.current_day, "success")
+        : state.english.current_day,
   };
 }
 
@@ -707,13 +925,14 @@ export function demoSkipEnglishLesson(): EnglishSkipResponse {
   let state = ensureState();
   requireDemoEnglishEnabled(state);
 
-  const seed = getEnglishLessonByDay(state.english.current_day);
+  const scheduledDay = state.english.current_day;
+  const seed = getEnglishLessonByDay(scheduledDay);
   if (!seed) {
-    throw new Error("Lesson for current day not found");
+    throw new Error("Lesson not found");
   }
 
   const today = todayDate();
-  const existing = getDemoEnglishProgressForDate(state, today);
+  const existing = getDemoEnglishProgressForLesson(state, today, scheduledDay);
 
   if (existing?.status === "success") {
     throw new Error("Cannot skip after completing today's lesson");
@@ -730,7 +949,7 @@ export function demoSkipEnglishLesson(): EnglishSkipResponse {
     date: today,
     status: "skipped",
     watched_sec: existing?.watched_sec ?? 0,
-    day_number: state.english.current_day,
+    lesson_day_number: scheduledDay,
   });
   saveState(state);
 
@@ -749,7 +968,7 @@ export function demoGetEnglishHistory(): EnglishHistoryResponse {
     .filter((row) => row.status === "success")
     .sort((left, right) => right.date.localeCompare(left.date))
     .map((row) => {
-      const seed = getEnglishLessonByDay(row.day_number);
+      const seed = getEnglishLessonByDay(row.lesson_day_number);
       return {
         date: row.date,
         status: "success" as const,
@@ -1386,6 +1605,26 @@ export function demoResetTodayCheckin(habitId: string, date?: string): void {
   saveState(state);
 }
 
+export function demoReopenTodayCheckin(habitId: string, date?: string): void {
+  const state = ensureState();
+  const planDate = date ?? todayDate();
+  const index = state.checkins.findIndex(
+    (checkin) => checkin.habit_id === habitId && checkin.date === planDate,
+  );
+
+  if (index < 0) {
+    return;
+  }
+
+  const existing = state.checkins[index]!;
+  if (existing.status !== "success") {
+    return;
+  }
+
+  state.checkins[index] = { ...existing, status: "pending" };
+  saveState(state);
+}
+
 export function demoUpdateReadingBookmark(
   habitId: string,
   data: import("@mytodo/shared").UpdateReadingBookmarkRequest,
@@ -1547,9 +1786,11 @@ function ensureDemoEarlyRiseWeekendSkips(state: DemoState, date: string): void {
 }
 
 function buildLightTodayResponse(): TodayLightResponse {
-  const state = ensureState();
+  let state = ensureState();
   const date = todayDate();
   ensureDemoEarlyRiseWeekendSkips(state, date);
+  state = reconcileDemoForeignLanguageMinutes(state);
+  saveState(state);
   const sideHabits = state.habits.filter((h) => h.side === "light" && h.is_active);
   const todayCheckins = state.checkins.filter((c) => c.date === date);
   const stats = buildTodayStats(state, sideHabits, todayCheckins);

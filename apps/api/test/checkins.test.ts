@@ -670,4 +670,42 @@ describe("Checkins", () => {
     const body = JSON.parse(response.body) as { checkins: unknown[] };
     expect(body.checkins).toHaveLength(1);
   });
+
+  it("reopens a successful checkin as pending while keeping value", async () => {
+    const auth = await createOnboardedUser("reopen-checkin@example.com");
+    const habit = await createLightHabit(auth.access_token);
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+    const date = "2026-06-18";
+
+    await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins",
+      headers,
+      payload: {
+        habit_id: habit.id,
+        date,
+        value: habit.current_goal,
+      },
+    });
+
+    const reopenResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins/reopen",
+      headers,
+      payload: { habit_id: habit.id, date },
+    });
+
+    expect(reopenResponse.statusCode).toBe(200);
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: `/api/v1/checkins?date=${date}`,
+      headers,
+    });
+
+    const items = checkinResponseSchema.array().parse(JSON.parse(listResponse.body));
+    expect(items).toHaveLength(1);
+    expect(items[0]?.status).toBe("pending");
+    expect(items[0]?.value).toBe(habit.current_goal);
+  });
 });

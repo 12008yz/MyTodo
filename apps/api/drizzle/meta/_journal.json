@@ -197,6 +197,20 @@
       "when": 1782782400000,
       "tag": "0028_onboarding_completed_at",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1782786000000,
+      "tag": "0029_english_progress_per_lesson",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1782789600000,
+      "tag": "0030_english_progress_per_lesson_fix",
+      "breakpoints": true
     }
   ]
 }

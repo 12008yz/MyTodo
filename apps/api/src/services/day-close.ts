@@ -276,17 +276,13 @@ export class DayCloseService {
     }
 
     const run = async (executor: DbExecutor): Promise<boolean> => {
-      const [progress] = await executor
-        .select()
-        .from(englishProgress)
-        .where(and(eq(englishProgress.userId, user.id), eq(englishProgress.date, date)))
-        .limit(1);
+      const scheduledLesson = await this.getScheduledLesson(settings.currentDay, executor);
 
-      const lessonDay = await this.resolveEnglishLessonDay(
-        settings.currentDay,
-        progress?.lessonId ?? null,
-        executor,
-      );
+      const progress = scheduledLesson
+        ? await this.getProgressForScheduledLesson(user.id, date, scheduledLesson.id, executor)
+        : null;
+
+      const lessonDay = scheduledLesson?.dayNumber ?? settings.currentDay;
 
       const { status, nextDay } = closeEnglishDay(
         lessonDay,
@@ -302,9 +298,10 @@ export class DayCloseService {
           .update(englishProgress)
           .set({ status, updatedAt: new Date() })
           .where(eq(englishProgress.id, progress.id));
-      } else {
+      } else if (scheduledLesson) {
         await executor.insert(englishProgress).values({
           userId: user.id,
+          lessonId: scheduledLesson.id,
           date,
           status,
           watchedSec: 0,
@@ -314,7 +311,7 @@ export class DayCloseService {
       if (nextDay !== settings.currentDay) {
         await executor
           .update(englishSettings)
-          .set({ currentDay: nextDay })
+          .set({ currentDay: nextDay, selectedLessonId: null })
           .where(eq(englishSettings.userId, user.id));
       }
 
@@ -328,22 +325,35 @@ export class DayCloseService {
     return run(this.db);
   }
 
-  private async resolveEnglishLessonDay(
-    currentDay: number,
-    lessonId: string | null,
-    executor: DbExecutor = this.db,
-  ): Promise<number> {
-    if (!lessonId) {
-      return currentDay;
-    }
-
+  private async getScheduledLesson(currentDay: number, executor: DbExecutor = this.db) {
     const [lesson] = await executor
-      .select({ dayNumber: englishLessons.dayNumber })
+      .select()
       .from(englishLessons)
-      .where(eq(englishLessons.id, lessonId))
+      .where(eq(englishLessons.dayNumber, currentDay))
       .limit(1);
 
-    return lesson?.dayNumber ?? currentDay;
+    return lesson ?? null;
+  }
+
+  private async getProgressForScheduledLesson(
+    userId: string,
+    date: string,
+    lessonId: string,
+    executor: DbExecutor = this.db,
+  ) {
+    const [progress] = await executor
+      .select()
+      .from(englishProgress)
+      .where(
+        and(
+          eq(englishProgress.userId, userId),
+          eq(englishProgress.date, date),
+          eq(englishProgress.lessonId, lessonId),
+        ),
+      )
+      .limit(1);
+
+    return progress ?? null;
   }
 
   private async sumPomodoroMinutes(

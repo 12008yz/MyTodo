@@ -70,6 +70,7 @@ Recipe catalog is bundled in the web app (`@mytodo/shared` / `@mytodo/domain`), 
 | GET    | `/checkins?date=YYYY-MM-DD` | Checkins for date                                                                  |
 | POST   | `/checkins`                 | Create/update checkin                                                              |
 | DELETE | `/checkins?habit_id=&date=` | Remove today's checkin for a habit (`date` optional, defaults to user local today) |
+| POST   | `/checkins/reopen`          | Reopen today's successful checkin as `pending` (keeps `value`)                     |
 | POST   | `/checkins/batch`           | Offline batch sync (409 on conflict)                                               |
 
 ## Today dashboards
@@ -106,8 +107,11 @@ Recipe catalog is bundled in the web app (`@mytodo/shared` / `@mytodo/domain`), 
 | Method | Path                | Description           |
 | ------ | ------------------- | --------------------- |
 | GET    | `/english/today`    | Today's lesson        |
+| POST   | `/english/watch`    | Save watch progress (per lesson, per day) |
+| POST   | `/english/select`   | Pin lesson for today on home |
 | POST   | `/english/complete` | Mark lesson watched   |
 | POST   | `/english/skip`     | Skip today            |
+| GET    | `/english/catalog`  | Lesson catalog        |
 | GET    | `/english/history`  | Completed lessons     |
 | PATCH  | `/english/settings` | Enable/disable module |
 

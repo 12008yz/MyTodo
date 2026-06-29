@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, count, eq } from "drizzle-orm";
 import {
   canSkipThisWeek,
   computeEarlyRiseWindowState,
@@ -12,11 +12,12 @@ import {
   ERROR_CODES,
   HTTP_STATUS,
   isEarlyRiseCategoryKey,
+  isForeignLanguageHabit,
   type BatchCheckinRequest,
   type CreateCheckinRequest,
 } from "@mytodo/shared";
 import type { DbExecutor } from "../db/index.js";
-import { checkins, habits, users, type Habit, type User } from "../db/schema/index.js";
+import { checkins, englishProgress, habits, users, type Habit, type User } from "../db/schema/index.js";
 import { toCheckinResponse } from "../lib/checkin-mapper.js";
 import { previewStatusFromCheckin, toProgressionHabit } from "../lib/habit-progression.js";
 import {
@@ -60,6 +61,66 @@ export class CheckinService {
     await this.db
       .delete(checkins)
       .where(and(eq(checkins.habitId, habitId), eq(checkins.date, date)));
+  }
+
+  async reopenForDate(userId: string, habitId: string, date: string): Promise<void> {
+    await this.getOwnedHabit(userId, habitId);
+    const existing = await this.findExistingCheckin(habitId, date);
+
+    if (!existing || existing.status !== "success") {
+      return;
+    }
+
+    await this.saveCheckin(
+      habitId,
+      date,
+      "pending",
+      existing.value == null ? null : Number(existing.value),
+    );
+  }
+
+  async reconcileForeignLanguageMinutes(user: User): Promise<void> {
+    const habit = await this.findForeignLanguageHabit(user.id);
+    if (!habit) {
+      return;
+    }
+
+    const today = getUserLocalDate(new Date(), user.timezone);
+    const [row] = await this.db
+      .select({ total: count() })
+      .from(englishProgress)
+      .where(
+        and(
+          eq(englishProgress.userId, user.id),
+          eq(englishProgress.date, today),
+          eq(englishProgress.status, "success"),
+        ),
+      );
+
+    const completedLessons = Number(row?.total ?? 0);
+    if (completedLessons === 0) {
+      return;
+    }
+
+    const expectedMinutes = completedLessons * Number(habit.currentGoal);
+    await this.applySessionValue(user, habit.id, expectedMinutes, { mode: "set" });
+  }
+
+  async findForeignLanguageHabitForUser(userId: string) {
+    return this.findForeignLanguageHabit(userId);
+  }
+
+  private async findForeignLanguageHabit(userId: string) {
+    const rows = await this.db
+      .select()
+      .from(habits)
+      .where(and(eq(habits.userId, userId), eq(habits.isActive, true)));
+
+    return (
+      rows.find((habit) =>
+        isForeignLanguageHabit({ category_key: habit.categoryKey, name: habit.name }),
+      ) ?? null
+    );
   }
 
   async upsert(user: User, body: CreateCheckinRequest): Promise<UpsertResult> {

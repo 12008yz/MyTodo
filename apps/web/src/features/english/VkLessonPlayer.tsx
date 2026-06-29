@@ -13,6 +13,10 @@ type VkLessonPlayerProps = {
   durationSec: number;
   fallbackClassName?: string;
   completionMessage?: string;
+  /** Preview in catalog — no end-of-lesson handling. */
+  previewOnly?: boolean;
+  /** Hide VK done overlay; parent shows completion UI on home. */
+  suppressDoneOverlay?: boolean;
   onWatchProgress: (watchedSec: number) => void;
   onDurationReady?: (durationSec: number) => void;
   onVideoEnded?: (payload: { watchedSec: number; durationSec: number }) => void;
@@ -26,6 +30,8 @@ export function VkLessonPlayer({
   durationSec,
   fallbackClassName = "home__plan-drawer-btn",
   completionMessage = "Урок просмотрен",
+  previewOnly = false,
+  suppressDoneOverlay = false,
   onWatchProgress,
   onDurationReady,
   onVideoEnded,
@@ -93,7 +99,23 @@ export function VkLessonPlayer({
         return;
       }
       endedRef.current = true;
-      lockPlaybackSurface();
+
+      if (previewOnly) {
+        return;
+      }
+
+      if (!suppressDoneOverlay) {
+        lockPlaybackSurface();
+      } else {
+        const player = playerRef.current;
+        if (player) {
+          try {
+            player.pause();
+          } catch {
+            // Player may already be torn down.
+          }
+        }
+      }
 
       const resolvedDuration =
         duration > 0 ? duration : durationSecRef.current > 60 ? durationSecRef.current : 0;
@@ -199,7 +221,7 @@ export function VkLessonPlayer({
 
   return (
     <div className="vk-lesson-player">
-      {playbackLocked ? (
+      {playbackLocked && !suppressDoneOverlay ? (
         <div className="vk-lesson-player__done" role="status" aria-live="polite">
           <div className="vk-lesson-player__done-row">
             <span className="vk-lesson-player__done-icon" aria-hidden="true">
@@ -232,7 +254,6 @@ export function VkLessonPlayer({
               src={embedSrc}
               title="Видеоурок"
               allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-              allowFullScreen
               referrerPolicy="strict-origin-when-cross-origin"
               onLoad={() => bindPlayerRef.current?.()}
             />
