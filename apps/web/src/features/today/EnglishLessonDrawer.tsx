@@ -162,10 +162,10 @@ export function EnglishLessonDrawer({
     stopVkEmbedsInContainer(playerRootRef.current);
 
     const pendingSeconds = pendingWatchSecRef.current;
-    if (pendingSeconds > 0 && today?.enabled && today.day_status !== "success") {
+    if (pendingSeconds > 0 && !isFinishedToday && today?.enabled === true) {
       void flushWatchProgress(pendingSeconds);
     }
-  }, [playerOpen, today?.enabled, today?.day_status, flushWatchProgress]);
+  }, [playerOpen, isFinishedToday, today?.enabled, flushWatchProgress]);
 
   useEffect(() => {
     if (!lessonIdentityKey) {
