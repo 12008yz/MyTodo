@@ -2,7 +2,8 @@ import {
   resolveDarkCoachReply,
   type HarshnessLevel,
   type HabitTemplateId,
-} from "@mytodo/shared";import { ClientApiError } from "../../lib/api";
+} from "@mytodo/shared";
+import { ClientApiError } from "../../lib/api";
 
 export function buildLocalCoachReply(
   templateId: HabitTemplateId | string | null | undefined,

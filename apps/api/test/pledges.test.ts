@@ -23,6 +23,14 @@ const env = loadEnv({
   NODE_ENV: "test",
 });
 
+const CLOSE_DATE = "2026-06-18";
+
+function shiftDate(date: string, deltaDays: number): string {
+  const parsed = new Date(`${date}T12:00:00.000Z`);
+  parsed.setUTCDate(parsed.getUTCDate() + deltaDays);
+  return parsed.toISOString().slice(0, 10);
+}
+
 describe("Pledges", () => {
   let app: Awaited<ReturnType<typeof buildApp>>["app"];
   let db: Awaited<ReturnType<typeof buildApp>>["app"]["db"];
@@ -92,6 +100,16 @@ describe("Pledges", () => {
     return { auth, headers, habit };
   }
 
+  async function backdateOnboarding(userId: string, beforeDate: string) {
+    const anchor = new Date(`${shiftDate(beforeDate, -3)}T12:00:00.000Z`);
+    await db
+      .update(users)
+      .set({ onboardingCompletedAt: anchor, createdAt: anchor })
+      .where(eq(users.id, userId));
+    const [row] = await db.select().from(users).where(eq(users.id, userId));
+    return row!;
+  }
+
   async function activatePledge(
     headers: Record<string, string>,
     habitId: string,
@@ -158,10 +176,10 @@ describe("Pledges", () => {
     const { headers, habit } = await registerAndOnboard(email);
     await activatePledge(headers, habit.id);
 
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    const closeDate = getUserLocalDate(new Date(), user!.timezone);
+    let user = (await db.select().from(users).where(eq(users.email, email)))[0]!;
+    user = await backdateOnboarding(user.id, CLOSE_DATE);
 
-    await dayCloseService.closeDayForUser(user!, closeDate);
+    await dayCloseService.closeDayForUser(user, CLOSE_DATE);
 
     const [pledge] = await db.select().from(pledges);
     expect(pledge?.status).toBe("failed");
@@ -185,9 +203,12 @@ describe("Pledges", () => {
     const { headers, habit } = await registerAndOnboard(email);
     await activatePledge(headers, habit.id);
 
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    const closeDate = getUserLocalDate(new Date(), user!.timezone);
-    await dayCloseService.closeDayForUser(user!, closeDate);
+    let user = (await db.select().from(users).where(eq(users.email, email)))[0]!;
+    user = await backdateOnboarding(user.id, CLOSE_DATE);
+    await dayCloseService.closeDayForUser(user, CLOSE_DATE);
+
+    const [failedPledge] = await db.select().from(pledges);
+    expect(failedPledge?.status).toBe("failed");
 
     const habit2Response = await app.inject({
       method: "POST",

@@ -194,6 +194,8 @@ describe("Today dashboards", () => {
     expect(body.greeting_name).toBe("Dash User");
     expect(body.habits[0]?.timer?.started_at).toBe(habit.last_relapse_at);
     expect(body.habits[0]?.doom_scroll_active).toBeNull();
+    expect(body.stats.completed_today).toBe(0);
+    expect(body.habits[0]?.checkin).toBeNull();
   });
 
   it("returns habit timer endpoint for abstinence habits", async () => {

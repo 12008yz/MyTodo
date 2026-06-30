@@ -660,8 +660,15 @@ export async function getActiveHabitSession(habitId: string): Promise<HabitSessi
     return demoGetActiveHabitSession(habitId);
   }
 
-  const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/sessions/active`);
-  return habitSessionActiveResponseSchema.parse(response);
+  try {
+    const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/sessions/active`);
+    return habitSessionActiveResponseSchema.parse(response);
+  } catch (error) {
+    if (error instanceof ClientApiError && error.status === 400) {
+      return { session: null };
+    }
+    throw error;
+  }
 }
 
 export async function startDoomScroll(

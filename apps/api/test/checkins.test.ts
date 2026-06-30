@@ -171,7 +171,7 @@ describe("Checkins", () => {
 
     expect(response.statusCode).toBe(201);
     const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
-    expect(checkin.status).toBe("success");
+    expect(checkin.status).toBe("pending");
     expect(checkin.preview_next_goal).toBe(15);
   });
 

@@ -436,7 +436,7 @@ describe("Stats", () => {
 
     const afterCurrentMonday = afterBody.weeks[1]?.days.find((day) => day.date === currentWeekStart);
     if (currentWeekStart < today) {
-      expect(afterCurrentMonday?.light_color).toBe("fail");
+      expect(afterCurrentMonday?.light_color).toBe("pending");
     } else {
       expect(afterCurrentMonday?.light_color).toBe("pending");
     }

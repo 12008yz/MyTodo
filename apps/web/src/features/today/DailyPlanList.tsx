@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DailyPlan, DailyPlanBlock, HabitSessionResponse, TodayDarkHabit, TodayLightHabit, WarmupDay } from "@mytodo/shared";
 import { compareLightHabitsForDisplay, isCompanionLightHabit, isNonSessionLightCategory, isStrengthWorkoutHabit, PLANK_PREP_SECONDS } from "@mytodo/shared";
+import { supportsHabitSessions } from "../sessions/supportsHabitSessions";
 import { useQueryClient } from "@tanstack/react-query";
 import { ClientApiError } from "../../lib/api";
 import { FocusScreen } from "../sessions/FocusScreen";
@@ -917,12 +918,7 @@ export function DailyPlanList({
         ...(light.isLoading ? [] : light.habits),
         ...(dark.isLoading ? [] : dark.habits),
       ]
-        .filter(
-          (habit) =>
-            habit.type !== "abstinence" &&
-            !isNonSessionLightCategory(habit.category_key) &&
-            !isStrengthWorkoutHabit(habit),
-        )
+        .filter((habit) => supportsHabitSessions(habit))
         .map((habit) => habit.id)
         .sort()
         .join(","),

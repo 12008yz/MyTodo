@@ -10,7 +10,6 @@ import {
   isDateInRange,
   sumEnglishWatchSecondsToMinutes,
   sumMinutesHabitValueForTodayStats,
-  usesAbstinenceStreakRules,
   type DayCheckin,
 } from "@mytodo/domain";
 import { AWARENESS_SESSION_MIN, isCompanionLightHabit, isNutritionHabit, resolveHabitDisplayName, type HabitCategoryKey, type HabitTemplateId, type HabitUnit } from "@mytodo/shared";
@@ -256,18 +255,7 @@ export class TodayService {
         (row) => row.habitId === habit.id && row.date === today,
       );
 
-      if (todayCheckin?.status === "success") {
-        return true;
-      }
-
-      if (todayCheckin?.status === "fail") {
-        return false;
-      }
-
-      return usesAbstinenceStreakRules(
-        habit.type as "target" | "limit" | "abstinence",
-        habit.phase as "reduction" | "abstinence",
-      );
+      return todayCheckin?.status === "success";
     }).length;
     const relapsesThisWeek = allCheckins.filter(
       (row) =>

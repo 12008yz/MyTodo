@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { usesAbstinenceStreakRules } from "@mytodo/domain";
 import { isCompanionLightHabit } from "@mytodo/shared";
 import { getTodayDark, getTodayLight } from "../../lib/api";
 
@@ -16,15 +15,7 @@ function isEffectivelyOnTrack(
     return true;
   }
 
-  if (habit.checkin?.status === "success") {
-    return true;
-  }
-
-  if (habit.checkin?.status === "fail") {
-    return false;
-  }
-
-  return usesAbstinenceStreakRules(habit.type, habit.phase);
+  return habit.checkin?.status === "success";
 }
 
 export function useProfileTodayStats() {
