@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "../config/load-dotenv.js";
 import { createGigaChatClient } from "../lib/gigachat/client.js";
 
 async function main(): Promise<void> {

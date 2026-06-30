@@ -45,6 +45,7 @@ export function DarkCoachSheet({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [offlineMode, setOfflineMode] = useState(false);
+  const [aiMode, setAiMode] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,6 +56,7 @@ export function DarkCoachSheet({
     setMessagesLeft(COACH_DAILY_MESSAGE_LIMIT);
     setError(null);
     setOfflineMode(false);
+    setAiMode(false);
     setMessages([
       {
         role: "assistant",
@@ -116,6 +118,9 @@ export function DarkCoachSheet({
       setMessagesLeft(response.messages_left);
       if (response.source === "template" && !offlineMode && !isDemoMode()) {
         setOfflineMode(true);
+      } else if (response.source === "gigachat") {
+        setOfflineMode(false);
+        setAiMode(true);
       }
     } catch (err) {
       if (err instanceof ClientApiError) {
@@ -167,7 +172,7 @@ export function DarkCoachSheet({
 
         <p className="dark-coach-sheet__limit">
           Осталось {messagesLeft} из {COACH_DAILY_MESSAGE_LIMIT} сообщений сегодня
-          {offlineMode ? " · офлайн (шаблоны)" : ""}
+          {aiMode ? " · GigaChat" : offlineMode ? " · шаблоны" : ""}
         </p>
 
         <div ref={listRef} className="dark-coach-sheet__messages">

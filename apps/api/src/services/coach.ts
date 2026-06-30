@@ -88,7 +88,10 @@ export class CoachService {
           { role: "user", content: input.message },
         ]);
         source = "gigachat";
-      } catch {
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("[coach] GigaChat failed, using template:", error);
+        }
         reply = resolveDarkCoachReply(habit.templateId, harshness, input.message);
       }
     } else {

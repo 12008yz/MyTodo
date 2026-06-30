@@ -5,7 +5,7 @@ import { Agent, fetch as undiciFetch, type Dispatcher, type RequestInit as Undic
 
 const DEFAULT_CA_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
-  "../../certs/russian_trusted_root_ca.cer",
+  "../../../certs/russian_trusted_root_ca.cer",
 );
 
 let dispatcher: Dispatcher | undefined | null = null;

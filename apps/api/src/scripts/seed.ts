@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "../config/load-dotenv.js";
 import { loadEnv } from "../config/env.js";
 import { createDb } from "../db/index.js";
 import { seedDatabase } from "../services/seed.js";
