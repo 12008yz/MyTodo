@@ -1,10 +1,15 @@
-import { isNonSessionLightCategory, isStrengthWorkoutHabit } from "@mytodo/shared";
+import {
+  type HabitCategoryKey,
+  isNonSessionLightCategory,
+  isStrengthWorkoutHabit,
+} from "@mytodo/shared";
 
 type HabitSessionRef = {
   side: "light" | "dark";
   type: "target" | "limit" | "abstinence";
   template_id?: string | null;
-  category_key?: string | null;
+  category_key?: HabitCategoryKey | null;
+  name?: string | null;
 };
 
 /** Matches API `HabitSessionService.getSupportedHabit` rules. */
