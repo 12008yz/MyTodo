@@ -27,7 +27,7 @@ import { ClientApiError, createHabit, listHabits, updateEnglishSettings, updateM
 import { requestPushSubscription } from "../../lib/push";
 import { LightPathStep, type LightPathStepHandle } from "./LightPathStep";
 import { DarkPathStep } from "./DarkPathStep";
-import { TimeInput24 } from "./TimeInput24";
+import { TimeInput24 } from "../../components/TimeInput24/TimeInput24";
 import {
   afterKeyboardDismiss,
   clearKeyboardScrollPadding,
@@ -649,6 +649,7 @@ export function OnboardingPage() {
                   <TimeInput24
                     id="onboarding-wake"
                     value={body.wakeTime}
+                    variant="light"
                     onChange={(wakeTime) => setBody((c) => ({ ...c, wakeTime }))}
                   />
                 </label>
@@ -657,6 +658,7 @@ export function OnboardingPage() {
                   <TimeInput24
                     id="onboarding-sleep"
                     value={body.sleepTime}
+                    variant="light"
                     onChange={(sleepTime) => setBody((c) => ({ ...c, sleepTime }))}
                   />
                 </label>

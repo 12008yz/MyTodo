@@ -1,3 +1,5 @@
+import "./TimeInput24.css";
+
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, index) =>
   String(index).padStart(2, "0"),
 );
@@ -28,18 +30,26 @@ type TimeInput24Props = {
   value: string;
   onChange: (value: string) => void;
   id?: string;
+  variant?: "default" | "light";
 };
 
-export function TimeInput24({ value, onChange, id }: TimeInput24Props) {
+export function TimeInput24({ value, onChange, id, variant = "default" }: TimeInput24Props) {
   const { hours, minutes } = parseTime(value);
   const hourId = id ? `${id}-hour` : undefined;
   const minuteId = id ? `${id}-minute` : undefined;
 
   return (
-    <div className="onboarding__time-field">
+    <div
+      className={[
+        "time-input24",
+        variant === "light" ? "time-input24--light" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <select
         id={hourId}
-        className="onboarding__time-field-part"
+        className="time-input24__part"
         value={hours}
         aria-label="Часы"
         onChange={(event) => onChange(formatTime(event.target.value, minutes))}
@@ -50,12 +60,12 @@ export function TimeInput24({ value, onChange, id }: TimeInput24Props) {
           </option>
         ))}
       </select>
-      <span className="onboarding__time-field-sep" aria-hidden="true">
+      <span className="time-input24__sep" aria-hidden="true">
         :
       </span>
       <select
         id={minuteId}
-        className="onboarding__time-field-part"
+        className="time-input24__part"
         value={minutes}
         aria-label="Минуты"
         onChange={(event) => onChange(formatTime(hours, event.target.value))}

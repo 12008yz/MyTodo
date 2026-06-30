@@ -1,0 +1,99 @@
+/* Light-side gradient stops — overridden per art variant */
+.profile-modal__waves {
+  --pm-light-0: #dff7ea;
+  --pm-light-1: #f4faf7;
+  --pm-light-2: #eef8ff;
+  --pm-dark-0: #15161d;
+  --pm-dark-1: #221a2e;
+  --pm-dark-2: #1c1d26;
+  --pm-glow-light: rgba(70, 240, 138, 0.35);
+  --pm-glow-dark: rgba(255, 125, 83, 0.28);
+}
+
+.profile-modal__waves--spark {
+  --pm-light-0: #fce7f3;
+  --pm-light-1: #fdf4ff;
+  --pm-light-2: #f5f3ff;
+  --pm-dark-0: #2e1065;
+  --pm-dark-1: #4c1d95;
+  --pm-dark-2: #1e1b4b;
+  --pm-glow-light: rgba(244, 114, 182, 0.38);
+  --pm-glow-dark: rgba(167, 139, 250, 0.32);
+}
+
+.profile-modal__waves--horizon {
+  --pm-light-0: #fef3c7;
+  --pm-light-1: #fff7ed;
+  --pm-light-2: #fef9c3;
+  --pm-dark-0: #1e1b4b;
+  --pm-dark-1: #312e81;
+  --pm-dark-2: #0f172a;
+  --pm-glow-light: rgba(251, 191, 36, 0.42);
+  --pm-glow-dark: rgba(99, 102, 241, 0.28);
+}
+
+.profile-modal__waves--pulse {
+  --pm-light-0: #ffe4e6;
+  --pm-light-1: #fff1f2;
+  --pm-light-2: #fce7f3;
+  --pm-dark-0: #1c1917;
+  --pm-dark-1: #292524;
+  --pm-dark-2: #0c0a09;
+  --pm-glow-light: rgba(248, 113, 113, 0.4);
+  --pm-glow-dark: rgba(95, 51, 225, 0.22);
+}
+
+.profile-modal__waves--forge {
+  --pm-light-0: #e7e5e4;
+  --pm-light-1: #f5f5f4;
+  --pm-light-2: #fafaf9;
+  --pm-dark-0: #1c1917;
+  --pm-dark-1: #44403c;
+  --pm-dark-2: #0c0a09;
+  --pm-glow-light: rgba(168, 162, 158, 0.35);
+  --pm-glow-dark: rgba(234, 88, 12, 0.32);
+}
+
+.profile-modal__waves--signal {
+  --pm-light-0: #ecfeff;
+  --pm-light-1: #f0f9ff;
+  --pm-light-2: #ede9fe;
+  --pm-dark-0: #0f172a;
+  --pm-dark-1: #1e1b4b;
+  --pm-dark-2: #020617;
+  --pm-glow-light: rgba(34, 211, 238, 0.35);
+  --pm-glow-dark: rgba(124, 82, 255, 0.3);
+}
+
+.profile-modal__waves--chapter {
+  --pm-light-0: #fef3c7;
+  --pm-light-1: #fffbeb;
+  --pm-light-2: #eff6ff;
+  --pm-dark-0: #1e3a5f;
+  --pm-dark-1: #1e293b;
+  --pm-dark-2: #0f172a;
+  --pm-glow-light: rgba(251, 191, 36, 0.32);
+  --pm-glow-dark: rgba(59, 130, 246, 0.25);
+}
+
+.profile-modal__waves--orbit {
+  --pm-light-0: #dbeafe;
+  --pm-light-1: #eff6ff;
+  --pm-light-2: #ede9fe;
+  --pm-dark-0: #0f172a;
+  --pm-dark-1: #1e1b4b;
+  --pm-dark-2: #020617;
+  --pm-glow-light: rgba(96, 165, 250, 0.38);
+  --pm-glow-dark: rgba(139, 92, 246, 0.28);
+}
+
+.profile-modal__waves--lifeline {
+  --pm-light-0: #d1fae5;
+  --pm-light-1: #ecfdf5;
+  --pm-light-2: #ccfbf1;
+  --pm-dark-0: #134e4a;
+  --pm-dark-1: #115e59;
+  --pm-dark-2: #042f2e;
+  --pm-glow-light: rgba(52, 211, 153, 0.38);
+  --pm-glow-dark: rgba(45, 212, 191, 0.28);
+}

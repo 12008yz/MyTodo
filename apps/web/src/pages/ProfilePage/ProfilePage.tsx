@@ -4,7 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { HARSHNESS_OPTIONS } from "../../features/onboarding/constants";
 import { useProfileTodayStats } from "../../features/profile/useProfileTodayStats";
+import { AppSettingsModal } from "../../components/profile/AppSettingsModal";
+import { EditHarshnessModal } from "../../components/profile/EditHarshnessModal";
 import { EditNameModal } from "../../components/profile/EditNameModal";
+import { EditPomodoroModal } from "../../components/profile/EditPomodoroModal";
+import { EditScheduleModal } from "../../components/profile/EditScheduleModal";
 import {
   BellIcon,
   BookIcon,
@@ -19,12 +23,12 @@ import {
   SunIcon,
   UserIcon,
 } from "../../components/profile/ProfileIcons";
+import { ProfileInfoModal } from "../../components/profile/ProfileInfoModal";
 import { ProfileMenuRow } from "../../components/profile/ProfileMenuRow";
 import { ProfileMenuSection } from "../../components/profile/ProfileMenuSection";
 import { isDemoMode } from "../../lib/demo-mode";
 import { getEnglishToday } from "../../lib/api";
 import { englishQueryKeys } from "../../features/english/useEnglish";
-import { requestPushSubscription } from "../../lib/push";
 import "./ProfilePage.css";
 
 function getUserInitial(name: string): string {
@@ -37,9 +41,14 @@ function formatTime(value: string | null): string {
   return value.slice(0, 5);
 }
 
-function comingSoon() {
-  // Placeholder until sub-screens are implemented.
-}
+const ABOUT_TEXT =
+  "«Новая глава» — приложение для ежедневного контроля привычек: светлая сторона роста и тёмная сторона отказа от вредного. Помодоро, статистика, коуч и курс английского помогают держать курс.";
+
+const FAQ_TEXT =
+  "Как закрыть день? Отметь все привычки на главной до конца дня. Что такое пропуск? До двух пропусков в неделю на привычку. Как работает залог? Функция появится скоро — следи за обновлениями в профиле.";
+
+const HELP_TEXT =
+  "Напиши нам на support@novayaglava.app — ответим в течение рабочего дня. Если что-то сломалось, укажи браузер и опиши шаги до ошибки.";
 
 export function ProfilePage() {
   const navigate = useNavigate();
@@ -49,7 +58,15 @@ export function ProfilePage() {
     queryKey: englishQueryKeys.today,
     queryFn: getEnglishToday,
   });
+
   const [editNameOpen, setEditNameOpen] = useState(false);
+  const [appSettingsOpen, setAppSettingsOpen] = useState(false);
+  const [pomodoroOpen, setPomodoroOpen] = useState(false);
+  const [harshnessOpen, setHarshnessOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [faqOpen, setFaqOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const englishHint =
     englishToday?.enabled === true
@@ -65,6 +82,7 @@ export function ProfilePage() {
     user.wake_time && user.sleep_time
       ? `${formatTime(user.wake_time)} – ${formatTime(user.sleep_time)}`
       : "Не задано";
+  const pomodoroHint = `${user.pomodoro_work_min} / ${user.pomodoro_break_min} мин`;
 
   return (
     <div className="profile-page">
@@ -97,24 +115,24 @@ export function ProfilePage() {
           icon={<SettingsIcon />}
           label="Настройки приложения"
           hint="Помодоро, уведомления"
-          onClick={comingSoon}
+          onClick={() => setAppSettingsOpen(true)}
         />
         <ProfileMenuRow
           icon={<BellIcon />}
           label="Уведомления"
-          onClick={() => void requestPushSubscription()}
+          onClick={() => setAppSettingsOpen(true)}
         />
         <ProfileMenuRow
           icon={<ClockIcon />}
           label="Помодоро"
-          hint={`${user.pomodoro_work_min} / ${user.pomodoro_break_min} мин`}
-          onClick={comingSoon}
+          hint={pomodoroHint}
+          onClick={() => setPomodoroOpen(true)}
         />
         <ProfileMenuRow
           icon={<SettingsIcon />}
           label="Жёсткость наставника"
           hint={harshness ? `${harshness.emoji} ${harshness.title}` : undefined}
-          onClick={comingSoon}
+          onClick={() => setHarshnessOpen(true)}
         />
       </ProfileMenuSection>
 
@@ -129,7 +147,7 @@ export function ProfilePage() {
           icon={<SunIcon />}
           label="Режим дня"
           hint={scheduleHint}
-          onClick={comingSoon}
+          onClick={() => setScheduleOpen(true)}
         />
       </ProfileMenuSection>
 
@@ -145,9 +163,9 @@ export function ProfilePage() {
       </ProfileMenuSection>
 
       <ProfileMenuSection title="О приложении">
-        <ProfileMenuRow icon={<InfoIcon />} label="О нас" onClick={comingSoon} />
-        <ProfileMenuRow icon={<InfoIcon />} label="FAQ" onClick={comingSoon} />
-        <ProfileMenuRow icon={<HelpIcon />} label="Помощь и обратная связь" onClick={comingSoon} />
+        <ProfileMenuRow icon={<InfoIcon />} label="О нас" onClick={() => setAboutOpen(true)} />
+        <ProfileMenuRow icon={<InfoIcon />} label="FAQ" onClick={() => setFaqOpen(true)} />
+        <ProfileMenuRow icon={<HelpIcon />} label="Помощь и обратная связь" onClick={() => setHelpOpen(true)} />
       </ProfileMenuSection>
 
       <div className="profile-page__logout-wrap">
@@ -168,6 +186,60 @@ export function ProfilePage() {
           await updateProfile({ name });
         }}
       />
+
+      <AppSettingsModal
+        open={appSettingsOpen}
+        pomodoroHint={pomodoroHint}
+        onClose={() => setAppSettingsOpen(false)}
+        onOpenPomodoro={() => setPomodoroOpen(true)}
+      />
+
+      <EditPomodoroModal
+        open={pomodoroOpen}
+        workMin={user.pomodoro_work_min}
+        breakMin={user.pomodoro_break_min}
+        longBreakMin={user.pomodoro_long_break_min}
+        onClose={() => setPomodoroOpen(false)}
+        onSave={async (data) => {
+          await updateProfile(data);
+        }}
+      />
+
+      <EditHarshnessModal
+        open={harshnessOpen}
+        level={user.harshness_level}
+        onClose={() => setHarshnessOpen(false)}
+        onSave={async (harshness_level) => {
+          await updateProfile({ harshness_level });
+        }}
+      />
+
+      <EditScheduleModal
+        open={scheduleOpen}
+        wakeTime={user.wake_time}
+        sleepTime={user.sleep_time}
+        onClose={() => setScheduleOpen(false)}
+        onSave={async (data) => {
+          await updateProfile(data);
+        }}
+      />
+
+      <ProfileInfoModal open={aboutOpen} title="О нас" art="chapter" onClose={() => setAboutOpen(false)}>
+        {ABOUT_TEXT}
+      </ProfileInfoModal>
+
+      <ProfileInfoModal open={faqOpen} title="FAQ" art="orbit" onClose={() => setFaqOpen(false)}>
+        {FAQ_TEXT}
+      </ProfileInfoModal>
+
+      <ProfileInfoModal
+        open={helpOpen}
+        title="Помощь и обратная связь"
+        art="lifeline"
+        onClose={() => setHelpOpen(false)}
+      >
+        {HELP_TEXT}
+      </ProfileInfoModal>
     </div>
   );
 }

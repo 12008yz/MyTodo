@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ClientApiError } from "../../lib/api";
-import "./EditNameModal.css";
+import { ProfileModal } from "./ProfileModal";
 
 type EditNameModalProps = {
   open: boolean;
@@ -20,10 +20,6 @@ export function EditNameModal({ open, initialName, onClose, onSave }: EditNameMo
       setError(null);
     }
   }, [open, initialName]);
-
-  if (!open) {
-    return null;
-  }
 
   const handleSave = async () => {
     const trimmed = name.trim();
@@ -51,41 +47,25 @@ export function EditNameModal({ open, initialName, onClose, onSave }: EditNameMo
   };
 
   return (
-    <div className="edit-name-modal" role="presentation" onClick={onClose}>
-      <div
-        className="edit-name-modal__panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="edit-name-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h2 id="edit-name-title" className="edit-name-modal__title">
-          Изменить имя
-        </h2>
-        <div className="edit-name-modal__divider" />
-        <input
-          type="text"
-          className="edit-name-modal__input"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          maxLength={255}
-          autoFocus
-        />
-        {error ? <p className="edit-name-modal__error">{error}</p> : null}
-        <div className="edit-name-modal__actions">
-          <button type="button" className="edit-name-modal__btn edit-name-modal__btn--ghost" onClick={onClose}>
-            Отмена
-          </button>
-          <button
-            type="button"
-            className="edit-name-modal__btn edit-name-modal__btn--primary"
-            disabled={isSaving}
-            onClick={() => void handleSave()}
-          >
-            {isSaving ? "Сохраняем…" : "Сохранить"}
-          </button>
-        </div>
-      </div>
-    </div>
+    <ProfileModal
+      open={open}
+      title="Изменить имя"
+      art="spark"
+      onClose={onClose}
+      onSave={handleSave}
+      isSaving={isSaving}
+      error={error}
+    >
+      <p className="profile-modal__hint">Как к тебе обращаться в приложении и уведомлениях.</p>
+      <input
+        type="text"
+        className="profile-modal__input"
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        maxLength={255}
+        autoFocus
+        aria-label="Имя"
+      />
+    </ProfileModal>
   );
 }
