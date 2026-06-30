@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type {
   CompleteHabitSessionRequest,
   StartHabitSessionRequest,
@@ -24,6 +24,17 @@ export function useActiveHabitSession(habitId: string | null) {
   });
 }
 
+async function invalidateHabitStats(queryClient: QueryClient, side: StatsSide) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["today", side] }),
+    queryClient.invalidateQueries({ queryKey: ["stats-week", side] }),
+    queryClient.invalidateQueries({ queryKey: ["stats-calendar"] }),
+    queryClient.invalidateQueries({ queryKey: ["stats-month"] }),
+    queryClient.invalidateQueries({ queryKey: ["stats-progress"] }),
+    queryClient.invalidateQueries({ queryKey: ["time-distribution"] }),
+  ]);
+}
+
 export function useStartHabitSession(side: StatsSide) {
   const queryClient = useQueryClient();
 
@@ -31,7 +42,7 @@ export function useStartHabitSession(side: StatsSide) {
     mutationFn: ({ habitId, payload }: SessionMutationPayload<StartHabitSessionRequest>) =>
       startSession(habitId, payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["today", side] });
+      await invalidateHabitStats(queryClient, side);
     },
   });
 }
@@ -43,7 +54,7 @@ export function useCompleteHabitSession(side: StatsSide) {
     mutationFn: ({ habitId, payload }: SessionMutationPayload<CompleteHabitSessionRequest>) =>
       completeSession(habitId, payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["today", side] });
+      await invalidateHabitStats(queryClient, side);
     },
   });
 }
@@ -54,7 +65,7 @@ export function useStopHabitSession(side: StatsSide) {
   return useMutation({
     mutationFn: (habitId: string) => stopSession(habitId),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["today", side] });
+      await invalidateHabitStats(queryClient, side);
     },
   });
 }

@@ -55,6 +55,7 @@ export function useCheckinMutation(side: TodaySide) {
         queryClient.invalidateQueries({ queryKey: ["stats-calendar"] }),
         queryClient.invalidateQueries({ queryKey: ["stats-month"] }),
         queryClient.invalidateQueries({ queryKey: ["stats-progress"] }),
+        queryClient.invalidateQueries({ queryKey: ["time-distribution"] }),
       ]);
     },
   });

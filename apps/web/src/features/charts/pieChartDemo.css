@@ -1,0 +1,9 @@
+.pie-chart-panel {
+  display: flex;
+  flex-direction: column;
+  gap: calc(12 * var(--s));
+}
+
+.pie-chart-panel__period {
+  margin-bottom: 0;
+}

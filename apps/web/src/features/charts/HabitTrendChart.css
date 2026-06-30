@@ -1,0 +1,72 @@
+.habit-trend-chart {
+  width: 100%;
+  min-height: calc(220 * var(--s));
+}
+
+.habit-trend-chart .recharts-legend-item-text {
+  color: inherit !important;
+}
+
+.habit-trend-tooltip {
+  padding: calc(8 * var(--s)) calc(10 * var(--s));
+  border-radius: calc(10 * var(--s));
+  border: 1px solid rgba(95, 51, 225, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 calc(6 * var(--s)) calc(20 * var(--s)) rgba(0, 0, 0, 0.1);
+}
+
+.habit-trend-chart--dark .habit-trend-tooltip {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(31, 32, 41, 0.96);
+}
+
+.habit-trend-tooltip__label {
+  margin: 0 0 calc(6 * var(--s));
+  font-size: calc(11 * var(--s));
+  font-weight: 600;
+  color: var(--color-black);
+}
+
+.habit-trend-chart--dark .habit-trend-tooltip__label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.habit-trend-tooltip__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: calc(4 * var(--s));
+}
+
+.habit-trend-tooltip__item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: calc(6 * var(--s));
+  font-size: calc(11 * var(--s));
+}
+
+.habit-trend-tooltip__dot {
+  width: calc(7 * var(--s));
+  height: calc(7 * var(--s));
+  border-radius: 50%;
+}
+
+.habit-trend-tooltip__name {
+  color: var(--color-secondary);
+}
+
+.habit-trend-chart--dark .habit-trend-tooltip__name {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.habit-trend-tooltip__value {
+  font-weight: 600;
+  color: var(--color-black);
+}
+
+.habit-trend-chart--dark .habit-trend-tooltip__value {
+  color: rgba(255, 255, 255, 0.92);
+}

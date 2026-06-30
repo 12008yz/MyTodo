@@ -73,6 +73,7 @@ export function AddHabitModal({ open, onClose }: AddHabitModalProps) {
         queryClient.invalidateQueries({ queryKey: ["stats-calendar"] }),
         queryClient.invalidateQueries({ queryKey: ["stats-month"] }),
         queryClient.invalidateQueries({ queryKey: ["stats-progress"] }),
+        queryClient.invalidateQueries({ queryKey: ["time-distribution"] }),
       ]);
       handleClose();
     } catch (err) {

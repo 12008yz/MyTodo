@@ -1,0 +1,125 @@
+.habit-trend-card--skeleton {
+  width: 100%;
+  min-height: calc(320 * var(--s));
+  border-radius: calc(16 * var(--s));
+  background: linear-gradient(
+    90deg,
+    rgba(95, 51, 225, 0.05) 0%,
+    rgba(95, 51, 225, 0.1) 50%,
+    rgba(95, 51, 225, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: home__shimmer 1.2s ease-in-out infinite;
+}
+
+.habit-trend-card {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: calc(16 * var(--s));
+  border-radius: calc(16 * var(--s));
+  border: 1px solid rgba(95, 51, 225, 0.08);
+  background: var(--color-light-surface);
+  box-shadow: 0 calc(4 * var(--s)) calc(24 * var(--s)) rgba(0, 0, 0, 0.04);
+}
+
+.habit-trend-card__header {
+  margin-bottom: calc(6 * var(--s));
+}
+
+.habit-trend-card__heading {
+  display: flex;
+  flex-direction: column;
+  gap: calc(4 * var(--s));
+}
+
+.habit-trend-card__title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(10 * var(--s));
+}
+
+.habit-trend-card__title {
+  margin: 0;
+  font-weight: 600;
+  font-size: calc(17 * var(--s));
+  line-height: calc(22 * var(--s));
+  color: var(--color-black);
+}
+
+.habit-trend-card__subtitle {
+  margin: 0;
+  font-weight: 400;
+  font-size: calc(13 * var(--s));
+  line-height: calc(17 * var(--s));
+  color: var(--color-secondary);
+}
+
+.habit-trend-card__total {
+  display: inline-flex;
+  align-items: baseline;
+  gap: calc(4 * var(--s));
+  flex-shrink: 0;
+}
+
+.habit-trend-card__total-value {
+  font-weight: 600;
+  font-size: calc(22 * var(--s));
+  line-height: calc(26 * var(--s));
+  color: var(--color-black);
+  letter-spacing: -0.02em;
+}
+
+.habit-trend-card__total-unit {
+  font-weight: 500;
+  font-size: calc(11 * var(--s));
+  line-height: calc(14 * var(--s));
+  color: var(--color-secondary);
+}
+
+.habit-trend-card__total-unit--muted {
+  font-size: calc(10 * var(--s));
+}
+
+.habit-trend-card__chart-block {
+  transition: opacity 0.35s ease;
+}
+
+.habit-trend-card__chart-block--refreshing {
+  opacity: 0.88;
+}
+
+/* Dark-side habits card */
+.habit-trend-card--dark-side {
+  border-color: rgba(255, 125, 83, 0.14);
+  background: linear-gradient(165deg, #1f2029 0%, #262230 100%);
+  box-shadow: 0 calc(8 * var(--s)) calc(28 * var(--s)) rgba(0, 0, 0, 0.28);
+}
+
+.habit-trend-card--dark-side .habit-trend-card__title,
+.habit-trend-card--dark-side .habit-trend-card__total-value {
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.habit-trend-card--dark-side .habit-trend-card__subtitle,
+.habit-trend-card--dark-side .habit-trend-card__total-unit {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.home[data-side="dark"] .habit-trend-card--light-side {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: #24252c;
+  box-shadow: 0 calc(8 * var(--s)) calc(28 * var(--s)) rgba(0, 0, 0, 0.22);
+}
+
+.home[data-side="dark"] .habit-trend-card--light-side .habit-trend-card__title,
+.home[data-side="dark"] .habit-trend-card--light-side .habit-trend-card__total-value {
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.home[data-side="dark"] .habit-trend-card--light-side .habit-trend-card__subtitle,
+.home[data-side="dark"] .habit-trend-card--light-side .habit-trend-card__total-unit {
+  color: rgba(255, 255, 255, 0.55);
+}

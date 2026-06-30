@@ -3095,26 +3095,36 @@
 }
 
 .progress__legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(8 * var(--s)) calc(14 * var(--s));
+  display: grid;
+  grid-template-columns: repeat(4, max-content);
+  justify-content: space-between;
+  align-items: center;
+  column-gap: calc(6 * var(--s));
   margin: 0 0 calc(12 * var(--s));
   padding: 0;
   list-style: none;
+  width: 100%;
 }
 
 .progress__legend-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: calc(6 * var(--s));
-  font-size: calc(11 * var(--s));
+  gap: calc(4 * var(--s));
+  flex: none;
+  font-size: calc(10 * var(--s));
+  line-height: calc(12 * var(--s));
   color: var(--color-secondary);
+  white-space: nowrap;
+}
+
+.progress__legend-label {
+  flex-shrink: 0;
 }
 
 .progress__legend-swatch {
-  width: calc(10 * var(--s));
-  height: calc(10 * var(--s));
-  border-radius: calc(4 * var(--s));
+  width: calc(8 * var(--s));
+  height: calc(8 * var(--s));
+  border-radius: calc(3 * var(--s));
   flex-shrink: 0;
 }
 

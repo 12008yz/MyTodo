@@ -36,7 +36,7 @@ export function CalendarLegend({ side }: CalendarLegendProps) {
             className={["progress__legend-swatch", SWATCH_CLASS[item.color]].join(" ")}
             aria-hidden="true"
           />
-          <span>{item.label}</span>
+          <span className="progress__legend-label">{item.label}</span>
         </li>
       ))}
     </ul>
