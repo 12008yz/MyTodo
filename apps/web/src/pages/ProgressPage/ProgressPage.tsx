@@ -57,7 +57,7 @@ export function ProgressPage() {
   });
 
   const progressQuery = useQuery({
-    queryKey: ["stats-progress", selectedHabitId, period],
+    queryKey: ["stats-progress", side, selectedHabitId, period],
     queryFn: () => getHabitProgress(selectedHabitId!, period),
     enabled: Boolean(selectedHabitId),
     placeholderData: keepPreviousData,

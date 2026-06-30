@@ -1,4 +1,4 @@
-import { buildDailyPlan, calibrateHabit, canSkipThisWeek, computeEarlyRiseWindowState, computeGlobalStreak, computeNextEnglishDay, computeNextGoal, isEarlyRiseEnforcementActive, isWarmupDay, isWeekendDate, previewDayStatusForProgression, recalculateLightGoal, resolveCheckinStatus, resolveForeignLanguageCheckinStatus, resolveWarmupAnchor, resolveWarmupDayInfo, sumEnglishWatchSecondsToMinutes, sumMinutesHabitValueForTodayStats, type CalibrationProfile } from "@mytodo/domain";
+import { buildDailyPlan, calibrateHabit, canSkipThisWeek, computeEarlyRiseWindowState, computeGlobalStreak, computeNextEnglishDay, computeNextGoal, isEarlyRiseEnforcementActive, isWarmupDay, isWeekendDate, previewDayStatusForProgression, recalculateLightGoal, resolveCheckinStatus, resolveForeignLanguageCheckinStatus, resolveWarmupAnchor, resolveWarmupDayInfo, sumEnglishWatchSecondsToMinutes, sumMinutesHabitValueForTodayStats, usesAbstinenceStreakRules, type CalibrationProfile } from "@mytodo/domain";
 import {
   AWARENESS_SESSION_MIN,
   SESSION_TARGET_MIN,
@@ -562,6 +562,13 @@ export function demoCreateHabit(data: CreateHabitRequest): HabitResponse {
   state.habits.push(habit);
   saveState(state);
   return habit;
+}
+
+export function demoListHabits(side?: StatsSide): HabitResponse[] {
+  const state = ensureState();
+  return state.habits.filter(
+    (habit) => habit.is_active && (side === undefined || habit.side === side),
+  );
 }
 
 export function demoUpdateEnglishSettings(
@@ -2668,13 +2675,50 @@ function listMonthDates(month: string): string[] {
   });
 }
 
+function resolveDemoStatsHabitStatus(
+  habit: HabitResponse,
+  dayDate: string,
+  checkin: { status: string } | undefined,
+): DayColorValue | "pending" {
+  const today = todayDate();
+
+  if (isCompanionLightHabit({ category_key: habit.category_key, name: habit.name })) {
+    return "skipped";
+  }
+
+  if (isEarlyRiseCategoryKey(habit.category_key ?? "") && isWeekendDate(dayDate)) {
+    return "skipped";
+  }
+
+  if (dayDate > today) {
+    return "pending";
+  }
+
+  if (checkin?.status === "success" || checkin?.status === "fail" || checkin?.status === "skipped") {
+    return checkin.status;
+  }
+
+  if (checkin?.status === "pending") {
+    return dayDate === today ? "pending" : "fail";
+  }
+
+  if (usesAbstinenceStreakRules(habit.type, habit.phase)) {
+    return "success";
+  }
+
+  if (dayDate === today) {
+    return "pending";
+  }
+
+  return "fail";
+}
+
 function resolveDemoDayForSide(
   state: DemoState,
   side: StatsSide,
   dayDate: string,
 ): { color: DayColorValue; habits: StatsCalendarResponse["days"][number]["habits"] } {
-  const today = todayDate();
-  const habitsForSide = state.habits.filter((habit) => habit.side === side && habit.is_active);
+  const habitsForSide = state.habits.filter((habit) => habit.side === side);
   const habitIds = new Set(habitsForSide.map((habit) => habit.id));
   const dayCheckins = state.checkins.filter(
     (checkin) => checkin.date === dayDate && habitIds.has(checkin.habit_id),
@@ -2686,9 +2730,7 @@ function resolveDemoDayForSide(
 
   const habits = habitsForSide.map((habit) => {
     const checkin = dayCheckins.find((row) => row.habit_id === habit.id);
-    const status =
-      checkin?.status ??
-      (dayDate > today ? "pending" : dayDate === today ? "pending" : "skipped");
+    const status = resolveDemoStatsHabitStatus(habit, dayDate, checkin);
     return {
       habit_id: habit.id,
       name: habit.name,
@@ -2775,11 +2817,23 @@ export function demoGetHabitProgress(
     };
   });
 
+  const chartMode =
+    habit.type === "abstinence" || habit.phase === "abstinence"
+      ? ("abstinence" as const)
+      : habit.type === "limit"
+        ? ("limit" as const)
+        : ("target" as const);
+
   return {
     habit_id: habitId,
     period,
     start_date: startDate,
     end_date: today,
+    side: habit.side,
+    type: habit.type,
+    phase: habit.phase,
+    unit: habit.unit,
+    chart_mode: chartMode,
     points,
   };
 }
@@ -2797,24 +2851,15 @@ export function demoGetStatsWeek(side: StatsSide): StatsWeekResponse {
       (checkin) => checkin.date === dayDate && habitIds.has(checkin.habit_id),
     );
 
-    if (dayCheckins.length === 0) {
-      return {
-        date: dayDate,
-        color: dayDate > today ? ("pending" as const) : dayDate === today ? ("pending" as const) : ("skipped" as const),
-        completed: 0,
-        total: habitsForSide.length,
-      };
-    }
-
     const statuses = habitsForSide.map((habit) => {
       const checkin = dayCheckins.find((row) => row.habit_id === habit.id);
-      return checkin?.status ?? (dayDate === today ? "pending" : "skipped");
+      return resolveDemoStatsHabitStatus(habit, dayDate, checkin);
     });
 
     return {
       date: dayDate,
       color: computeDemoDayColor(statuses),
-      completed: dayCheckins.filter((checkin) => checkin.status === "success").length,
+      completed: statuses.filter((status) => status === "success").length,
       total: habitsForSide.length,
     };
   });

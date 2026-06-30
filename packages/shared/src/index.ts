@@ -317,6 +317,7 @@ export {
 export {
   DAY_COLORS,
   PROGRESS_PERIODS,
+  STATS_CHART_MODES,
   STATS_SIDES,
   statsCalendarQuerySchema,
   statsCalendarResponseSchema,
@@ -331,6 +332,7 @@ export {
   type DayColorValue,
   type ProgressPeriod,
   type StatsCalendarResponse,
+  type StatsChartMode,
   type StatsMonthResponse,
   type StatsProgressResponse,
   type StatsSide,

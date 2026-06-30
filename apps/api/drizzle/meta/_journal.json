@@ -211,6 +211,13 @@
       "when": 1782789600000,
       "tag": "0030_english_progress_per_lesson_fix",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1782793200000,
+      "tag": "0031_smoking_abstinence_type",
+      "breakpoints": true
     }
   ]
 }

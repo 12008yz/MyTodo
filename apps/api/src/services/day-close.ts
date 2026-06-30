@@ -254,6 +254,11 @@ export class DayCloseService {
         habitUpdate.phase = result.nextPhase;
       }
 
+      if (result.nextType) {
+        habitUpdate.type = result.nextType;
+        habitUpdate.progressionDirection = "abstain";
+      }
+
       if (result.setLastRelapseAt) {
         habitUpdate.lastRelapseAt = new Date();
       }

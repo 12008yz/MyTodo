@@ -407,6 +407,7 @@ describe("Day close worker", () => {
 
     const [updated] = await db.select().from(habits).where(eq(habits.id, habit.id));
     expect(updated?.phase).toBe("abstinence");
+    expect(updated?.type).toBe("abstinence");
     expect(Number(updated?.currentGoal)).toBe(0);
     expect(updated?.lastRelapseAt).not.toBeNull();
   });

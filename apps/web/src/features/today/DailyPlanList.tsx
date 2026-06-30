@@ -1143,10 +1143,28 @@ export function DailyPlanList({
         inputLabel={activeSide === "dark" ? "Сколько всего сегодня?" : "Сколько сделал?"}
         isSubmitting={completeSession.isPending}
         onCancel={() => {
+          const habitId = valuePrompt?.habitId;
           pendingCompletionFlightRef.current = null;
           autoCompleteFailedSessionRef.current = null;
           setCompletionRetryAvailable(false);
           setValuePrompt(null);
+
+          if (!habitId) {
+            return;
+          }
+
+          void (async () => {
+            try {
+              await stopSession(habitId);
+              await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ["habit-session-active", habitId] }),
+                queryClient.invalidateQueries({ queryKey: ["today", "light"] }),
+                queryClient.invalidateQueries({ queryKey: ["today", "dark"] }),
+              ]);
+            } catch {
+              // Сессия могла уже завершиться.
+            }
+          })();
         }}
         onSubmit={(value) => {
           if (!valuePrompt) {

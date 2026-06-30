@@ -147,7 +147,35 @@ describe("closeDayForHabit", () => {
       nextGoal: 0,
       nextSuccessDaysAtGoal: 0,
       nextPhase: "abstinence",
+      nextType: "abstinence",
       setLastRelapseAt: true,
+    });
+  });
+
+  it("marks smoking in abstinence phase without checkin as success", () => {
+    const smokingAbstinence: HabitForDayClose = {
+      ...darkLimit(0, "smoking"),
+      type: "limit",
+      phase: "abstinence",
+    };
+
+    expect(closeDayForHabit(smokingAbstinence)).toMatchObject({
+      status: "success",
+      upsertCheckin: true,
+    });
+  });
+
+  it("marks smoking in abstinence phase with type abstinence without checkin as success", () => {
+    const smokingAbstinence: HabitForDayClose = {
+      ...darkLimit(0, "smoking"),
+      type: "abstinence",
+      phase: "abstinence",
+      progressionDirection: "abstain",
+    };
+
+    expect(closeDayForHabit(smokingAbstinence)).toMatchObject({
+      status: "success",
+      upsertCheckin: true,
     });
   });
 });

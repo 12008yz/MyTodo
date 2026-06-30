@@ -23,7 +23,7 @@ import type {
 import { toCreateHabitRequest } from "../../features/onboarding/types";
 import { useAuth } from "../../features/auth/AuthProvider";
 import { useContentSwitchTransition } from "../../hooks/useContentSwitchTransition";
-import { ClientApiError, createHabit, updateEnglishSettings, updateMe as apiUpdateMe } from "../../lib/api";
+import { ClientApiError, createHabit, listHabits, updateEnglishSettings, updateMe as apiUpdateMe } from "../../lib/api";
 import { requestPushSubscription } from "../../lib/push";
 import { LightPathStep, type LightPathStepHandle } from "./LightPathStep";
 import { DarkPathStep } from "./DarkPathStep";
@@ -36,6 +36,25 @@ import "./OnboardingPage.css";
 
 function parseNumber(value: string): number {
   return Number(value.replace(",", "."));
+}
+
+function habitCreationKey(habit: SelectedHabit): string {
+  const request = toCreateHabitRequest(habit);
+  if ("template_id" in request) {
+    return `template:${request.template_id}`;
+  }
+  return `custom:${request.name.trim().toLowerCase()}:${request.unit}`;
+}
+
+function existingHabitKey(habit: {
+  template_id: string | null;
+  name: string;
+  unit: string | null;
+}): string {
+  if (habit.template_id) {
+    return `template:${habit.template_id}`;
+  }
+  return `custom:${habit.name.trim().toLowerCase()}:${habit.unit ?? ""}`;
 }
 
 function limitDigitInput(value: string, maxDigits: number): string {
@@ -320,8 +339,17 @@ export function OnboardingPage() {
 
       await updateEnglishSettings({ is_enabled: false });
 
+      const existingHabits = await listHabits();
+      const createdKeys = new Set(existingHabits.map(existingHabitKey));
+
       for (const habit of [...lightHabits, ...darkHabits]) {
+        const key = habitCreationKey(habit);
+        if (createdKeys.has(key)) {
+          continue;
+        }
+
         await createHabit(toCreateHabitRequest(habit));
+        createdKeys.add(key);
       }
 
       await refreshUser();

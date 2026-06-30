@@ -47,7 +47,7 @@ export class StatsService {
     const today = getUserLocalDate(new Date(), user.timezone);
     const start = weekStart ?? getWeekStartMonday(today);
     const dates = listDatesInclusive(start, addDays(start, 6));
-    const scopedHabits = await this.listScopedHabits(user, side);
+    const scopedHabits = await this.listScopedHabits(user, side, { activeOnly: true });
     const resolved = await this.resolveDays(user, scopedHabits, dates);
 
     return {
@@ -172,11 +172,23 @@ export class StatsService {
       };
     });
 
+    const chartMode =
+      habit.type === "abstinence" || habit.phase === "abstinence"
+        ? ("abstinence" as const)
+        : habit.type === "limit"
+          ? ("limit" as const)
+          : ("target" as const);
+
     return {
       habit_id: habit.id,
       period,
       start_date: dates[0] ?? start,
       end_date: dates.at(-1) ?? end,
+      side: habit.side as Side,
+      type: habit.type as "target" | "limit" | "abstinence",
+      phase: habit.phase as "reduction" | "abstinence",
+      unit: (habit.unit as import("@mytodo/shared").HabitUnit | null) ?? null,
+      chart_mode: chartMode,
       points,
     };
   }
@@ -188,10 +200,19 @@ export class StatsService {
     const end = addDays(currentWeekStart, 6);
     const dates = listDatesInclusive(firstWeekStart, end);
 
-    const lightHabits = await this.listScopedHabits(user, "light");
-    const darkHabits = await this.listScopedHabits(user, "dark");
-    const lightResolved = await this.resolveDays(user, lightHabits, dates);
-    const darkResolved = await this.resolveDays(user, darkHabits, dates);
+    const [lightHabitsAll, darkHabitsAll, lightHabitsActive, darkHabitsActive] = await Promise.all([
+      this.listScopedHabits(user, "light"),
+      this.listScopedHabits(user, "dark"),
+      this.listScopedHabits(user, "light", { activeOnly: true }),
+      this.listScopedHabits(user, "dark", { activeOnly: true }),
+    ]);
+    const lightActiveIds = new Set(lightHabitsActive.map((scope) => scope.habit.id));
+    const darkActiveIds = new Set(darkHabitsActive.map((scope) => scope.habit.id));
+
+    const [lightResolved, darkResolved] = await Promise.all([
+      this.resolveDays(user, lightHabitsAll, dates),
+      this.resolveDays(user, darkHabitsAll, dates),
+    ]);
 
     const payload = [];
 
@@ -203,8 +224,22 @@ export class StatsService {
         week_start: weekStart,
         days: weekDates.map((date) => ({
           date,
-          light_color: this.colorForDay(lightResolved.get(date) ?? []),
-          dark_color: this.colorForDay(darkResolved.get(date) ?? []),
+          light_color: this.colorForDay(
+            this.filterSummaryDayRows(
+              date,
+              lightResolved.get(date) ?? [],
+              currentWeekStart,
+              lightActiveIds,
+            ),
+          ),
+          dark_color: this.colorForDay(
+            this.filterSummaryDayRows(
+              date,
+              darkResolved.get(date) ?? [],
+              currentWeekStart,
+              darkActiveIds,
+            ),
+          ),
         })),
       });
     }
@@ -225,6 +260,20 @@ export class StatsService {
 
   private colorForDay(rows: ResolvedHabitDay[]): DayColor {
     return computeDayColor(rows.map((row) => row.status));
+  }
+
+  private filterSummaryDayRows(
+    date: string,
+    rows: ResolvedHabitDay[],
+    currentWeekStart: string,
+    activeHabitIds: Set<string>,
+  ): ResolvedHabitDay[] {
+    const currentWeekEnd = addDays(currentWeekStart, 6);
+    if (date < currentWeekStart || date > currentWeekEnd) {
+      return rows;
+    }
+
+    return rows.filter((row) => activeHabitIds.has(row.habitId));
   }
 
   private async resolveDays(user: User, scopedHabits: HabitScope[], dates: string[]) {
@@ -260,6 +309,10 @@ export class StatsService {
 
       for (const scope of scopedHabits) {
         if (date < scope.activeFrom) {
+          continue;
+        }
+
+        if (isCompanionLightHabit({ category_key: scope.habit.categoryKey, name: scope.habit.name })) {
           continue;
         }
 
@@ -327,10 +380,6 @@ export class StatsService {
       return date === today ? "pending" : "fail";
     }
 
-    if (date === today) {
-      return "pending";
-    }
-
     if (
       usesAbstinenceStreakRules(
         habit.type as "target" | "limit" | "abstinence",
@@ -340,14 +389,28 @@ export class StatsService {
       return "success";
     }
 
+    if (date === today) {
+      return "pending";
+    }
+
     return "fail";
   }
 
-  private async listScopedHabits(user: User, side: Side): Promise<HabitScope[]> {
+  private async listScopedHabits(
+    user: User,
+    side: Side,
+    options: { activeOnly?: boolean } = {},
+  ): Promise<HabitScope[]> {
+    const conditions = [eq(habits.userId, user.id), eq(habits.side, side)];
+
+    if (options.activeOnly) {
+      conditions.push(eq(habits.isActive, true));
+    }
+
     const rows = await this.db
       .select()
       .from(habits)
-      .where(and(eq(habits.userId, user.id), eq(habits.side, side), eq(habits.isActive, true)))
+      .where(and(...conditions))
       .orderBy(asc(habits.createdAt));
 
     return rows.map((habit) => ({
@@ -360,7 +423,7 @@ export class StatsService {
     const rows = await this.db
       .select()
       .from(habits)
-      .where(and(eq(habits.userId, user.id), eq(habits.isActive, true)))
+      .where(eq(habits.userId, user.id))
       .orderBy(asc(habits.createdAt));
 
     return rows.map((habit) => ({

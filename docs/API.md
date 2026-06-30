@@ -131,11 +131,49 @@ Test connection: `pnpm --filter @mytodo/api test:gigachat`
 
 | Method | Path                                                     | Description     |
 | ------ | -------------------------------------------------------- | --------------- |
-| GET    | `/stats/week`                                            | Week strip      |
-| GET    | `/stats/calendar?month=YYYY-MM`                          | Month calendar  |
-| GET    | `/stats/month?month=YYYY-MM`                             | Month summary   |
+| GET    | `/stats/week?side=light\|dark`                           | Week strip (active habits only) |
+| GET    | `/stats/calendar?month=YYYY-MM&side=light\|dark`         | Month calendar (all habits, incl. deactivated) |
+| GET    | `/stats/month?month=YYYY-MM&side=light\|dark`            | Month summary   |
 | GET    | `/stats/habits/:id/progress?period=week\|month\|quarter` | Progress chart  |
-| GET    | `/stats/summary?period=year`                             | Heatmap summary |
+| GET    | `/stats/summary?weeks=1..52`                             | Heatmap summary |
+
+### `GET /stats/week`
+
+Query: `side` (required), `week_start` (optional, `YYYY-MM-DD`, Monday).
+
+Response: `{ week_start, side, days[] }` where each day has `{ date, color, completed, total }`.
+
+- Counts **active** habits only (`is_active = true`).
+- `color`: aggregated day color (`success` \| `pending` \| `fail` \| `skipped`).
+- Past days without closed stats → `fail` for target/limit habits; abstinence-on-track → `success`.
+
+### `GET /stats/habits/:id/progress`
+
+Works for deactivated habits (`includeInactive`). Response:
+
+| Field        | Type     | Description |
+| ------------ | -------- | ----------- |
+| `habit_id`   | uuid     | Habit id |
+| `period`     | string   | `week` \| `month` \| `quarter` |
+| `start_date` | date     | First point date (≥ habit creation) |
+| `end_date`   | date     | Last point date |
+| `side`       | string   | `light` \| `dark` |
+| `type`       | string   | `target` \| `limit` \| `abstinence` |
+| `phase`      | string   | `reduction` \| `abstinence` |
+| `unit`       | string?  | Habit unit or `null` |
+| `chart_mode` | string   | `target` \| `limit` \| `abstinence` — how to render the chart |
+| `points`     | array    | `{ date, goal, value, status, minutes_total }` per day |
+
+`chart_mode` drives client charts: higher `value` is better for `target`, lower for `limit`, status-based bars for `abstinence`. `value` / `status` may be `null` for days without data.
+
+### `GET /stats/summary`
+
+Query: `weeks` (default `12`, max `52`).
+
+Response: `{ weeks[] }` — each week `{ week_start, days[7] }` with `{ date, light_color, dark_color }`.
+
+- **Current week**: active habits only (same rule as `/stats/week`).
+- **Past weeks**: all habits (incl. deactivated) for historical accuracy.
 
 ## English
 

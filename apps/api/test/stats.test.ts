@@ -320,6 +320,8 @@ describe("Stats", () => {
 
     expect(response.statusCode).toBe(200);
     const body = statsProgressResponseSchema.parse(JSON.parse(response.body));
+    expect(body.side).toBe("light");
+    expect(body.chart_mode).toBe("target");
     expect(body.points).toHaveLength(30);
     expect(body.points[0]?.goal).toBe(30);
     expect(body.points.at(-1)?.goal).not.toBe(99);
@@ -389,6 +391,55 @@ describe("Stats", () => {
     expect(monday?.dark_color).toBe("fail");
   });
 
+  it("excludes inactive habits from current week in summary but keeps them in past weeks", async () => {
+    const auth = await createOnboardedUser("stats-summary-inactive@example.com");
+    const today = todayLocal();
+    const currentWeekStart = getWeekStartMonday(today);
+    const previousWeekStart = addDays(currentWeekStart, -7);
+
+    const oldHabit = await createRunningHabit(auth.access_token);
+    await backdateHabit(oldHabit.id, previousWeekStart);
+    await seedDailyStats(oldHabit.id, [
+      { date: previousWeekStart, status: "success", value: 30 },
+      { date: currentWeekStart, status: "success", value: 30 },
+    ]);
+
+    const beforeDeactivate = await app.inject({
+      method: "GET",
+      url: "/api/v1/stats/summary?weeks=2",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+    const beforeBody = statsSummaryResponseSchema.parse(JSON.parse(beforeDeactivate.body));
+    const beforeCurrentMonday = beforeBody.weeks[1]?.days.find((day) => day.date === currentWeekStart);
+    expect(beforeCurrentMonday?.light_color).toBe("success");
+
+    await app.inject({
+      method: "DELETE",
+      url: `/api/v1/habits/${oldHabit.id}`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    const replacement = await createRunningHabit(auth.access_token);
+    expect(replacement.id).not.toBe(oldHabit.id);
+
+    const afterDeactivate = await app.inject({
+      method: "GET",
+      url: "/api/v1/stats/summary?weeks=2",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+    const afterBody = statsSummaryResponseSchema.parse(JSON.parse(afterDeactivate.body));
+
+    const previousMonday = afterBody.weeks[0]?.days.find((day) => day.date === previousWeekStart);
+    expect(previousMonday?.light_color).toBe("success");
+
+    const afterCurrentMonday = afterBody.weeks[1]?.days.find((day) => day.date === currentWeekStart);
+    if (currentWeekStart < today) {
+      expect(afterCurrentMonday?.light_color).toBe("fail");
+    } else {
+      expect(afterCurrentMonday?.light_color).toBe("pending");
+    }
+  });
+
   it("returns 404 for unknown habit progress", async () => {
     const auth = await createOnboardedUser("stats-404@example.com");
 
@@ -399,5 +450,32 @@ describe("Stats", () => {
     });
 
     expect(response.statusCode).toBe(404);
+  });
+
+  it("counts abstinence on track as success for today in week strip", async () => {
+    const auth = await createOnboardedUser("stats-abstinence-week@example.com");
+    const habitResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: { template_id: "nail_biting", baseline_value: 0 },
+    });
+    const habit = habitResponseSchema.parse(JSON.parse(habitResponse.body));
+    const today = todayLocal();
+    const weekStart = getWeekStartMonday(today);
+    await backdateHabit(habit.id, weekStart);
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/stats/week?side=dark",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = statsWeekResponseSchema.parse(JSON.parse(response.body));
+    const todayDay = body.days.find((day) => day.date === today);
+    expect(todayDay?.color).toBe("success");
+    expect(todayDay?.completed).toBe(1);
+    expect(todayDay?.total).toBe(1);
   });
 });

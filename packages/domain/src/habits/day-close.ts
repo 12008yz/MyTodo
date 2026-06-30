@@ -1,4 +1,5 @@
 import { applyDayProgression, type DayStatus, type HabitForProgression } from "./progression.js";
+import { usesAbstinenceStreakRules } from "./streak.js";
 
 export type HabitForDayClose = HabitForProgression & {
   phase: string;
@@ -26,8 +27,16 @@ export type DayCloseResult = {
   nextSuccessDaysAtGoal: number;
   nextBaselineValue?: number;
   nextPhase?: string;
+  nextType?: HabitForDayClose["type"];
   setLastRelapseAt?: boolean;
 };
+
+function isAbstinenceBehavior(habit: HabitForDayClose): boolean {
+  return usesAbstinenceStreakRules(
+    habit.type,
+    habit.phase as "reduction" | "abstinence",
+  );
+}
 
 function resolveFinalStatus(
   habit: HabitForDayClose,
@@ -47,7 +56,7 @@ function resolveFinalStatus(
   }
 
   if (!checkin) {
-    if (habit.type === "abstinence") {
+    if (isAbstinenceBehavior(habit)) {
       return "success";
     }
 
@@ -60,7 +69,7 @@ function resolveFinalStatus(
     return status;
   }
 
-  if (habit.type === "abstinence") {
+  if (isAbstinenceBehavior(habit)) {
     return "success";
   }
 
@@ -95,14 +104,14 @@ function smokingPhaseUpdate(
   habit: HabitForDayClose,
   dayStatus: DayStatus,
   nextGoal: number,
-): Pick<DayCloseResult, "nextPhase" | "setLastRelapseAt"> {
+): Pick<DayCloseResult, "nextPhase" | "nextType" | "setLastRelapseAt"> {
   if (
     dayStatus === "success" &&
     habit.templateId === "smoking" &&
     habit.phase === "reduction" &&
     nextGoal === 0
   ) {
-    return { nextPhase: "abstinence", setLastRelapseAt: true };
+    return { nextPhase: "abstinence", nextType: "abstinence", setLastRelapseAt: true };
   }
 
   return {};

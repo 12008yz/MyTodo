@@ -8,6 +8,7 @@ import {
   previewDayStatusForProgression,
   resolveCheckinStatus,
   resolveForeignLanguageCheckinStatus,
+  usesAbstinenceStreakRules,
   type CheckinStatus,
 } from "@mytodo/domain";
 import {
@@ -160,7 +161,13 @@ export class CheckinService {
         : body;
     const { status, value } = await this.resolveStatus(habit, requestBody, date, user);
 
-    if (habit.type === "abstinence" && status === "fail") {
+    if (
+      usesAbstinenceStreakRules(
+        habit.type as "target" | "limit" | "abstinence",
+        habit.phase as "reduction" | "abstinence",
+      ) &&
+      status === "fail"
+    ) {
       await this.db
         .update(habits)
         .set({ lastRelapseAt: new Date() })
@@ -461,7 +468,12 @@ export class CheckinService {
       return this.resolveEarlyRiseStatus(habit, body, date, user);
     }
 
-    if (habit.type === "abstinence") {
+    if (
+      usesAbstinenceStreakRules(
+        habit.type as "target" | "limit" | "abstinence",
+        habit.phase as "reduction" | "abstinence",
+      )
+    ) {
       if (body.status !== "fail") {
         throw new ApiError(
           HTTP_STATUS.BAD_REQUEST,

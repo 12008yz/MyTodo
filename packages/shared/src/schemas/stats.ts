@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { HABIT_SIDES } from "../constants/habits.js";
+import { HABIT_SIDES, HABIT_UNITS } from "../constants/habits.js";
 
 export const DAY_COLORS = ["success", "pending", "fail", "skipped"] as const;
 export type DayColorValue = (typeof DAY_COLORS)[number];
@@ -80,6 +80,9 @@ export const statsMonthResponseSchema = z.object({
 
 export type StatsMonthResponse = z.infer<typeof statsMonthResponseSchema>;
 
+export const STATS_CHART_MODES = ["target", "limit", "abstinence"] as const;
+export type StatsChartMode = (typeof STATS_CHART_MODES)[number];
+
 export const statsProgressPointSchema = z.object({
   date: z.string().date(),
   goal: z.number().nullable(),
@@ -93,6 +96,11 @@ export const statsProgressResponseSchema = z.object({
   period: z.enum(PROGRESS_PERIODS),
   start_date: z.string().date(),
   end_date: z.string().date(),
+  side: z.enum(STATS_SIDES),
+  type: z.enum(["target", "limit", "abstinence"]),
+  phase: z.enum(["reduction", "abstinence"]),
+  unit: z.enum(HABIT_UNITS).nullable(),
+  chart_mode: z.enum(STATS_CHART_MODES),
   points: z.array(statsProgressPointSchema),
 });
 

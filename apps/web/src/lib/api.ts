@@ -102,6 +102,7 @@ import {
   demoCompleteHabitSession,
   demoCreateCheckin,
   demoCreateHabit,
+  demoListHabits,
   demoGetActiveHabitSession,
   demoGetMe,
   demoGetHabitProgress,
@@ -337,6 +338,19 @@ export async function createHabit(data: CreateHabitRequest): Promise<HabitRespon
     body: JSON.stringify(data),
   });
   return habitResponseSchema.parse(response);
+}
+
+export async function listHabits(side?: StatsSide): Promise<HabitResponse[]> {
+  if (isDemoMode()) {
+    return demoListHabits(side);
+  }
+
+  const query = side ? `?side=${side}` : "";
+  const response = await apiFetch<unknown>(`/api/v1/habits${query}`);
+  if (!Array.isArray(response)) {
+    throw new Error("Некорректный ответ списка привычек");
+  }
+  return response.map((item) => habitResponseSchema.parse(item));
 }
 
 export async function updateEnglishSettings(
