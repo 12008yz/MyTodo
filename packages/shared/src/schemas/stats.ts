@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { HABIT_SIDES, HABIT_UNITS } from "../constants/habits.js";
+import { HABIT_SIDES, HABIT_TEMPLATE_IDS, HABIT_UNITS } from "../constants/habits.js";
 
 export const DAY_COLORS = ["success", "pending", "fail", "skipped"] as const;
 export type DayColorValue = (typeof DAY_COLORS)[number];
@@ -52,8 +52,14 @@ export const statsCalendarHabitSchema = z.object({
   habit_id: z.string().uuid(),
   name: z.string(),
   side: z.enum(STATS_SIDES),
+  type: z.enum(["target", "limit", "abstinence"]),
+  phase: z.enum(["reduction", "abstinence"]),
+  unit: z.enum(HABIT_UNITS).nullable(),
+  template_id: z.enum(HABIT_TEMPLATE_IDS).nullable(),
   status: z.enum(["success", "fail", "skipped", "pending"]),
   value: z.number().nullable(),
+  goal: z.number().nullable(),
+  minutes_total: z.number().int().min(0),
 });
 
 export const statsCalendarDaySchema = z.object({

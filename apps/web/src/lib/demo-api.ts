@@ -2735,8 +2735,14 @@ function resolveDemoDayForSide(
       habit_id: habit.id,
       name: habit.name,
       side: habit.side,
+      type: habit.type,
+      phase: habit.phase,
+      unit: habit.unit,
+      template_id: habit.template_id,
       status,
       value: checkin?.value ?? null,
+      goal: habit.current_goal,
+      minutes_total: checkin?.value ?? 0,
     };
   });
 

@@ -283,6 +283,11 @@ describe("Stats", () => {
 
     expect(successDay?.color).toBe("success");
     expect(successDay?.habits[0]?.status).toBe("success");
+    expect(successDay?.habits[0]?.type).toBe("target");
+    expect(successDay?.habits[0]?.minutes_total).toBe(0);
+    expect(successDay?.habits[0]?.goal === null || typeof successDay?.habits[0]?.goal === "number").toBe(
+      true,
+    );
     expect(skippedDay?.color).toBe("skipped");
   });
 

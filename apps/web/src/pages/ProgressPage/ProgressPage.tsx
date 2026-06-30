@@ -4,6 +4,7 @@ import { SideToggle } from "../../components/SideToggle/SideToggle";
 import { useHabitSide } from "../../features/shell/SideContext";
 import { CalendarLegend } from "../../features/progress/CalendarLegend";
 import { AnimatedCalendarStage } from "../../features/progress/AnimatedCalendarStage";
+import { ProgressDayDetail } from "../../features/progress/ProgressDayDetail";
 import {
   formatMonthParam,
   getMonthTitle,
@@ -68,8 +69,15 @@ export function ProgressPage() {
   });
 
   const calendarPayload =
-    calendarQuery.data?.month === month ? calendarQuery.data : null;
-  const monthPayload = monthQuery.data?.month === month ? monthQuery.data : null;
+    calendarQuery.data?.month === month && !calendarQuery.isPlaceholderData
+      ? calendarQuery.data
+      : null;
+  const monthPayload =
+    monthQuery.data?.month === month &&
+    monthQuery.data?.side === side &&
+    !monthQuery.isPlaceholderData
+      ? monthQuery.data
+      : null;
 
   const selectedDay = useMemo(() => {
     if (!selectedDate || !calendarPayload) return null;
@@ -171,16 +179,20 @@ export function ProgressPage() {
               </div>
             </AnimatedCalendarStage>
 
-            <CalendarLegend />
+            <CalendarLegend side={side} />
 
             {monthPayload ? (
               <div className="progress__month-summary">
                 <div className="home__stat-card home__stat-card--primary">
-                  <span className="home__stat-label">Успешных дней</span>
+                  <span className="home__stat-label">
+                    {side === "dark" ? "Чистых дней" : "Успешных дней"}
+                  </span>
                   <span className="home__stat-value">{monthPayload.success_days}</span>
                 </div>
                 <div className="home__stat-card home__stat-card--light">
-                  <span className="home__stat-label">% успеха</span>
+                  <span className="home__stat-label">
+                    {side === "dark" ? "% чистых дней" : "% успеха"}
+                  </span>
                   <span className="home__stat-value">{monthPayload.success_rate}%</span>
                 </div>
                 <div className="home__stat-card home__stat-card--light">
@@ -196,36 +208,7 @@ export function ProgressPage() {
           </>
         )}
 
-        {selectedDay ? (
-          <div className="progress__day-detail">
-            <h3 className="progress__day-detail-title">
-              {new Date(`${selectedDay.date}T12:00:00`).toLocaleDateString("ru-RU", {
-                day: "numeric",
-                month: "long",
-              })}
-            </h3>
-            {selectedDay.habits.length === 0 ? (
-              <p className="home__placeholder">Нет привычек на этот день</p>
-            ) : (
-              <ul className="progress__day-habits">
-                {selectedDay.habits.map((habit) => (
-                  <li key={habit.habit_id} className="progress__day-habit">
-                    <span>{habit.name}</span>
-                    <span className={`progress__day-status progress__day-status--${habit.status}`}>
-                      {habit.status === "success"
-                        ? "✓"
-                        : habit.status === "fail"
-                          ? "✗"
-                          : habit.status === "skipped"
-                            ? "—"
-                            : "…"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ) : null}
+        {selectedDay ? <ProgressDayDetail day={selectedDay} /> : null}
       </section>
     </>
   );

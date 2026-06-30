@@ -34,6 +34,10 @@ type ResolvedHabitDay = {
   habitId: string;
   name: string;
   side: Side;
+  type: "target" | "limit" | "abstinence";
+  phase: "reduction" | "abstinence";
+  unit: import("@mytodo/shared").HabitUnit | null;
+  templateId: HabitTemplateId | null;
   status: HabitDayStatus;
   value: number | null;
   minutesTotal: number;
@@ -77,8 +81,14 @@ export class StatsService {
             habit_id: row.habitId,
             name: row.name,
             side: row.side,
+            type: row.type,
+            phase: row.phase,
+            unit: row.unit,
+            template_id: row.templateId,
             status: row.status,
             value: row.value,
+            goal: row.goal,
+            minutes_total: row.minutesTotal,
           })),
         };
       }),
@@ -338,9 +348,17 @@ export class StatsService {
             is_custom: scope.habit.isCustom,
           }),
           side: scope.habit.side as Side,
+          type: scope.habit.type as "target" | "limit" | "abstinence",
+          phase: scope.habit.phase as "reduction" | "abstinence",
+          unit: (scope.habit.unit as import("@mytodo/shared").HabitUnit | null) ?? null,
+          templateId: (scope.habit.templateId as HabitTemplateId | null) ?? null,
           status,
           value: stat?.value != null ? Number(stat.value) : checkin?.value != null ? Number(checkin.value) : null,
-          minutesTotal: stat?.minutesTotal ?? 0,
+          minutesTotal:
+            stat?.minutesTotal ??
+            (scope.habit.templateId === "social_media" && checkin?.value != null
+              ? Number(checkin.value)
+              : 0),
           goal,
         });
       }

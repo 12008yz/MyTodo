@@ -3335,9 +3335,27 @@
 
 .progress__day-habit {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  gap: calc(10 * var(--s));
   font-size: calc(13 * var(--s));
+}
+
+.progress__day-habit-main {
+  display: flex;
+  flex-direction: column;
+  gap: calc(2 * var(--s));
+  min-width: 0;
+}
+
+.progress__day-habit-name {
+  font-weight: 500;
+}
+
+.progress__day-habit-detail {
+  font-size: calc(12 * var(--s));
+  color: var(--color-secondary);
+  line-height: 1.35;
 }
 
 .progress__day-status--success {
@@ -3346,6 +3364,14 @@
 
 .progress__day-status--fail {
   color: #ef4444;
+}
+
+.progress__day-status--pending {
+  color: #a855f7;
+}
+
+.progress__day-status--skipped {
+  color: var(--color-secondary);
 }
 
 .progress__habit-select {
