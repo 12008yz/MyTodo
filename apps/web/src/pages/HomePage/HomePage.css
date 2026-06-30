@@ -2568,12 +2568,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: calc(20 * var(--s));
+  padding-bottom: max(calc(20 * var(--s)), env(safe-area-inset-bottom, 0px));
   background: rgba(0, 0, 0, 0.46);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .home__value-prompt-panel {
   width: min(100%, 340px);
+  margin: auto;
   padding: 16px;
   border-radius: 16px;
   background: var(--color-light-surface);

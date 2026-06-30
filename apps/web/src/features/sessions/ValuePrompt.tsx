@@ -1,4 +1,5 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { HabitUnit } from "@mytodo/shared";
 import { formatUnit } from "../today/format";
 
@@ -14,6 +15,10 @@ type ValuePromptProps = {
   onSubmit: (value: number) => void;
 };
 
+function getHomePortalRoot(): HTMLElement {
+  return document.querySelector(".home") ?? document.body;
+}
+
 export function ValuePrompt({
   isOpen,
   habitName,
@@ -26,8 +31,12 @@ export function ValuePrompt({
   onSubmit,
 }: ValuePromptProps) {
   const [value, setValue] = useState(String(expectedYield));
-  const panelRef = useRef<HTMLFormElement>(null);
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useLayoutEffect(() => {
+    setPortalRoot(getHomePortalRoot());
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -40,15 +49,24 @@ export function ValuePrompt({
       return;
     }
 
+    const home = document.querySelector(".home");
+    if (home instanceof HTMLElement) {
+      home.classList.add("home--scroll-locked");
+    }
+
     const id = window.requestAnimationFrame(() => {
-      panelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      inputRef.current?.focus();
+      inputRef.current?.focus({ preventScroll: true });
     });
 
-    return () => window.cancelAnimationFrame(id);
+    return () => {
+      window.cancelAnimationFrame(id);
+      if (home instanceof HTMLElement) {
+        home.classList.remove("home--scroll-locked");
+      }
+    };
   }, [isOpen]);
 
-  if (!isOpen) {
+  if (!isOpen || !portalRoot) {
     return null;
   }
 
@@ -61,10 +79,9 @@ export function ValuePrompt({
     onSubmit(parsed);
   };
 
-  return (
+  return createPortal(
     <div className="home__value-prompt" role="presentation" onClick={onCancel}>
       <form
-        ref={panelRef}
         className="home__value-prompt-panel"
         role="dialog"
         aria-modal="true"
@@ -88,6 +105,7 @@ export function ValuePrompt({
           id="value-prompt-input"
           className="home__value-prompt-input"
           type="number"
+          inputMode="decimal"
           min={0}
           step={unit === "minutes" ? 1 : "any"}
           value={value}
@@ -111,6 +129,7 @@ export function ValuePrompt({
           </button>
         </div>
       </form>
-    </div>
+    </div>,
+    portalRoot,
   );
 }

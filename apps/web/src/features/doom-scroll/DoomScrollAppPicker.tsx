@@ -1,3 +1,5 @@
+import { useEffect, useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { DoomScrollPlatform } from "@mytodo/shared";
 import { DOOM_SCROLL_PLATFORM_LABELS } from "@mytodo/shared";
 
@@ -16,17 +18,44 @@ const PLATFORMS: DoomScrollPlatform[] = [
   "other",
 ];
 
+function getHomePortalRoot(): HTMLElement {
+  return document.querySelector(".home") ?? document.body;
+}
+
 export function DoomScrollAppPicker({
   isOpen,
   isSubmitting = false,
   onCancel,
   onSelect,
 }: DoomScrollAppPickerProps) {
-  if (!isOpen) {
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
+
+  useLayoutEffect(() => {
+    setPortalRoot(getHomePortalRoot());
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const home = document.querySelector(".home");
+    if (home instanceof HTMLElement) {
+      home.classList.add("home--scroll-locked");
+    }
+
+    return () => {
+      if (home instanceof HTMLElement) {
+        home.classList.remove("home--scroll-locked");
+      }
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !portalRoot) {
     return null;
   }
 
-  return (
+  return createPortal(
     <div className="home__value-prompt" role="presentation" onClick={onCancel}>
       <div
         className="home__value-prompt-panel home__doom-scroll-picker"
@@ -63,6 +92,7 @@ export function DoomScrollAppPicker({
           Отмена
         </button>
       </div>
-    </div>
+    </div>,
+    portalRoot,
   );
 }
