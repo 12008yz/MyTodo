@@ -140,7 +140,7 @@ describe("Doom scroll", () => {
     const body = doomScrollStopResponseSchema.parse(JSON.parse(stopResponse.body));
     expect(body.minutes_added).toBe(5);
     expect(body.checkin.value).toBe(5);
-    expect(body.checkin.status).toBe("success");
+    expect(body.checkin.status).toBe("pending");
   });
 
   it("marks the day as fail when total minutes exceed the limit", async () => {
@@ -176,7 +176,7 @@ describe("Doom scroll", () => {
 
     const dashboard = todayDarkResponseSchema.parse(JSON.parse(dashboardResponse.body));
     expect(dashboard.habits[0]?.checkin?.value).toBe(26);
-    expect(dashboard.habits[0]?.checkin?.status).toBe("success");
+    expect(dashboard.habits[0]?.checkin?.status).toBe("pending");
 
     const finalStart = await app.inject({
       method: "POST",
@@ -288,5 +288,70 @@ describe("Doom scroll", () => {
     });
 
     expect(startResponse.statusCode).toBe(400);
+  });
+
+  it("starts a short session when fewer than 15 minutes remain today", async () => {
+    const auth = await createOnboardedUser("doom-short@example.com");
+    const habit = await createSocialMediaHabit(auth.access_token, 30);
+
+    const firstStart = await app.inject({
+      method: "POST",
+      url: `/api/v1/habits/${habit.id}/doom-scroll/start`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+    const firstSession = doomScrollSessionSchema.parse(JSON.parse(firstStart.body));
+
+    await db
+      .update(doomScrollSessions)
+      .set({ startedAt: startedAtMinutesAgo(27) })
+      .where(eq(doomScrollSessions.id, firstSession.id));
+
+    await app.inject({
+      method: "POST",
+      url: `/api/v1/habits/${habit.id}/doom-scroll/stop`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    const secondStart = await app.inject({
+      method: "POST",
+      url: `/api/v1/habits/${habit.id}/doom-scroll/start`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: { platform: "tiktok" },
+    });
+
+    expect(secondStart.statusCode).toBe(201);
+    const session = doomScrollSessionSchema.parse(JSON.parse(secondStart.body));
+    expect(session.duration_min).toBe(3);
+  });
+
+  it("rejects start when the daily limit is already reached", async () => {
+    const auth = await createOnboardedUser("doom-limit@example.com");
+    const habit = await createSocialMediaHabit(auth.access_token, 10);
+
+    const firstStart = await app.inject({
+      method: "POST",
+      url: `/api/v1/habits/${habit.id}/doom-scroll/start`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+    const firstSession = doomScrollSessionSchema.parse(JSON.parse(firstStart.body));
+
+    await db
+      .update(doomScrollSessions)
+      .set({ startedAt: startedAtMinutesAgo(10) })
+      .where(eq(doomScrollSessions.id, firstSession.id));
+
+    await app.inject({
+      method: "POST",
+      url: `/api/v1/habits/${habit.id}/doom-scroll/stop`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    const blockedStart = await app.inject({
+      method: "POST",
+      url: `/api/v1/habits/${habit.id}/doom-scroll/start`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    expect(blockedStart.statusCode).toBe(409);
   });
 });

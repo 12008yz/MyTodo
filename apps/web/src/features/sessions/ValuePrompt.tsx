@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { HabitUnit } from "@mytodo/shared";
 import { formatUnit } from "../today/format";
 
@@ -26,12 +26,27 @@ export function ValuePrompt({
   onSubmit,
 }: ValuePromptProps) {
   const [value, setValue] = useState(String(expectedYield));
+  const panelRef = useRef<HTMLFormElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setValue(String(expectedYield));
     }
   }, [expectedYield, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const id = window.requestAnimationFrame(() => {
+      panelRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      inputRef.current?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(id);
+  }, [isOpen]);
 
   if (!isOpen) {
     return null;
@@ -49,6 +64,7 @@ export function ValuePrompt({
   return (
     <div className="home__value-prompt" role="presentation" onClick={onCancel}>
       <form
+        ref={panelRef}
         className="home__value-prompt-panel"
         role="dialog"
         aria-modal="true"
@@ -68,6 +84,7 @@ export function ValuePrompt({
           {inputLabel}
         </label>
         <input
+          ref={inputRef}
           id="value-prompt-input"
           className="home__value-prompt-input"
           type="number"
@@ -75,7 +92,6 @@ export function ValuePrompt({
           step={unit === "minutes" ? 1 : "any"}
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          autoFocus
         />
         <div className="home__value-prompt-actions">
           <button

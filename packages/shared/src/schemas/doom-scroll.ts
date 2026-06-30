@@ -1,4 +1,15 @@
 import { z } from "zod";
+import { DOOM_SCROLL_PLATFORMS } from "../constants/doom-scroll.js";
+
+export const doomScrollPlatformSchema = z.enum(DOOM_SCROLL_PLATFORMS);
+
+export type DoomScrollPlatform = z.infer<typeof doomScrollPlatformSchema>;
+
+export const startDoomScrollRequestSchema = z.object({
+  platform: doomScrollPlatformSchema.optional(),
+});
+
+export type StartDoomScrollRequest = z.infer<typeof startDoomScrollRequestSchema>;
 
 export const doomScrollSessionSchema = z.object({
   id: z.string().uuid(),

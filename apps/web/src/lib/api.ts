@@ -81,8 +81,15 @@ import {
   type EnglishWatchResponse,
   coachChatRequestSchema,
   coachChatResponseSchema,
+  doomScrollActiveResponseSchema,
+  doomScrollSessionSchema,
+  doomScrollStopResponseSchema,
+  startDoomScrollRequestSchema,
   type CoachChatRequest,
   type CoachChatResponse,
+  type DoomScrollSessionResponse,
+  type DoomScrollStopResponse,
+  type StartDoomScrollRequest,
 } from "@mytodo/shared";
 import {
   clearTokens,
@@ -129,6 +136,9 @@ import {
   demoUpdateMe,
   demoEnterShowcase,
   demoSendCoachChat,
+  demoStartDoomScroll,
+  demoStopDoomScroll,
+  demoGetActiveDoomScroll,
 } from "./demo-api";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
@@ -638,6 +648,45 @@ export async function getActiveHabitSession(habitId: string): Promise<HabitSessi
 
   const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/sessions/active`);
   return habitSessionActiveResponseSchema.parse(response);
+}
+
+export async function startDoomScroll(
+  habitId: string,
+  data: StartDoomScrollRequest = {},
+): Promise<DoomScrollSessionResponse> {
+  startDoomScrollRequestSchema.parse(data);
+
+  if (isDemoMode()) {
+    return demoStartDoomScroll(habitId, data);
+  }
+
+  const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/doom-scroll/start`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return doomScrollSessionSchema.parse(response);
+}
+
+export async function stopDoomScroll(habitId: string): Promise<DoomScrollStopResponse> {
+  if (isDemoMode()) {
+    return demoStopDoomScroll(habitId);
+  }
+
+  const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/doom-scroll/stop`, {
+    method: "POST",
+  });
+  return doomScrollStopResponseSchema.parse(response);
+}
+
+export async function getActiveDoomScroll(
+  habitId: string,
+): Promise<DoomScrollSessionResponse | null> {
+  if (isDemoMode()) {
+    return demoGetActiveDoomScroll(habitId);
+  }
+
+  const response = await apiFetch<unknown>(`/api/v1/habits/${habitId}/doom-scroll/active`);
+  return doomScrollActiveResponseSchema.parse(response).session;
 }
 
 export async function getStatsWeek(side: StatsSide): Promise<StatsWeekResponse> {

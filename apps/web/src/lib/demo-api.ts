@@ -80,6 +80,11 @@ import {
   isCoachEligibleDarkHabit,
   type CoachChatRequest,
   type CoachChatResponse,
+  type DoomScrollPlatform,
+  type DoomScrollSessionResponse,
+  type DoomScrollStopResponse,
+  type StartDoomScrollRequest,
+  DOOM_SCROLL_DURATION_MIN,
 } from "@mytodo/shared";
 import { setTokens } from "./auth-storage";
 import { DEMO_EMAIL, DEMO_PASSWORD } from "./demo-mode";
@@ -87,8 +92,8 @@ import { DEMO_EMAIL, DEMO_PASSWORD } from "./demo-mode";
 const DEMO_STORAGE_KEY = "mytodo_demo_state";
 const DEMO_ACCESS_TOKEN = "demo-access-token";
 const DEMO_REFRESH_TOKEN = "demo-refresh-token";
-/** Bump when showcase seed changes — existing localStorage is refreshed on login. */
-const DEMO_STATE_VERSION = 6;
+/** Bump when showcase seed changes — existing localStorage is refreshed on load. */
+const DEMO_STATE_VERSION = 8;
 
 type DemoReadingProgress = HabitReadingProgress;
 
@@ -125,6 +130,16 @@ type DemoEnglishState = EnglishSettingsResponse & {
   selected_lesson_day?: number | null;
 };
 
+type DemoDoomScrollSession = {
+  id: string;
+  habit_id: string;
+  started_at: string;
+  ends_at: string;
+  duration_min: number;
+  completed: boolean;
+  platform: DoomScrollPlatform | null;
+};
+
 type DemoState = {
   version: number;
   user: UserProfile;
@@ -133,6 +148,7 @@ type DemoState = {
   englishProgress: DemoEnglishProgress[];
   checkins: CheckinResponse[];
   sessions: DemoHabitSession[];
+  doomScrollSessions: DemoDoomScrollSession[];
   readingByHabitId: Record<string, DemoReadingProgress>;
   nutritionByHabitId: Record<string, HabitNutritionLog>;
   coachChatUsage?: { date: string; count: number };
@@ -306,13 +322,16 @@ function loadState(): DemoState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as DemoState;
     if ((parsed.version ?? 1) < DEMO_STATE_VERSION) {
-      return null;
+      const fresh = buildShowcaseState();
+      saveState(fresh);
+      return fresh;
     }
     return syncTemplateHabitNames(
       normalizeDemoHabitGoals({
         ...parsed,
         checkins: parsed.checkins ?? [],
         sessions: parsed.sessions ?? [],
+        doomScrollSessions: parsed.doomScrollSessions ?? [],
         readingByHabitId: normalizeReadingByHabitId(parsed.readingByHabitId ?? {}),
         nutritionByHabitId: parsed.nutritionByHabitId ?? {},
         englishProgress: parsed.englishProgress ?? [],
@@ -339,6 +358,7 @@ function ensureState(): DemoState {
     englishProgress: [],
     checkins: [],
     sessions: [],
+    doomScrollSessions: [],
     readingByHabitId: {},
     nutritionByHabitId: {},
   };
@@ -506,6 +526,7 @@ export function demoRegister(data: RegisterRequest): AuthResponse {
     englishProgress: [],
     checkins: [],
     sessions: [],
+    doomScrollSessions: [],
     readingByHabitId: {},
     nutritionByHabitId: {},
   });
@@ -1201,99 +1222,13 @@ function buildShowcaseHabits(user: UserProfile, createdAt: string): HabitRespons
   const earlyRise = habits.find((habit) => habit.category_key === "early_rise");
   if (earlyRise) {
     earlyRise.current_goal = 5;
-    earlyRise.success_days_at_goal = 2;
   }
 
   return habits;
 }
 
-function buildShowcaseCheckins(habits: HabitResponse[], today: string, weekStart: string): CheckinResponse[] {
-  const checkins: CheckinResponse[] = [];
-
-  habits.forEach((habit, index) => {
-    let status: CheckinResponse["status"];
-    let value: number | null;
-
-    if (habit.type === "abstinence") {
-      status = index % 2 === 0 ? "success" : "pending";
-      value = null;
-    } else if (habit.category_key === "early_rise") {
-      status = index % 3 === 0 ? "success" : "pending";
-      value = status === "success" ? habit.current_goal : null;
-    } else if (isNutritionHabit(habit)) {
-      return;
-    } else if (habit.type === "target") {
-      if (index % 5 === 0) {
-        status = "success";
-        value = habit.current_goal;
-      } else if (index % 5 === 1) {
-        status = "pending";
-        value = Math.max(0, Math.floor(habit.current_goal * 0.55));
-      } else {
-        return;
-      }
-    } else {
-      if (index % 4 === 0) {
-        status = "success";
-        value = Math.max(0, habit.current_goal - 1);
-      } else if (index % 4 === 1) {
-        status = "pending";
-        value = Math.max(1, habit.current_goal - 2);
-      } else {
-        return;
-      }
-    }
-
-    checkins.push(makeCheckin(habit, today, status, value));
-  });
-
-  for (let offset = 0; offset < 7; offset += 1) {
-    const date = addDaysLocal(weekStart, offset);
-    if (date >= today) continue;
-
-    for (const habit of habits) {
-      const failDay = offset === 1 && habit.side === "dark" && habit.type === "limit";
-
-      if (habit.type === "abstinence") {
-        checkins.push(makeCheckin(habit, date, failDay ? "fail" : "success", null));
-        continue;
-      }
-
-      if (habit.category_key === "early_rise") {
-        checkins.push(
-          makeCheckin(habit, date, offset % 3 === 0 ? "skipped" : "success", habit.current_goal),
-        );
-        continue;
-      }
-
-      if (isNutritionHabit(habit)) {
-        continue;
-      }
-
-      if (habit.type === "target") {
-        checkins.push(
-          makeCheckin(
-            habit,
-            date,
-            offset % 4 === 0 ? "skipped" : "success",
-            offset % 4 === 0 ? null : habit.current_goal,
-          ),
-        );
-        continue;
-      }
-
-      checkins.push(
-        makeCheckin(
-          habit,
-          date,
-          failDay ? "fail" : "success",
-          failDay ? habit.current_goal + 2 : Math.max(0, habit.current_goal - 1),
-        ),
-      );
-    }
-  }
-
-  return checkins;
+function buildShowcaseCheckins(): CheckinResponse[] {
+  return [];
 }
 
 function buildShowcaseState(): DemoState {
@@ -1318,9 +1253,7 @@ function buildShowcaseState(): DemoState {
   user.created_at = createdAt;
   user.onboarding_completed_at = createdAt;
   const habits = buildShowcaseHabits(user, createdAt);
-  const today = todayDate();
-  const weekStart = weekStartMonday(today);
-  const checkins = buildShowcaseCheckins(habits, today, weekStart);
+  const checkins = buildShowcaseCheckins();
 
   return {
     version: DEMO_STATE_VERSION,
@@ -1330,6 +1263,7 @@ function buildShowcaseState(): DemoState {
     englishProgress: [],
     checkins,
     sessions: [],
+    doomScrollSessions: [],
     readingByHabitId: {},
     nutritionByHabitId: {},
   };
@@ -1744,6 +1678,20 @@ export function demoUpdateReadingBookmark(
   return next;
 }
 
+function computeDemoAbstinenceElapsed(lastRelapseAt: string) {
+  const totalSeconds = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(lastRelapseAt).getTime()) / 1000),
+  );
+  return {
+    days: Math.floor(totalSeconds / 86_400),
+    hours: Math.floor((totalSeconds % 86_400) / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60,
+    total_seconds: totalSeconds,
+  };
+}
+
 function mapHabitToTodayLight(
   habit: HabitResponse,
   checkin: CheckinResponse | null,
@@ -1783,6 +1731,7 @@ function mapHabitToTodayLight(
 function mapHabitToTodayDark(
   habit: HabitResponse,
   checkin: CheckinResponse | null,
+  doomScrollActive: DoomScrollSessionResponse | null = null,
 ): TodayDarkHabit {
   return {
     ...mapHabitToTodayLight(habit, checkin),
@@ -1790,16 +1739,10 @@ function mapHabitToTodayDark(
       habit.type === "abstinence" && habit.last_relapse_at
         ? {
             started_at: habit.last_relapse_at,
-            elapsed: {
-              days: 0,
-              hours: 1,
-              minutes: 0,
-              seconds: 0,
-              total_seconds: 3600,
-            },
+            elapsed: computeDemoAbstinenceElapsed(habit.last_relapse_at),
           }
         : null,
-    doom_scroll_active: null,
+    doom_scroll_active: doomScrollActive,
   };
 }
 
@@ -1883,8 +1826,235 @@ function buildLightTodayResponse(): TodayLightResponse {
   });
 }
 
+function getDemoSocialMediaRemainingMinutes(state: DemoState, habit: HabitResponse): number {
+  const date = todayDate();
+  const checkin = state.checkins.find((row) => row.habit_id === habit.id && row.date === date);
+  const consumed = checkin?.value ?? 0;
+  return Math.max(0, habit.current_goal - consumed);
+}
+
+function toDemoDoomScrollResponse(
+  session: DemoDoomScrollSession | null,
+): DoomScrollSessionResponse | null {
+  if (!session || session.completed) {
+    return null;
+  }
+
+  const now = Date.now();
+  const endsAt = new Date(session.ends_at).getTime();
+  if (endsAt <= now) {
+    return null;
+  }
+
+  return {
+    id: session.id,
+    habit_id: session.habit_id,
+    started_at: session.started_at,
+    ends_at: session.ends_at,
+    duration_min: session.duration_min,
+    completed: session.completed,
+    remaining_sec: Math.max(0, Math.ceil((endsAt - now) / 1000)),
+  };
+}
+
+function findDemoActiveDoomScrollSession(
+  state: DemoState,
+  habitId: string,
+): DemoDoomScrollSession | null {
+  const now = Date.now();
+  return (
+    state.doomScrollSessions.find(
+      (session) =>
+        session.habit_id === habitId &&
+        !session.completed &&
+        new Date(session.ends_at).getTime() > now,
+    ) ?? null
+  );
+}
+
+function computeDemoDoomScrollMinutes(
+  startedAt: string,
+  endsAt: string,
+  endedAt: Date,
+): number {
+  const startMs = new Date(startedAt).getTime();
+  const plannedEndMs = new Date(endsAt).getTime();
+  const endMs = Math.min(endedAt.getTime(), plannedEndMs);
+  return Math.max(0, Math.round((endMs - startMs) / 60_000));
+}
+
+function finalizeDemoDoomScrollSession(
+  state: DemoState,
+  sessionId: string,
+  endedAt: Date,
+): DemoState {
+  const index = state.doomScrollSessions.findIndex((row) => row.id === sessionId);
+  if (index < 0) {
+    return state;
+  }
+
+  const session = state.doomScrollSessions[index]!;
+  if (session.completed) {
+    return state;
+  }
+
+  const habit = state.habits.find((row) => row.id === session.habit_id);
+  if (!habit) {
+    return state;
+  }
+
+  const minutes = computeDemoDoomScrollMinutes(session.started_at, session.ends_at, endedAt);
+  const nextSessions = [...state.doomScrollSessions];
+  nextSessions[index] = { ...session, completed: true };
+
+  let nextState: DemoState = { ...state, doomScrollSessions: nextSessions };
+  if (minutes > 0) {
+    const date = todayDate();
+    const existingIndex = nextState.checkins.findIndex(
+      (row) => row.habit_id === habit.id && row.date === date,
+    );
+    const currentValue = existingIndex >= 0 ? (nextState.checkins[existingIndex]!.value ?? 0) : 0;
+    const nextValue = currentValue + minutes;
+    const status = resolveCheckinStatus(
+      {
+        type: habit.type,
+        side: habit.side,
+        currentGoal: habit.current_goal,
+        templateId: habit.template_id,
+      },
+      { value: nextValue },
+    );
+    const checkin: CheckinResponse = {
+      id: existingIndex >= 0 ? nextState.checkins[existingIndex]!.id : crypto.randomUUID(),
+      habit_id: habit.id,
+      date,
+      status,
+      value: nextValue,
+      updated_at: nowIso(),
+      current_goal: habit.current_goal,
+      preview_next_goal: demoPreviewNextGoal(habit, status, nextValue),
+    };
+    const checkins = [...nextState.checkins];
+    if (existingIndex >= 0) {
+      checkins[existingIndex] = checkin;
+    } else {
+      checkins.push(checkin);
+    }
+    nextState = { ...nextState, checkins };
+  }
+
+  saveState(nextState);
+  return nextState;
+}
+
+function reconcileDemoDoomScrollSessions(state: DemoState): DemoState {
+  const now = Date.now();
+  let next = state;
+  for (const session of state.doomScrollSessions) {
+    if (session.completed) {
+      continue;
+    }
+    if (new Date(session.ends_at).getTime() <= now) {
+      next = finalizeDemoDoomScrollSession(next, session.id, new Date(session.ends_at));
+    }
+  }
+  return next;
+}
+
+export function demoStartDoomScroll(
+  habitId: string,
+  data: StartDoomScrollRequest = {},
+): DoomScrollSessionResponse {
+  let state = reconcileDemoDoomScrollSessions(ensureState());
+  const habit = state.habits.find((row) => row.id === habitId && row.template_id === "social_media");
+  if (!habit) {
+    throw new Error("Doom scroll доступен только для привычки «Соцсети»");
+  }
+
+  if (findDemoActiveDoomScrollSession(state, habitId)) {
+    throw new Error("Сессия уже запущена");
+  }
+
+  const remainingMin = getDemoSocialMediaRemainingMinutes(state, habit);
+  if (remainingMin <= 0) {
+    throw new Error("Лимит на сегодня исчерпан");
+  }
+
+  const sessionMin = Math.min(DOOM_SCROLL_DURATION_MIN, remainingMin);
+  const now = new Date();
+  const endsAt = new Date(now.getTime() + sessionMin * 60_000);
+  const session: DemoDoomScrollSession = {
+    id: crypto.randomUUID(),
+    habit_id: habitId,
+    started_at: now.toISOString(),
+    ends_at: endsAt.toISOString(),
+    duration_min: sessionMin,
+    completed: false,
+    platform: data.platform ?? null,
+  };
+
+  state = { ...state, doomScrollSessions: [...state.doomScrollSessions, session] };
+  saveState(state);
+
+  const response = toDemoDoomScrollResponse(session);
+  if (!response) {
+    throw new Error("Не удалось запустить сессию");
+  }
+  return response;
+}
+
+export function demoStopDoomScroll(habitId: string): DoomScrollStopResponse {
+  let state = ensureState();
+  const session = state.doomScrollSessions.find(
+    (row) => row.habit_id === habitId && !row.completed,
+  );
+  if (!session) {
+    throw new Error("Активная сессия не найдена");
+  }
+
+  const now = new Date();
+  const endedAt =
+    new Date(session.ends_at).getTime() <= now.getTime() ? new Date(session.ends_at) : now;
+  state = finalizeDemoDoomScrollSession(state, session.id, endedAt);
+  const habit = state.habits.find((row) => row.id === habitId)!;
+  const date = todayDate();
+  const checkin = state.checkins.find((row) => row.habit_id === habitId && row.date === date);
+  const finalized = state.doomScrollSessions.find((row) => row.id === session.id)!;
+  const minutes = computeDemoDoomScrollMinutes(
+    finalized.started_at,
+    finalized.ends_at,
+    endedAt,
+  );
+
+  return {
+    session: {
+      id: finalized.id,
+      habit_id: finalized.habit_id,
+      started_at: finalized.started_at,
+      ends_at: finalized.ends_at,
+      duration_min: finalized.duration_min,
+      completed: true,
+      remaining_sec: 0,
+    },
+    minutes_added: minutes,
+    checkin: {
+      date,
+      status: checkin?.status ?? "pending",
+      value: checkin?.value ?? null,
+      current_goal: habit.current_goal,
+      preview_next_goal: checkin?.preview_next_goal ?? habit.current_goal,
+    },
+  };
+}
+
+export function demoGetActiveDoomScroll(habitId: string): DoomScrollSessionResponse | null {
+  const state = reconcileDemoDoomScrollSessions(ensureState());
+  return toDemoDoomScrollResponse(findDemoActiveDoomScrollSession(state, habitId));
+}
+
 function buildDarkTodayResponse(): TodayDarkResponse {
-  const state = ensureState();
+  let state = ensureState();
+  state = reconcileDemoDoomScrollSessions(state);
   const date = todayDate();
   ensureDemoEarlyRiseWeekendSkips(state, date);
   const sideHabits = state.habits.filter((h) => h.side === "dark" && h.is_active);
@@ -1897,7 +2067,8 @@ function buildDarkTodayResponse(): TodayDarkResponse {
     stats,
     habits: sideHabits.map((habit) => {
       const checkin = todayCheckins.find((c) => c.habit_id === habit.id) ?? null;
-      return mapHabitToTodayDark(habit, checkin);
+      const doomActive = toDemoDoomScrollResponse(findDemoActiveDoomScrollSession(state, habit.id));
+      return mapHabitToTodayDark(habit, checkin, doomActive);
     }),
     daily_plan: buildDemoDailyPlan(state, "dark", date),
     warmup_day: buildDemoWarmupDay(state.user, date),

@@ -121,9 +121,11 @@ Test connection: `pnpm --filter @mytodo/api test:gigachat`
 | POST   | `/habits/:id/pomodoro/complete`  | Complete session     |
 | POST   | `/habits/:id/pomodoro/stop`      | Stop session         |
 | GET    | `/habits/:id/pomodoro/active`    | Active session       |
-| POST   | `/habits/:id/doom-scroll/start`  | Start 15-min session |
+| POST   | `/habits/:id/doom-scroll/start`  | Start session (see below) |
 | GET    | `/habits/:id/doom-scroll/active` | Active session       |
 | POST   | `/habits/:id/doom-scroll/stop`   | Stop early           |
+
+**Doom-scroll** (`social_media` only): daily limit is in minutes. Session length is `min(15, remaining minutes today)`. Start body (optional): `{ "platform": "tiktok" | "youtube_shorts" | "instagram_reels" | "youtube" | "other" }` — used for end/warning push copy. Push events: `doom_scroll_start` (immediate), `doom_scroll_warning` (5 min before end, if session &gt; 5 min), `doom_scroll_end` (natural expiry), `doom_scroll_limit` (start blocked).
 
 ## Stats
 

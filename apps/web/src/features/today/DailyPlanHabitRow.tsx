@@ -11,14 +11,15 @@ import {
   isStrengthWorkoutHabit,
   isCoachEligibleDarkHabit,
   darkReductionDots,
+  formatSocialMediaRemainingMinutes,
   resolveStrengthProgressionLevel,
   strengthRepsPerExercise,
   STRENGTH_WORKOUT_REPS_PER_ROUND,
   STRETCH_TARGET_MINUTES,
 } from "@mytodo/shared";
 import { isWeekendDate } from "@mytodo/domain";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClientApiError, clearHabitBook, getEnglishToday, resetTodayCheckin, selectHabitBook } from "../../lib/api";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { ClientApiError, clearHabitBook, getEnglishToday, resetTodayCheckin, selectHabitBook, startDoomScroll, stopDoomScroll } from "../../lib/api";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import { BookPickerModal } from "./BookPickerModal";
 import {
@@ -67,6 +68,9 @@ import { WarmupTechniqueDemo } from "./WarmupTechniqueDemo";
 import { MeditationGuide } from "./MeditationGuide";
 import { EnglishLessonDrawer } from "./EnglishLessonDrawer";
 import { DarkCoachSheet } from "../coach/DarkCoachSheet";
+import { DoomScrollAppPicker } from "../doom-scroll/DoomScrollAppPicker";
+import { formatDoomScrollCountdown, useDoomScrollCountdown } from "../doom-scroll/useDoomScrollCountdown";
+import type { DoomScrollPlatform } from "@mytodo/shared";
 import { stopVkEmbedsInContainer } from "../english/vk-api";
 import { clearEnglishLessonManualMinutes, readEnglishLessonManualMinutes, resolveEnglishCardMinutes } from "../english/englishLessonManual";
 import {
@@ -229,6 +233,41 @@ export function DailyPlanHabitRow({
 }: DailyPlanHabitRowProps) {
   const checkinMutation = useCheckinMutation(side);
   const queryClient = useQueryClient();
+  const doomScrollMutation = useMutation({
+    mutationFn: (platform: DoomScrollPlatform) => startDoomScroll(habit.id, { platform }),
+    onSuccess: async () => {
+      setDoomPickerOpen(false);
+      setActionError(null);
+      await queryClient.invalidateQueries({ queryKey: ["today", side] });
+    },
+    onError: (err) => {
+      setActionError(
+        err instanceof ClientApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Не удалось начать сессию",
+      );
+    },
+  });
+  const stopDoomMutation = useMutation({
+    mutationFn: () => stopDoomScroll(habit.id),
+    onSuccess: async (result) => {
+      setActionError(null);
+      setDoomNotice(`Сессия завершена · +${result.minutes_added} мин`);
+      await queryClient.invalidateQueries({ queryKey: ["today", side] });
+    },
+    onError: (err) => {
+      setActionError(
+        err instanceof ClientApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Не удалось завершить сессию",
+      );
+    },
+  });
+  const doomBusy = doomScrollMutation.isPending || stopDoomMutation.isPending;
   const navigate = useNavigate();
   const [actionError, setActionError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -237,8 +276,17 @@ export function DailyPlanHabitRow({
   const [bookPickerOpen, setBookPickerOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
   const [darkValueOpen, setDarkValueOpen] = useState(false);
+  const [doomPickerOpen, setDoomPickerOpen] = useState(false);
+  const [doomNotice, setDoomNotice] = useState<string | null>(null);
   const [selectedBook, setSelectedBook] = useState<SelectedBook | null>(null);
   const status = habit.checkin?.status;
+  const currentValue = habit.checkin?.value ?? 0;
+  const isSocialMedia = side === "dark" && habit.template_id === "social_media";
+  const doomSession =
+    isSocialMedia && "doom_scroll_active" in habit ? habit.doom_scroll_active : null;
+  const doomCountdownSec = useDoomScrollCountdown(doomSession);
+  const socialMediaMinutesLeft = Math.max(0, habit.current_goal - Math.floor(currentValue));
+  const nextSessionMinutes = Math.min(15, socialMediaMinutesLeft);
   const showCoachButton = side === "dark" && isCoachEligibleDarkHabit(habit.template_id);
   const isSmoking =
     side === "dark" &&
@@ -247,7 +295,10 @@ export function DailyPlanHabitRow({
     habit.phase === "reduction" &&
     habit.current_goal > 0;
   const showDarkValueLog =
-    side === "dark" && habit.type === "limit" && habit.template_id !== "smoking";
+    side === "dark" &&
+    habit.type === "limit" &&
+    habit.template_id !== "smoking" &&
+    habit.template_id !== "social_media";
   const showReductionTrack =
     side === "dark" &&
     habit.type === "limit" &&
@@ -290,7 +341,6 @@ export function DailyPlanHabitRow({
   const isNonSessionHabit = isNonSessionLightCategory(habit.category_key);
   const selectedBookPageCount =
     reading?.page_count ?? (selectedBook ? getBookPageCount(selectedBook.id) : null);
-  const currentValue = habit.checkin?.value ?? 0;
   const todayPagesRead =
     isBooks && reading && planDate ? pagesReadTodayFromProgress(reading, planDate) : 0;
   const pagesLeftInBook =
@@ -567,9 +617,20 @@ export function DailyPlanHabitRow({
       ? formatBooksDailyProgressLabel(booksDailyProgress, habit.current_goal)
       : isSmoking
         ? formatSmokingRemainingLabel(currentValue, habit.current_goal)
+      : isSocialMedia
+        ? formatSocialMediaRemainingMinutes(currentValue, habit.current_goal)
       : `${progressLabelValue} / ${habit.current_goal} ${formatUnit(habit.unit)}`;
   const cardHint = isEarlyRise
     ? null
+    : isSocialMedia && doomSession
+      ? {
+          text: `Сессия · осталось ${formatDoomScrollCountdown(doomCountdownSec)}`,
+          variant: "hint" as const,
+        }
+      : isSocialMedia && doomNotice
+        ? { text: doomNotice, variant: "success" as const }
+        : isSocialMedia && socialMediaMinutesLeft <= 0
+          ? { text: "Лимит на сегодня исчерпан", variant: "hint" as const }
     : isStrengthWorkout && !goalReached
     ? { text: "Нажмите «Упражнения»", variant: "hint" as const }
     : formatCardHint({
@@ -597,10 +658,34 @@ export function DailyPlanHabitRow({
   };
 
   const earlyRiseFailSentRef = useRef(false);
+  const doomExpiredRef = useRef(false);
 
   useEffect(() => {
     earlyRiseFailSentRef.current = false;
   }, [habit.id, planDate]);
+
+  useEffect(() => {
+    doomExpiredRef.current = false;
+  }, [habit.id, doomSession?.id]);
+
+  useEffect(() => {
+    if (!doomSession || doomCountdownSec > 0) {
+      return;
+    }
+    if (doomExpiredRef.current) {
+      return;
+    }
+    doomExpiredRef.current = true;
+    void queryClient.invalidateQueries({ queryKey: ["today", side] });
+  }, [doomSession, doomCountdownSec, queryClient, side]);
+
+  useEffect(() => {
+    if (!doomNotice) {
+      return;
+    }
+    const id = window.setTimeout(() => setDoomNotice(null), 5000);
+    return () => window.clearTimeout(id);
+  }, [doomNotice]);
 
   useEffect(() => {
     if (
@@ -945,6 +1030,36 @@ export function DailyPlanHabitRow({
             </button>
           ) : null}
 
+          {isSocialMedia ? (
+            doomSession ? (
+              <button
+                type="button"
+                className="home__task-btn home__task-btn--start"
+                disabled={isPending || doomBusy}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void stopDoomMutation.mutateAsync();
+                }}
+              >
+                Закончил · {formatDoomScrollCountdown(doomCountdownSec)}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="home__task-btn home__task-btn--start"
+                disabled={isPending || doomBusy || socialMediaMinutesLeft <= 0}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setDoomPickerOpen(true);
+                }}
+              >
+                {nextSessionMinutes < 15
+                  ? `Начать · ${nextSessionMinutes} мин`
+                  : "Начать · 15 мин"}
+              </button>
+            )
+          ) : null}
+
           {showDarkValueLog ? (
             <button
               type="button"
@@ -1054,6 +1169,14 @@ export function DailyPlanHabitRow({
                       : "Выбери книгу из рекомендаций — или нажми «Начать» для таймера фокуса."
                     : isSmoking
                       ? "После каждой сигареты нажмите «Покурил сигарету»."
+                    : isSocialMedia
+                      ? doomSession
+                        ? "Таймер идёт. Можно закончить раньше — минуты запишутся в дневной лимит. В конце придёт напоминание закрыть приложение."
+                        : socialMediaMinutesLeft <= 0
+                          ? "На сегодня лимит исчерпан. Новая сессия будет доступна завтра."
+                          : nextSessionMinutes < 15
+                            ? `До лимита осталось ${socialMediaMinutesLeft} мин — сессия будет короче обычных 15 минут.`
+                            : "Нажмите «Начать», выберите приложение и получите таймер на 15 минут с напоминанием в конце."
                     : showDarkValueLog
                       ? "Нажмите «Записать», чтобы указать, сколько всего сегодня."
                     : block
@@ -1188,6 +1311,17 @@ export function DailyPlanHabitRow({
                 // runCheckin already sets actionError
               }
             })();
+          }}
+        />
+      ) : null}
+
+      {isSocialMedia ? (
+        <DoomScrollAppPicker
+          isOpen={doomPickerOpen}
+          isSubmitting={doomScrollMutation.isPending}
+          onCancel={() => setDoomPickerOpen(false)}
+          onSelect={(platform) => {
+            void doomScrollMutation.mutateAsync(platform);
           }}
         />
       ) : null}

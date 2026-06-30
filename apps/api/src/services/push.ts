@@ -11,6 +11,10 @@ import {
   buildDefaultPushTemplates,
   ERROR_CODES,
   HTTP_STATUS,
+  resolveDoomScrollEndMessage,
+  resolveDoomScrollStartMessage,
+  resolveDoomScrollWarningMessage,
+  type DoomScrollPlatform,
   type PushEventType,
   type PushSubscribeRequest,
 } from "@mytodo/shared";
@@ -312,18 +316,52 @@ export class PushService {
     }
   }
 
-  async onDoomScrollStart(user: User, habit: Habit): Promise<void> {
+  async onDoomScrollStart(user: User, habit: Habit, durationMin: number): Promise<void> {
+    const harshness = effectiveHarshnessLevel(
+      user.harshnessLevel,
+      user.silenceModeUntil,
+      new Date(),
+    ) as 1 | 2 | 3;
     await this.sendEvent(user, "doom_scroll_start", {
       skipDedup: true,
       harshnessLevel: habit.harshnessLevel,
+      body: resolveDoomScrollStartMessage(durationMin, harshness),
     });
   }
 
-  async onDoomScrollEnd(user: User, habit: Habit, sessionStartedAt: Date): Promise<boolean> {
+  async onDoomScrollWarning(
+    user: User,
+    habit: Habit,
+    platform: DoomScrollPlatform | null,
+  ): Promise<boolean> {
+    const harshness = effectiveHarshnessLevel(
+      user.harshnessLevel,
+      user.silenceModeUntil,
+      new Date(),
+    ) as 1 | 2 | 3;
+    return this.sendEvent(user, "doom_scroll_warning", {
+      skipDedup: true,
+      harshnessLevel: habit.harshnessLevel,
+      body: resolveDoomScrollWarningMessage(platform, harshness),
+    });
+  }
+
+  async onDoomScrollEnd(
+    user: User,
+    habit: Habit,
+    sessionStartedAt: Date,
+    platform: DoomScrollPlatform | null,
+  ): Promise<boolean> {
     const slot = Math.floor(sessionStartedAt.getTime() / 60_000) % 10_000;
+    const harshness = effectiveHarshnessLevel(
+      user.harshnessLevel,
+      user.silenceModeUntil,
+      new Date(),
+    ) as 1 | 2 | 3;
     return this.sendEvent(user, "doom_scroll_end", {
       slot,
       harshnessLevel: habit.harshnessLevel,
+      body: resolveDoomScrollEndMessage(platform, harshness),
     });
   }
 

@@ -6,6 +6,7 @@ export const PUSH_EVENT_TYPES = [
   "success",
   "smoke_cheer",
   "doom_scroll_start",
+  "doom_scroll_warning",
   "doom_scroll_end",
   "doom_scroll_limit",
   "goal_reduced",

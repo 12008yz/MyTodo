@@ -1,16 +1,18 @@
 import { Queue, Worker, type ConnectionOptions } from "bullmq";
 import type { Redis } from "ioredis";
-import { DOOM_SCROLL_DURATION_MIN } from "@mytodo/shared";
+import type { DoomScrollPlatform } from "@mytodo/shared";
 import type { PushService } from "../services/push.js";
 import type { DoomScrollService } from "../services/doom-scroll.js";
 
 export const PUSH_QUEUE_NAME = "mytodo-push";
 export const DOOM_SCROLL_END_JOB = "doom-scroll-end";
+export const DOOM_SCROLL_WARNING_JOB = "doom-scroll-warning";
 
-export type DoomScrollEndJobData = {
+export type DoomScrollSessionJobData = {
   session_id: string;
   user_id: string;
   habit_id: string;
+  platform?: DoomScrollPlatform | null;
 };
 
 type PushLogger = {
@@ -22,7 +24,7 @@ function bullmqConnection(redis: Redis): ConnectionOptions {
   return redis as unknown as ConnectionOptions;
 }
 
-export function createPushQueue(redis: Redis): Queue<DoomScrollEndJobData> {
+export function createPushQueue(redis: Redis): Queue<DoomScrollSessionJobData> {
   return new Queue(PUSH_QUEUE_NAME, {
     connection: bullmqConnection(redis),
     defaultJobOptions: {
@@ -32,57 +34,56 @@ export function createPushQueue(redis: Redis): Queue<DoomScrollEndJobData> {
   });
 }
 
-export async function scheduleDoomScrollEndPush(
-  queue: Queue<DoomScrollEndJobData>,
-  data: DoomScrollEndJobData,
-): Promise<void> {
-  await queue.add(DOOM_SCROLL_END_JOB, data, {
-    jobId: `doom-scroll-end:${data.session_id}`,
-    delay: DOOM_SCROLL_DURATION_MIN * 60_000,
-    removeOnComplete: true,
-  });
-}
-
-export function createDoomScrollEndWorker(
+export function createDoomScrollJobsWorker(
   redis: Redis,
   pushService: PushService,
   doomScrollService: DoomScrollService,
   logger: PushLogger,
-): Worker<DoomScrollEndJobData> {
-  return new Worker<DoomScrollEndJobData>(
+): Worker<DoomScrollSessionJobData> {
+  return new Worker<DoomScrollSessionJobData>(
     PUSH_QUEUE_NAME,
     async (job) => {
+      if (job.name === DOOM_SCROLL_WARNING_JOB) {
+        const result = await doomScrollService.getSessionForWarningPush(
+          job.data.user_id,
+          job.data.session_id,
+          job.data.habit_id,
+        );
+
+        if (!result) {
+          return;
+        }
+
+        const sent = await pushService.onDoomScrollWarning(
+          result.user,
+          result.habit,
+          job.data.platform ?? null,
+        );
+
+        if (sent) {
+          logger.info(
+            {
+              event: "push_sent",
+              user_id: result.user.id,
+              event_type: "doom_scroll_warning",
+              session_id: job.data.session_id,
+            },
+            "doom scroll warning push sent",
+          );
+        }
+        return;
+      }
+
       if (job.name !== DOOM_SCROLL_END_JOB) {
         return;
       }
 
-      const result = await doomScrollService.finalizeSessionForPush(
+      await doomScrollService.finalizeSessionForPush(
         job.data.user_id,
         job.data.session_id,
         job.data.habit_id,
+        job.data.platform ?? null,
       );
-
-      if (!result) {
-        return;
-      }
-
-      const sent = await pushService.onDoomScrollEnd(
-        result.user,
-        result.habit,
-        result.sessionStartedAt,
-      );
-
-      if (sent) {
-        logger.info(
-          {
-            event: "push_sent",
-            user_id: result.user.id,
-            event_type: "doom_scroll_end",
-            session_id: job.data.session_id,
-          },
-          "doom scroll end push sent",
-        );
-      }
     },
     { connection: bullmqConnection(redis) },
   );
@@ -93,9 +94,9 @@ export async function startPushWorker(
   pushService: PushService,
   doomScrollService: DoomScrollService,
   logger: PushLogger,
-): Promise<{ queue: Queue<DoomScrollEndJobData>; worker: Worker<DoomScrollEndJobData> }> {
+): Promise<{ queue: Queue<DoomScrollSessionJobData>; worker: Worker<DoomScrollSessionJobData> }> {
   const queue = createPushQueue(redis);
-  const worker = createDoomScrollEndWorker(redis, pushService, doomScrollService, logger);
+  const worker = createDoomScrollJobsWorker(redis, pushService, doomScrollService, logger);
 
   worker.on("failed", (job, error) => {
     logger.error(

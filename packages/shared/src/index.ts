@@ -297,10 +297,23 @@ export {
   doomScrollActiveResponseSchema,
   doomScrollSessionSchema,
   doomScrollStopResponseSchema,
+  doomScrollPlatformSchema,
+  startDoomScrollRequestSchema,
   type DoomScrollActiveResponse,
   type DoomScrollSessionResponse,
   type DoomScrollStopResponse,
+  type DoomScrollPlatform,
+  type StartDoomScrollRequest,
 } from "./schemas/doom-scroll.js";
+export {
+  DOOM_SCROLL_WARNING_BEFORE_MIN,
+  DOOM_SCROLL_PLATFORMS,
+  DOOM_SCROLL_PLATFORM_LABELS,
+  formatSocialMediaRemainingMinutes,
+  resolveDoomScrollEndMessage,
+  resolveDoomScrollStartMessage,
+  resolveDoomScrollWarningMessage,
+} from "./constants/doom-scroll.js";
 export {
   DAY_COLORS,
   PROGRESS_PERIODS,

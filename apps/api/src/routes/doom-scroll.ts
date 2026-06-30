@@ -4,6 +4,7 @@ import {
   doomScrollActiveResponseSchema,
   doomScrollSessionSchema,
   doomScrollStopResponseSchema,
+  startDoomScrollRequestSchema,
 } from "@mytodo/shared";
 import { authenticate } from "../plugins/authenticate.js";
 import type { RequireAccessHandler } from "../plugins/require-access.js";
@@ -22,8 +23,9 @@ export async function registerDoomScrollRoutes(
     { preHandler: sessionPreHandlers },
     async (request, reply) => {
       const params = z.object({ id: z.string().uuid() }).parse(request.params);
+      const body = startDoomScrollRequestSchema.parse(request.body ?? {});
       const user = await userService.getById(request.userId);
-      const session = await doomScrollService.start(user, params.id);
+      const session = await doomScrollService.start(user, params.id, body.platform ?? null);
       return reply.status(201).send(doomScrollSessionSchema.parse(session));
     },
   );
