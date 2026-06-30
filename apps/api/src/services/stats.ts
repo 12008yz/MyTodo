@@ -96,6 +96,7 @@ export class StatsService {
       return {
         month,
         side: side ?? null,
+        success_days: 0,
         success_rate: 0,
         relapses: 0,
         skipped_days: 0,
@@ -141,6 +142,7 @@ export class StatsService {
     return {
       month,
       side: side ?? null,
+      success_days: successDays,
       success_rate: successRate,
       relapses,
       skipped_days: skippedDays,

@@ -2774,6 +2774,7 @@ export function demoGetStatsMonth(month: string, side: StatsSide): StatsMonthRes
   for (const day of calendar.days) {
     if (day.date > today) continue;
     if (day.habits.length === 0) continue;
+    if (day.color === "pending") continue;
 
     closedDays += 1;
     if (day.color === "success") successDays += 1;
@@ -2784,6 +2785,7 @@ export function demoGetStatsMonth(month: string, side: StatsSide): StatsMonthRes
   return {
     month,
     side,
+    success_days: successDays,
     success_rate: closedDays > 0 ? Math.round((successDays / closedDays) * 100) : 0,
     relapses,
     skipped_days: skippedDays,

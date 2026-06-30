@@ -72,6 +72,7 @@ export type StatsCalendarResponse = z.infer<typeof statsCalendarResponseSchema>;
 export const statsMonthResponseSchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/),
   side: z.enum(STATS_SIDES).nullable(),
+  success_days: z.number().int().min(0),
   success_rate: z.number().min(0).max(100),
   relapses: z.number().int().min(0),
   skipped_days: z.number().int().min(0),

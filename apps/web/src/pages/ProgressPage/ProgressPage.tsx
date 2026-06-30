@@ -142,7 +142,7 @@ export function ProgressPage() {
           <div className="progress__month-summary">
             <div className="home__stat-card home__stat-card--primary">
               <span className="home__stat-label">Успешных дней</span>
-              <span className="home__stat-value">{monthQuery.data.success_rate}%</span>
+              <span className="home__stat-value">{monthQuery.data.success_days}</span>
             </div>
             <div className="home__stat-card home__stat-card--light">
               <span className="home__stat-label">Срывы</span>

@@ -227,6 +227,7 @@ describe("Stats", () => {
     expect(response.statusCode).toBe(200);
     const body = statsMonthResponseSchema.parse(JSON.parse(response.body));
     expect(body.closed_days).toBe(4);
+    expect(body.success_days).toBe(2);
     expect(body.relapses).toBe(1);
     expect(body.skipped_days).toBe(1);
     expect(body.success_rate).toBe(50);
@@ -251,6 +252,7 @@ describe("Stats", () => {
 
     const body = statsMonthResponseSchema.parse(JSON.parse(response.body));
     expect(body.closed_days).toBe(0);
+    expect(body.success_days).toBe(0);
     expect(body.success_rate).toBe(0);
   });
 

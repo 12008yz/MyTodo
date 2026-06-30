@@ -166,6 +166,22 @@ Works for deactivated habits (`includeInactive`). Response:
 
 `chart_mode` drives client charts: higher `value` is better for `target`, lower for `limit`, status-based bars for `abstinence`. `value` / `status` may be `null` for days without data.
 
+### `GET /stats/month`
+
+Query: `month` (`YYYY-MM`, required), `side` (`light` \| `dark`, optional).
+
+Response: `{ month, side, success_days, success_rate, relapses, skipped_days, closed_days }`.
+
+Считается только по **закрытым** дням выбранного календарного месяца (после day-close по всем привычкам стороны):
+
+- `success_days` — дней с итоговым цветом `success` (все привычки выполнены, без срывов).
+- `relapses` — дней с хотя бы одним срывом (`fail`).
+- `skipped_days` — дней с итогом `skipped`.
+- `closed_days` — всего закрытых дней в месяце.
+- `success_rate` — `success_days / closed_days × 100` (для API; в UI показываются дни).
+
+Сегодня и незакрытые дни в счётчики не входят.
+
 ### `GET /stats/summary`
 
 Query: `weeks` (default `12`, max `52`).
