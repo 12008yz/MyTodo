@@ -1,4 +1,4 @@
-import { buildDailyPlan, calibrateHabit, canSkipThisWeek, computeEarlyRiseWindowState, computeGlobalStreak, computeNextEnglishDay, computeNextGoal, isEarlyRiseEnforcementActive, isWarmupDay, isWeekendDate, recalculateLightGoal, resolveForeignLanguageCheckinStatus, resolveWarmupAnchor, resolveWarmupDayInfo, type CalibrationProfile } from "@mytodo/domain";
+import { buildDailyPlan, calibrateHabit, canSkipThisWeek, computeEarlyRiseWindowState, computeGlobalStreak, computeNextEnglishDay, computeNextGoal, isEarlyRiseEnforcementActive, isWarmupDay, isWeekendDate, recalculateLightGoal, resolveForeignLanguageCheckinStatus, resolveWarmupAnchor, resolveWarmupDayInfo, sumEnglishWatchSecondsToMinutes, sumMinutesHabitValueForTodayStats, type CalibrationProfile } from "@mytodo/domain";
 import {
   AWARENESS_SESSION_MIN,
   SESSION_TARGET_MIN,
@@ -653,15 +653,45 @@ function findDemoForeignLanguageHabit(state: DemoState) {
   );
 }
 
-function clearDemoEnglishProgressForLesson(
+function reopenDemoForeignLanguageCheckin(
+  state: DemoState,
+  habitId: string,
+  date: string,
+): DemoState {
+  const index = state.checkins.findIndex(
+    (checkin) => checkin.habit_id === habitId && checkin.date === date,
+  );
+
+  if (index < 0) {
+    return state;
+  }
+
+  const existing = state.checkins[index]!;
+  if (existing.status !== "success") {
+    return state;
+  }
+
+  return {
+    ...state,
+    checkins: state.checkins.map((checkin, rowIndex) =>
+      rowIndex === index ? { ...checkin, status: "pending" } : checkin,
+    ),
+  };
+}
+
+function resetDemoEnglishLessonTaskForToday(
   state: DemoState,
   date: string,
   lessonDayNumber: number,
 ): DemoState {
   return {
     ...state,
-    englishProgress: state.englishProgress.filter(
-      (row) => !(row.date === date && row.lesson_day_number === lessonDayNumber),
+    englishProgress: state.englishProgress.map((row) =>
+      row.date === date &&
+      row.lesson_day_number === lessonDayNumber &&
+      row.status === "success"
+        ? { ...row, status: "pending" }
+        : row,
     ),
   };
 }
@@ -834,9 +864,9 @@ export function demoSelectEnglishLesson(
   if (previousLessonDay !== seed.dayNumber) {
     const habit = findDemoForeignLanguageHabit(state);
     if (habit) {
-      state = removeDemoTodayCheckin(state, habit.id, today);
+      state = reopenDemoForeignLanguageCheckin(state, habit.id, today);
     }
-    state = clearDemoEnglishProgressForLesson(state, today, seed.dayNumber);
+    state = resetDemoEnglishLessonTaskForToday(state, today, seed.dayNumber);
   }
 
   const progress = getDemoEnglishProgressForLesson(state, today, seed.dayNumber);
@@ -1472,6 +1502,14 @@ function buildDemoGlobalStreak(state: DemoState, sideHabits: HabitResponse[]): n
   return computeGlobalStreak(records, scopes, today);
 }
 
+function sumDemoEnglishWatchMinutesToday(state: DemoState, date: string): number {
+  return sumEnglishWatchSecondsToMinutes(
+    state.englishProgress
+      .filter((row) => row.date === date)
+      .map((row) => row.watched_sec),
+  );
+}
+
 function buildTodayStats(
   state: DemoState,
   sideHabits: HabitResponse[],
@@ -1483,7 +1521,15 @@ function buildTodayStats(
   const relapsesThisWeek = scoped.filter(
     (c) => c.status === "fail" && !isDemoWarmupDay(state, c.date),
   ).length;
-  const minutesToday = scoped.reduce((sum, c) => sum + (c.value ?? 0), 0);
+  const today = todayDate();
+  const englishWatchMinutes = sumDemoEnglishWatchMinutesToday(state, today);
+  const minutesToday = sideHabits.reduce((sum, habit) => {
+    const checkin = scoped.find((row) => row.habit_id === habit.id);
+    return (
+      sum +
+      sumMinutesHabitValueForTodayStats(habit, checkin?.value, englishWatchMinutes)
+    );
+  }, 0);
 
   return {
     completed_today: completedToday,

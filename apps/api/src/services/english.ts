@@ -126,8 +126,8 @@ export class EnglishService {
     const today = getUserLocalDate(new Date(), user.timezone);
 
     if (previousLesson.id !== lesson.id) {
-      await this.checkinService.resetForeignLanguageCheckinForToday(user);
-      await this.clearLessonProgressForToday(user.id, today, lesson.id);
+      await this.checkinService.reopenForeignLanguageCheckinForToday(user);
+      await this.resetLessonTaskForToday(user.id, today, lesson.id);
     }
 
     await this.db
@@ -381,20 +381,24 @@ export class EnglishService {
     await seedEnglishLessons(this.db);
   }
 
-  private async clearLessonProgressForToday(
+  private async resetLessonTaskForToday(
     userId: string,
     date: string,
     lessonId: string,
   ): Promise<void> {
+    const existing = await this.getProgressForLesson(userId, date, lessonId);
+
+    if (!existing || existing.status !== "success") {
+      return;
+    }
+
     await this.db
-      .delete(englishProgress)
-      .where(
-        and(
-          eq(englishProgress.userId, userId),
-          eq(englishProgress.date, date),
-          eq(englishProgress.lessonId, lessonId),
-        ),
-      );
+      .update(englishProgress)
+      .set({
+        status: "pending",
+        updatedAt: new Date(),
+      })
+      .where(eq(englishProgress.id, existing.id));
   }
 
   private async getSettings(userId: string): Promise<EnglishSettings | null> {

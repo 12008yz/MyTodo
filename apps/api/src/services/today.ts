@@ -8,12 +8,14 @@ import {
   getWeekStartMonday,
   isAbstinenceTimerHabit,
   isDateInRange,
+  sumEnglishWatchSecondsToMinutes,
+  sumMinutesHabitValueForTodayStats,
   type DayCheckin,
 } from "@mytodo/domain";
 import { AWARENESS_SESSION_MIN, isCompanionLightHabit, isNutritionHabit, resolveHabitDisplayName, type HabitCategoryKey, type HabitTemplateId, type HabitUnit } from "@mytodo/shared";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Database } from "../db/index.js";
-import { checkins, habits, type Habit, type User } from "../db/schema/index.js";
+import { checkins, englishProgress, habits, type Habit, type User } from "../db/schema/index.js";
 import { toHabitResponse } from "../lib/habit-mapper.js";
 import { previewStatusFromCheckin, toProgressionHabit } from "../lib/habit-progression.js";
 import type { DoomScrollService } from "./doom-scroll.js";
@@ -107,6 +109,8 @@ export class TodayService {
     const allCheckins = await this.listCheckinsForHabits(habitIds);
     const checkinsByHabit = this.groupCheckinsByHabit(allCheckins);
     const todayCheckins = this.indexTodayCheckins(allCheckins, today);
+    const englishWatchMinutesToday =
+      side === "light" ? await this.sumEnglishWatchMinutesToday(user.id, today) : 0;
 
     const stats = await this.buildStats(
       user,
@@ -116,6 +120,7 @@ export class TodayService {
       today,
       weekStart,
       side,
+      englishWatchMinutesToday,
     );
 
     const habitsPayload = await this.buildHabitsPayload(
@@ -128,10 +133,11 @@ export class TodayService {
 
     const minutesLoggedToday =
       side === "light"
-        ? this.sumMinutesToday(userHabits, todayCheckins)
+        ? this.sumMinutesToday(userHabits, todayCheckins, englishWatchMinutesToday)
         : this.sumMinutesToday(
             userHabits.filter((habit) => habit.unit === "minutes"),
             todayCheckins,
+            0,
           );
     const dailyPlan = await this.buildDailyPlanForSide(user, side, userHabits, todayCheckins, today);
     const emptyPlan = buildDailyPlan({
@@ -238,6 +244,7 @@ export class TodayService {
     today: string,
     weekStart: string,
     side: Side,
+    englishWatchMinutesToday: number,
   ) {
     const todayRows = allCheckins.filter((row) => row.date === today);
     const completedToday = todayRows.filter((row) => row.status === "success").length;
@@ -251,10 +258,15 @@ export class TodayService {
 
     const minutesToday =
       side === "light"
-        ? this.sumMinutesToday(userHabits, this.indexTodayCheckins(allCheckins, today))
+        ? this.sumMinutesToday(
+            userHabits,
+            this.indexTodayCheckins(allCheckins, today),
+            englishWatchMinutesToday,
+          )
         : this.sumMinutesToday(
             userHabits.filter((habit) => habit.unit === "minutes"),
             this.indexTodayCheckins(allCheckins, today),
+            0,
           );
 
     const streakHabits = userHabits.filter(
@@ -289,16 +301,36 @@ export class TodayService {
     };
   }
 
-  private sumMinutesToday(userHabits: Habit[], todayCheckins: Map<string, CheckinRow>) {
+  private async sumEnglishWatchMinutesToday(userId: string, today: string): Promise<number> {
+    const rows = await this.db
+      .select({ watchedSec: englishProgress.watchedSec })
+      .from(englishProgress)
+      .where(and(eq(englishProgress.userId, userId), eq(englishProgress.date, today)));
+
+    return sumEnglishWatchSecondsToMinutes(rows.map((row) => Number(row.watchedSec)));
+  }
+
+  private sumMinutesToday(
+    userHabits: Habit[],
+    todayCheckins: Map<string, CheckinRow>,
+    englishWatchMinutesToday = 0,
+  ) {
     return userHabits
       .filter((habit) => habit.unit === "minutes")
       .reduce((total, habit) => {
         const checkin = todayCheckins.get(habit.id);
-        if (checkin?.value == null) {
-          return total;
-        }
-
-        return total + Number(checkin.value);
+        return (
+          total +
+          sumMinutesHabitValueForTodayStats(
+            {
+              unit: habit.unit,
+              category_key: habit.categoryKey,
+              name: habit.name,
+            },
+            checkin?.value == null ? 0 : Number(checkin.value),
+            englishWatchMinutesToday,
+          )
+        );
       }, 0);
   }
 

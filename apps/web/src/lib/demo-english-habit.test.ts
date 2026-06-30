@@ -3,6 +3,7 @@ import { isForeignLanguageHabit } from "@mytodo/shared";
 import {
   demoCompleteEnglishLesson,
   demoEnterShowcase,
+  demoGetTodayLight,
   demoResetTodayCheckin,
   demoSelectEnglishLesson,
   demoUpdateEnglishSettings,
@@ -78,12 +79,27 @@ describe("demo foreign language habit", () => {
     demoCompleteEnglishLesson({ watched_sec: 600 });
 
     const lesson2Id = englishLessonSeedId(2);
+    const minutesBeforeSwitch = demoGetTodayLight().stats.minutes_today;
     demoSelectEnglishLesson({ lesson_id: lesson2Id });
 
+    const todayPayload = demoGetTodayLight();
+    const habitRow = todayPayload.habits.find((row) => isForeignLanguageHabit(row));
+    const checkin = habitRow?.checkin;
 
-    const state = readDemoState();
-    const checkin = findTodayCheckin(state, habit.id);
+    expect(checkin?.status).not.toBe("success");
+    expect(todayPayload.stats.minutes_today).toBe(minutesBeforeSwitch);
+  });
 
-    expect(checkin).toBeUndefined();
+  it("keeps stats minutes after switching lesson", () => {
+    const habit = readDemoState().habits.find((row: { category_key: string; name: string }) =>
+      isForeignLanguageHabit(row),
+    );
+    demoResetTodayCheckin(habit.id);
+    demoCompleteEnglishLesson({ watched_sec: 23 * 60 });
+
+    const minutesBeforeSwitch = demoGetTodayLight().stats.minutes_today;
+    demoSelectEnglishLesson({ lesson_id: englishLessonSeedId(2) });
+
+    expect(demoGetTodayLight().stats.minutes_today).toBe(minutesBeforeSwitch);
   });
 });

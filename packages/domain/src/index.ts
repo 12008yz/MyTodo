@@ -105,6 +105,10 @@ export {
   type EnglishProgressToday,
 } from "./english/day-close.js";
 export {
+  sumEnglishWatchSecondsToMinutes,
+  sumMinutesHabitValueForTodayStats,
+} from "./english/stats-minutes.js";
+export {
   hasBillingAccess,
   type BillingAccessInput,
   type SubscriptionAccess,

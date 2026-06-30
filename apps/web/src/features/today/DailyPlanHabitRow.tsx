@@ -315,7 +315,9 @@ export function DailyPlanHabitRow({
     englishToday?.enabled === true &&
     englishToday.day_status === "success";
   const timerComplete =
-    isForeignLanguage && (status === "success" || currentValue >= habit.current_goal);
+    isForeignLanguage
+      ? status === "success"
+      : status === "success" || currentValue >= habit.current_goal;
   const goalReached = isForeignLanguage
     ? timerComplete || englishLessonComplete
     : status === "success";

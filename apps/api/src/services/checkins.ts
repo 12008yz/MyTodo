@@ -87,14 +87,25 @@ export class CheckinService {
     );
   }
 
-  async resetForeignLanguageCheckinForToday(user: User): Promise<void> {
+  async reopenForeignLanguageCheckinForToday(user: User): Promise<void> {
     const habit = await this.findForeignLanguageHabit(user.id);
     if (!habit) {
       return;
     }
 
     const today = getUserLocalDate(new Date(), user.timezone);
-    await this.deleteForDate(user.id, habit.id, today);
+    const existing = await this.findExistingCheckin(habit.id, today);
+
+    if (!existing || existing.status !== "success") {
+      return;
+    }
+
+    await this.saveCheckin(
+      habit.id,
+      today,
+      "pending",
+      existing.value == null ? null : Number(existing.value),
+    );
   }
 
   async markForeignLanguageDayCompleteFromVideo(user: User): Promise<void> {
