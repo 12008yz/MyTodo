@@ -2,7 +2,6 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -18,6 +17,20 @@ type HabitTrendChartProps = {
   chartKey: string;
 };
 
+function chartHeight(seriesCount: number): number {
+  return Math.min(320, Math.max(200, 180 + seriesCount * 4));
+}
+
+function seriesFillOpacity(seriesCount: number): number {
+  if (seriesCount <= 3) {
+    return 0.38;
+  }
+  if (seriesCount <= 6) {
+    return 0.24;
+  }
+  return 0.16;
+}
+
 function TrendTooltip({
   active,
   payload,
@@ -31,11 +44,16 @@ function TrendTooltip({
     return null;
   }
 
+  const entries = payload.filter((entry) => entry.value > 0);
+  if (entries.length === 0) {
+    return null;
+  }
+
   return (
     <div className="habit-trend-tooltip">
       <p className="habit-trend-tooltip__label">{label}</p>
       <ul className="habit-trend-tooltip__list">
-        {payload.map((entry) => (
+        {entries.map((entry) => (
           <li key={entry.name} className="habit-trend-tooltip__item">
             <span className="habit-trend-tooltip__dot" style={{ backgroundColor: entry.color }} />
             <span className="habit-trend-tooltip__name">{entry.name}</span>
@@ -49,15 +67,21 @@ function TrendTooltip({
 
 export function HabitTrendChart({ points, series, variant, chartKey }: HabitTrendChartProps) {
   const isDark = variant === "dark-side";
+  const fillOpacity = seriesFillOpacity(series.length);
+  const showDots = series.length <= 6;
+  const height = chartHeight(series.length);
 
   return (
-    <div className={["habit-trend-chart", isDark ? "habit-trend-chart--dark" : ""].filter(Boolean).join(" ")}>
-      <ResponsiveContainer width="100%" height={220}>
+    <div
+      className={["habit-trend-chart", isDark ? "habit-trend-chart--dark" : ""].filter(Boolean).join(" ")}
+      onMouseDown={(event) => event.preventDefault()}
+    >
+      <ResponsiveContainer width="100%" height={height}>
         <AreaChart key={chartKey} data={points} margin={{ top: 8, right: 4, left: -18, bottom: 0 }}>
           <defs>
             {series.map((item) => (
               <linearGradient key={item.id} id={`trend-fill-${item.dataKey}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={item.color} stopOpacity={0.38} />
+                <stop offset="0%" stopColor={item.color} stopOpacity={fillOpacity} />
                 <stop offset="95%" stopColor={item.color} stopOpacity={0.02} />
               </linearGradient>
             ))}
@@ -83,16 +107,6 @@ export function HabitTrendChart({ points, series, variant, chartKey }: HabitTren
             allowDecimals={false}
           />
           <Tooltip content={<TrendTooltip />} />
-          <Legend
-            verticalAlign="bottom"
-            iconType="circle"
-            iconSize={8}
-            wrapperStyle={{
-              fontSize: 11,
-              paddingTop: 8,
-              color: isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.65)",
-            }}
-          />
           {series.map((item) => (
             <Area
               key={item.id}
@@ -101,19 +115,27 @@ export function HabitTrendChart({ points, series, variant, chartKey }: HabitTren
               dataKey={item.dataKey}
               stroke={item.color}
               fill={`url(#trend-fill-${item.dataKey})`}
-              strokeWidth={2.5}
-              dot={{
-                r: 3.5,
-                fill: item.color,
-                stroke: isDark ? "#1f2029" : "#ffffff",
-                strokeWidth: 2,
-              }}
-              activeDot={{
-                r: 5.5,
-                fill: item.color,
-                stroke: isDark ? "#1f2029" : "#ffffff",
-                strokeWidth: 2,
-              }}
+              strokeWidth={series.length > 6 ? 2 : 2.5}
+              dot={
+                showDots
+                  ? {
+                      r: 3,
+                      fill: item.color,
+                      stroke: isDark ? "#1f2029" : "#ffffff",
+                      strokeWidth: 2,
+                    }
+                  : false
+              }
+              activeDot={
+                showDots
+                  ? {
+                      r: 5,
+                      fill: item.color,
+                      stroke: isDark ? "#1f2029" : "#ffffff",
+                      strokeWidth: 2,
+                    }
+                  : { r: 4, fill: item.color }
+              }
               animationDuration={650}
               animationEasing="ease-out"
             />

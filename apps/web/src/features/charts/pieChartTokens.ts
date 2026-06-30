@@ -1,20 +1,22 @@
-export type DonutSegment = {
-  id: string;
-  label: string;
-  value: number;
-  color: string;
-};
+export const CHART_SERIES_COLORS = [
+  "#7086FD",
+  "#6FD195",
+  "#FFAE4C",
+  "#07DBFA",
+  "#988AFC",
+  "#1F94FF",
+  "#FF928A",
+  "#F472B6",
+  "#34D399",
+  "#FBBF24",
+  "#A78BFA",
+  "#60A5FA",
+] as const;
 
-export const PIE_CHART_COLORS = {
-  blue: "#7086FD",
-  green: "#6FD195",
-  orange: "#FFAE4C",
-  cyan: "#07DBFA",
-  purple: "#988AFC",
-  sky: "#1F94FF",
-  coral: "#FF928A",
-} as const;
-
-export function sumSegmentValues(segments: DonutSegment[]): number {
-  return segments.reduce((total, segment) => total + segment.value, 0);
+export function chartSeriesColor(index: number): string {
+  if (index < CHART_SERIES_COLORS.length) {
+    return CHART_SERIES_COLORS[index]!;
+  }
+  const hue = (index * 41) % 360;
+  return `hsl(${hue} 62% 58%)`;
 }

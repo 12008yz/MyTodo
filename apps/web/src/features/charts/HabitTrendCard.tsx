@@ -1,10 +1,13 @@
+import { lazy, Suspense } from "react";
 import type { HabitUnit } from "@mytodo/shared";
 import { formatUnit } from "../today/format";
-import type { TrendSeries } from "./buildHabitTrendSeries";
-import { HabitTrendChart } from "./HabitTrendChart";
-import type { TrendPoint } from "./buildHabitTrendSeries";
+import type { TrendSeries, TrendPoint } from "./buildHabitTrendSeries";
 import { useAnimatedNumber } from "./useAnimatedNumber";
 import "./HabitTrendCard.css";
+
+const HabitTrendChart = lazy(() =>
+  import("./HabitTrendChart").then((module) => ({ default: module.HabitTrendChart })),
+);
 
 export type HabitTrendVariant = "light-side" | "dark-side";
 
@@ -29,6 +32,19 @@ function formatCenterUnit(unit: HabitUnit | "days" | null | undefined): string |
     return "дн.";
   }
   return formatUnit(unit);
+}
+
+function formatLegendValue(value: number, unit: HabitUnit | "days" | null | undefined): string {
+  const unitLabel = formatCenterUnit(unit);
+  return unitLabel ? `${value} ${unitLabel}` : String(value);
+}
+
+function ChartLoadingFallback() {
+  return (
+    <div className="habit-trend-chart habit-trend-chart--loading" aria-hidden="true">
+      <div className="habit-trend-chart__loading-shimmer" />
+    </div>
+  );
 }
 
 export function HabitTrendCard({
@@ -78,13 +94,29 @@ export function HabitTrendCard({
           .filter(Boolean)
           .join(" ")}
       >
-        <HabitTrendChart
-          points={points}
-          series={series}
-          variant={variant}
-          chartKey={chartKey}
-        />
+        <Suspense fallback={<ChartLoadingFallback />}>
+          <HabitTrendChart
+            points={points}
+            series={series}
+            variant={variant}
+            chartKey={chartKey}
+          />
+        </Suspense>
       </div>
+
+      <ul className="habit-trend-card__legend" aria-label="Легенда">
+        {series.map((item) => (
+          <li key={item.id} className="habit-trend-card__legend-item">
+            <span
+              className="habit-trend-card__legend-dot"
+              style={{ backgroundColor: item.color }}
+              aria-hidden="true"
+            />
+            <span className="habit-trend-card__legend-label">{item.label}</span>
+            <span className="habit-trend-card__legend-meta">{formatLegendValue(item.total, unit)}</span>
+          </li>
+        ))}
+      </ul>
     </article>
   );
 }

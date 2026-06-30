@@ -92,7 +92,7 @@ function buildSubtitle(
 
 export function TimeDistributionSection() {
   const { side } = useHabitSide();
-  const [period, setPeriod] = useState<ProgressPeriod>("month");
+  const [period, setPeriod] = useState<ProgressPeriod>("week");
   const { dashboard, isLoading: isDashboardLoading } = useTodayDashboard(side);
   const today = dashboard?.date ?? null;
   const distributionQuery = useTimeDistribution(side, period, today);

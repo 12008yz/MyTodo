@@ -81,7 +81,7 @@ describe("buildHabitTrendSeries", () => {
     expect(result.points[1]).toMatchObject({ date: "2026-06-02", series0: 10, series1: 0 });
   });
 
-  it("limits chart to three series and supports dark-side metrics", () => {
+  it("includes every habit as a series on dark side", () => {
     const result = buildHabitTrendSeries(
       [
         calendar("2026-06", [
@@ -129,5 +129,46 @@ describe("buildHabitTrendSeries", () => {
     expect(result.unit).toBeNull();
     expect(result.series.map((series) => series.label)).toEqual(["Курение", "Алкоголь"]);
     expect(result.points[0]).toMatchObject({ series0: 4, series1: 1 });
+  });
+
+  it("includes all habits when more than three exist", () => {
+    const habits = Array.from({ length: 5 }, (_, index) => ({
+      habit_id: `habit-${index}`,
+      name: `Привычка ${index}`,
+      side: "light" as const,
+      type: "target" as const,
+      phase: "reduction" as const,
+      unit: "minutes" as const,
+      template_id: "running" as const,
+      status: "success" as const,
+      value: index + 1,
+      goal: 10,
+      minutes_total: (index + 1) * 10,
+    }));
+
+    const result = buildHabitTrendSeries(
+      [
+        calendar("2026-06", [
+          {
+            date: "2026-06-01",
+            color: "success",
+            habits,
+          },
+        ]),
+      ],
+      "light",
+      "2026-06-01",
+      "2026-06-01",
+      "week",
+    );
+
+    expect(result.series).toHaveLength(5);
+    expect(result.series.map((item) => item.label)).toEqual([
+      "Привычка 4",
+      "Привычка 3",
+      "Привычка 2",
+      "Привычка 1",
+      "Привычка 0",
+    ]);
   });
 });

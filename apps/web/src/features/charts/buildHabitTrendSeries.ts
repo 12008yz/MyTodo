@@ -6,10 +6,7 @@ import {
   shouldIncludeHabit,
   type HabitChartUnit,
 } from "./habitChartMetric";
-import { PIE_CHART_COLORS } from "./pieChartTokens";
-
-const SERIES_PALETTE = Object.values(PIE_CHART_COLORS);
-const MAX_SERIES = 3;
+import { chartSeriesColor } from "./pieChartTokens";
 
 export type TrendSeries = {
   id: string;
@@ -119,11 +116,11 @@ export function buildHabitTrendSeries(
   }
 
   const ranked = [...accumulators.values()].sort((left, right) => right.total - left.total);
-  const topHabits = ranked.slice(0, MAX_SERIES);
-  const series: TrendSeries[] = topHabits.map((habit, index) => ({
+  const habits = ranked;
+  const series: TrendSeries[] = habits.map((habit, index) => ({
     id: habit.habitId,
     label: habit.label,
-    color: SERIES_PALETTE[index % SERIES_PALETTE.length]!,
+    color: chartSeriesColor(index),
     dataKey: `series${index}`,
     total: Math.round(habit.total),
   }));
@@ -135,7 +132,7 @@ export function buildHabitTrendSeries(
       label: formatTrendAxisLabel(date, period),
     };
 
-    topHabits.forEach((habit, index) => {
+    habits.forEach((habit, index) => {
       const raw = habit.byDate.get(date) ?? 0;
       point[`series${index}`] = Math.round(raw);
     });
