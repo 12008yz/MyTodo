@@ -37,7 +37,7 @@ const baseToday: TodayLightResponse = {
       checkin: {
         id: "checkin-1",
         date: "2026-06-28",
-        status: "pending",
+        status: "success",
         value: 17,
         updated_at: "2026-06-28T10:00:00.000Z",
         current_goal: 5,
@@ -96,5 +96,21 @@ describe("patchBooksHabitOnToday", () => {
     const habit = queryClient.getQueryData<TodayLightResponse>(["today", "light"])?.habits[0];
     expect(habit?.reading?.reader_day_start_page).toBe(11);
     expect(habit?.reading?.reader_day_date).toBe("2026-06-28");
+  });
+
+  it("does not decrease credited pages when bookmark moves back", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["today", "light"], baseToday);
+
+    patchBooksHabitOnToday(queryClient, "habit-1", {
+      checkinValue: 0,
+      lastReadPage: 1,
+    });
+
+    const habit = queryClient.getQueryData<TodayLightResponse>(["today", "light"])?.habits[0];
+    expect(habit?.checkin?.value).toBe(17);
+    expect(habit?.checkin?.status).toBe("success");
+    expect(habit?.reading?.last_read_page).toBe(1);
+    expect(habit?.reading?.pages_credited_today).toBe(17);
   });
 });

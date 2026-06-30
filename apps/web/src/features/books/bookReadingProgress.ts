@@ -32,16 +32,14 @@ export function pagesReadTodayFromProgress(
   reading: HabitReadingProgress,
   planDate: string,
 ): number {
+  const creditedToday =
+    reading.last_checkin_date === planDate ? reading.pages_credited_today : 0;
   const dayStart = resolveReaderDayStartPage(reading, planDate);
   if (dayStart != null) {
-    return pagesReadTodayInBook(reading.last_read_page, dayStart);
+    return Math.max(pagesReadTodayInBook(reading.last_read_page, dayStart), creditedToday);
   }
 
-  if (reading.last_checkin_date === planDate) {
-    return reading.pages_credited_today;
-  }
-
-  return 0;
+  return creditedToday;
 }
 
 /** Сколько страниц осталось прочитать, если пользователь на `currentPage`. */

@@ -27,6 +27,11 @@ export function patchBooksHabitOnToday(
         let next = habit;
 
         if (patch.checkinValue != null) {
+          const previousValue = Math.max(
+            next.checkin?.value ?? 0,
+            "reading" in next && next.reading ? next.reading.pages_credited_today : 0,
+          );
+          const nextValue = Math.max(patch.checkinValue, previousValue);
           const status = resolveCheckinStatus(
             {
               type: habit.type,
@@ -34,7 +39,7 @@ export function patchBooksHabitOnToday(
               currentGoal: habit.current_goal,
               templateId: habit.template_id,
             },
-            { value: patch.checkinValue },
+            { value: nextValue },
           );
           const updatedAt = new Date().toISOString();
           next = {
@@ -42,7 +47,7 @@ export function patchBooksHabitOnToday(
             checkin: {
               id: next.checkin?.id ?? `optimistic-${habitId}`,
               date: next.checkin?.date ?? old.date,
-              value: patch.checkinValue,
+              value: nextValue,
               status,
               updated_at: updatedAt,
               current_goal: habit.current_goal,
@@ -68,9 +73,9 @@ export function patchBooksHabitOnToday(
                 ? { reader_day_start_page: patch.readerDayStartPage }
                 : {}),
               ...(patch.readerDayDate != null ? { reader_day_date: patch.readerDayDate } : {}),
-              ...(patch.checkinValue != null
+              ...(patch.checkinValue != null && next.checkin?.value != null
                 ? {
-                    pages_credited_today: patch.checkinValue,
+                    pages_credited_today: next.checkin.value,
                     last_checkin_date: old.date,
                   }
                 : {}),

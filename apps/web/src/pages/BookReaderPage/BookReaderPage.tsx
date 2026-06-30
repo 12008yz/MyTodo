@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import type { TodayLightResponse } from "@mytodo/shared";
 import {
   clampBookPage,
   fetchBookManifest,
@@ -64,6 +65,7 @@ export function BookReaderPage() {
   const pagesReadTodayLive = Math.max(
     pagesFromCurrentPage ?? localPagesToday,
     habit?.checkin?.value ?? 0,
+    reading?.last_checkin_date === planDate ? (reading.pages_credited_today ?? 0) : 0,
   );
   const pagesRemainingForTimer = booksPagesRemainingForToday(pagesReadTodayLive, dailyGoal);
   const readingTimerDone = dailyGoal > 0 && pagesReadTodayLive >= dailyGoal;
@@ -151,12 +153,14 @@ export function BookReaderPage() {
     );
     setPage(initialPage);
     if (habitId && initialDayStart != null) {
+      const pagesToday = pagesReadTodayInBook(initialPage, initialDayStart);
+      const currentCheckin = habit?.checkin?.value ?? 0;
       patchBooksHabitOnToday(queryClient, habitId, {
         lastReadPage: initialPage,
-        checkinValue: pagesReadTodayInBook(initialPage, initialDayStart),
+        ...(pagesToday > currentCheckin ? { checkinValue: pagesToday } : {}),
       });
     }
-  }, [habitId, queryClient, reading, manifest, page, planDate]);
+  }, [habit, habitId, queryClient, reading, manifest, page, planDate]);
 
   const syncReaderProgress = useCallback(
     (nextPage: number) => {
@@ -172,7 +176,13 @@ export function BookReaderPage() {
       if (dayStart != null) {
         const pagesToday = pagesReadTodayInBook(nextPage, dayStart);
         setLocalPagesToday(pagesToday);
-        patch.checkinValue = pagesToday;
+        const currentCheckin =
+          queryClient
+            .getQueryData<TodayLightResponse>(["today", "light"])
+            ?.habits.find((row) => row.id === habitId)?.checkin?.value ?? 0;
+        if (pagesToday > currentCheckin) {
+          patch.checkinValue = pagesToday;
+        }
       }
 
       patchBooksHabitOnToday(queryClient, habitId, patch);

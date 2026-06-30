@@ -43,6 +43,24 @@ describe("bookReadingProgress", () => {
     ).toBe(6);
   });
 
+  it("keeps credited pages when bookmark moves back within the day", () => {
+    expect(
+      pagesReadTodayFromProgress(
+        {
+          book_id: "meditations",
+          pages_read: 5,
+          pages_credited_today: 5,
+          last_read_page: 1,
+          reader_day_start_page: 1,
+          reader_day_date: "2026-06-27",
+          last_checkin_date: "2026-06-27",
+          completed_at: null,
+        },
+        "2026-06-27",
+      ),
+    ).toBe(5);
+  });
+
   it("falls back to credited pages when today's reader baseline is missing", () => {
     expect(
       pagesReadTodayFromProgress(

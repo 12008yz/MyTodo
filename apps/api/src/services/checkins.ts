@@ -150,7 +150,14 @@ export class CheckinService {
     const habit = await this.getOwnedHabit(user.id, body.habit_id);
     const date = body.date ?? getUserLocalDate(new Date(), user.timezone);
     const existing = await this.findExistingCheckin(habit.id, date);
-    const { status, value } = await this.resolveStatus(habit, body, date, user);
+    const requestBody =
+      habit.templateId === "books" &&
+      body.value !== undefined &&
+      existing?.value != null &&
+      body.value < Number(existing.value)
+        ? { ...body, value: Number(existing.value) }
+        : body;
+    const { status, value } = await this.resolveStatus(habit, requestBody, date, user);
 
     if (habit.type === "abstinence" && status === "fail") {
       await this.db
@@ -229,7 +236,9 @@ export class CheckinService {
     }
 
     const currentValue = existing?.value == null ? 0 : Number(existing.value);
-    const newValue = mode === "set" ? value : currentValue + value;
+    const rawValue = mode === "set" ? value : currentValue + value;
+    const newValue =
+      habit.templateId === "books" ? Math.max(currentValue, rawValue) : rawValue;
     const status = await this.resolveTargetHabitCheckinStatus(user, habit, date, newValue);
     const checkin = await this.saveCheckin(habit.id, date, status, newValue);
 

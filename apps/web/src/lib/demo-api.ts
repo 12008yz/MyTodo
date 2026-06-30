@@ -2168,7 +2168,20 @@ export function demoCreateCheckin(data: CreateCheckinRequest): CheckinResponse {
     (c) => c.habit_id === data.habit_id && c.date === date,
   );
 
-  const { status: resolvedStatus, value: resolvedValue } = resolveDemoCheckinStatus(habit, data, state);
+  let request = data;
+  if (habit.template_id === "books" && data.value !== undefined) {
+    const currentValue =
+      existingIndex >= 0 ? (state.checkins[existingIndex]!.value ?? 0) : 0;
+    if (data.value < currentValue) {
+      request = { ...data, value: currentValue };
+    }
+  }
+
+  const { status: resolvedStatus, value: resolvedValue } = resolveDemoCheckinStatus(
+    habit,
+    request,
+    state,
+  );
   const previewNextGoal = demoPreviewNextGoal(habit, resolvedStatus);
 
   const checkin: CheckinResponse = {
