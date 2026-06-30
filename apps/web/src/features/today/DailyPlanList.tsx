@@ -1043,11 +1043,6 @@ export function DailyPlanList({
       window.clearTimeout(completionFlightTimeoutRef.current);
       completionFlightTimeoutRef.current = null;
     }
-
-    const scroll = document.querySelector(".home__scroll");
-    if (scroll instanceof HTMLElement) {
-      scroll.scrollTop = 0;
-    }
   }, [activeSide]);
 
   return (
