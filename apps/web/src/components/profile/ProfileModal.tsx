@@ -1,7 +1,20 @@
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import { ProfileModalYinYangWaves } from "./ProfileModalYinYangWaves";
 import type { ProfileModalArtVariant } from "./profileModalArt";
 import "./ProfileModal.css";
+
+function getHomePortalRoot(): HTMLElement {
+  return document.querySelector(".home") ?? document.body;
+}
 
 /** Must cover overlay + panel CSS transitions (see ProfileModal.css). */
 const CLOSE_MS = 520;
@@ -38,6 +51,11 @@ export function ProfileModal({
   const timerRef = useRef<number | null>(null);
   const [mounted, setMounted] = useState(open);
   const [visible, setVisible] = useState(false);
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
+
+  useLayoutEffect(() => {
+    setPortalRoot(getHomePortalRoot());
+  }, []);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -88,11 +106,11 @@ export function ProfileModal({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [mounted, requestClose]);
 
-  if (!mounted) {
+  if (!mounted || !portalRoot) {
     return null;
   }
 
-  return (
+  return createPortal(
     <div
       className={["profile-modal", visible ? "profile-modal--visible" : ""].filter(Boolean).join(" ")}
       role="presentation"
@@ -143,6 +161,7 @@ export function ProfileModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    portalRoot,
   );
 }
