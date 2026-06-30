@@ -26,7 +26,7 @@ export async function resetAuthTables(databaseUrl: string): Promise<void> {
 
 export async function truncateAuthTables(db: ReturnType<typeof createDb>["db"]): Promise<void> {
   await db.execute(
-    sql`TRUNCATE TABLE push_delivery_log, push_subscriptions, user_badges, pledges, billing_webhook_events, subscriptions, english_progress, english_settings, english_lessons, daily_stats, goal_snapshots, doom_scroll_sessions, pomodoro_sessions, habit_nutrition_logs, habit_reading_progress, habit_sessions, checkins, habits, refresh_tokens, users RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE TABLE push_pending, push_delivery_log, push_subscriptions, user_badges, pledges, billing_webhook_events, subscriptions, english_progress, english_settings, english_lessons, daily_stats, goal_snapshots, doom_scroll_sessions, pomodoro_sessions, habit_nutrition_logs, habit_reading_progress, habit_sessions, checkins, habits, refresh_tokens, users RESTART IDENTITY CASCADE`,
   );
   await seedPushTemplates(db);
 }

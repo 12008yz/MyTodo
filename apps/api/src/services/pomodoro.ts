@@ -6,9 +6,11 @@ import {
   HTTP_STATUS,
   type PomodoroSessionResponse,
 } from "@mytodo/shared";
+import type { Queue } from "bullmq";
 import type { Database, DbExecutor } from "../db/index.js";
-import { habits, pomodoroSessions, type User } from "../db/schema/index.js";
+import { habits, pomodoroSessions, users, type Habit, type User } from "../db/schema/index.js";
 import { computeRemainingSeconds } from "../lib/session-minutes.js";
+import { POMODORO_BREAK_JOB, type PomodoroBreakJobData } from "../worker/push-queue.js";
 import { CheckinService } from "./checkins.js";
 import type { PledgeService } from "./pledges.js";
 
@@ -16,6 +18,7 @@ export class PomodoroService {
   constructor(
     private readonly db: DbExecutor,
     private readonly pledgeService?: PledgeService,
+    private readonly pushQueue?: Queue<PomodoroBreakJobData>,
   ) {}
 
   async start(user: User, habitId: string): Promise<PomodoroSessionResponse> {
@@ -48,6 +51,8 @@ export class PomodoroService {
         "Failed to start pomodoro session",
       );
     }
+
+    await this.scheduleBreakJob(session.id, user.id, habit.id, session.workMin);
 
     return this.toResponse(session, now);
   }
@@ -91,6 +96,8 @@ export class PomodoroService {
           "Pomodoro session was already completed or stopped",
         );
       }
+
+      await this.clearBreakJob(session.id);
 
       const checkin = await new CheckinService(executor, this.pledgeService).applySessionMinutes(
         user,
@@ -139,7 +146,86 @@ export class PomodoroService {
       );
     }
 
+    await this.clearBreakJob(session.id);
+
     return this.toResponse(updated, now);
+  }
+
+  async getSessionForBreakPush(
+    userId: string,
+    sessionId: string,
+    habitId: string,
+  ): Promise<{ user: User; habit: Habit; breakMin: number } | null> {
+    const [session] = await this.db
+      .select()
+      .from(pomodoroSessions)
+      .where(
+        and(
+          eq(pomodoroSessions.id, sessionId),
+          eq(pomodoroSessions.userId, userId),
+          eq(pomodoroSessions.habitId, habitId),
+          eq(pomodoroSessions.completed, false),
+          isNull(pomodoroSessions.endedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!session) {
+      return null;
+    }
+
+    const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) {
+      return null;
+    }
+
+    const habit = await this.getPomodoroHabit(userId, habitId);
+
+    return {
+      user,
+      habit,
+      breakMin: user.pomodoroBreakMin,
+    };
+  }
+
+  private async scheduleBreakJob(
+    sessionId: string,
+    userId: string,
+    habitId: string,
+    workMin: number,
+  ): Promise<void> {
+    if (!this.pushQueue) {
+      return;
+    }
+
+    const jobData: PomodoroBreakJobData = {
+      session_id: sessionId,
+      user_id: userId,
+      habit_id: habitId,
+    };
+
+    try {
+      await this.pushQueue.add(POMODORO_BREAK_JOB, jobData, {
+        jobId: `pomodoro-break:${sessionId}`,
+        delay: workMin * 60_000,
+        removeOnComplete: true,
+      });
+    } catch {
+      // Redis may be unavailable in tests
+    }
+  }
+
+  private async clearBreakJob(sessionId: string): Promise<void> {
+    if (!this.pushQueue) {
+      return;
+    }
+
+    try {
+      const job = await this.pushQueue.getJob(`pomodoro-break:${sessionId}`);
+      await job?.remove();
+    } catch {
+      // ignore
+    }
   }
 
   async countCompletedToday(userId: string, timezone: string) {

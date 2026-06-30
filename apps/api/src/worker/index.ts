@@ -8,9 +8,11 @@ import { DoomScrollService } from "../services/doom-scroll.js";
 import { DayCloseService } from "../services/day-close.js";
 import { BillingService } from "../services/billing.js";
 import { PledgeService } from "../services/pledges.js";
+import { PomodoroService } from "../services/pomodoro.js";
 import { PushService, seedPushTemplates } from "../services/push.js";
 import { createYukassaClient } from "../lib/yukassa/client.js";
 import { resolveWebPushClient } from "../lib/web-push/index.js";
+import { createPushQueue } from "./push-queue.js";
 import { startWorker } from "./scheduler.js";
 import { startPushWorker } from "./push-queue.js";
 
@@ -35,8 +37,10 @@ async function main(): Promise<void> {
   const webPush = resolveWebPushClient(env);
   const pushService = new PushService(db, webPush, logger);
   await seedPushTemplates(db);
+  const pushQueue = createPushQueue(redis);
   const checkinService = new CheckinService(db, pledgeService, pushService);
-  const doomScrollService = new DoomScrollService(db, checkinService, pushService);
+  const pomodoroService = new PomodoroService(db, pledgeService, pushQueue);
+  const doomScrollService = new DoomScrollService(db, checkinService, pushService, pushQueue);
   const dayCloseService = new DayCloseService(db, doomScrollService, pledgeService, pushService);
   const billingService = new BillingService(db, yukassa, pledgeService);
 
@@ -54,6 +58,7 @@ async function main(): Promise<void> {
     redis,
     pushService,
     doomScrollService,
+    pomodoroService,
     logger,
   );
 

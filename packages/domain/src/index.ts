@@ -151,9 +151,15 @@ export {
   findDueCheerSlot,
   findDueScheduleEvents,
   getLocalTimeParts,
+  isEarlyRiseWakeDue,
   isLocalTimeMatch,
   pickCheerCount,
   type LocalTime,
   type PushScheduleEvent,
   type ScheduledPushSlot,
 } from "./push/schedule.js";
+export {
+  isUserAwake,
+  isUserAwakeAtMinutes,
+  isWakeFlushMinute,
+} from "./push/awake-window.js";

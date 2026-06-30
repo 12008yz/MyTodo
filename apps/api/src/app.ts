@@ -103,7 +103,7 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
   const nutritionLogService = new NutritionLogService(db);
   const checkinService = new CheckinService(db, pledgeService, pushService, readingProgressService);
   const pushQueue = env.NODE_ENV === "test" ? undefined : createPushQueue(redis);
-  const pomodoroService = new PomodoroService(db, pledgeService);
+  const pomodoroService = new PomodoroService(db, pledgeService, pushQueue);
   const habitSessionService = new HabitSessionService(db, pledgeService, readingProgressService);
   const doomScrollService = new DoomScrollService(db, checkinService, pushService, pushQueue);
   const todayService = new TodayService(

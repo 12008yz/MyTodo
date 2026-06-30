@@ -87,7 +87,6 @@ export class DoomScrollService {
       );
     }
 
-    await this.pushService?.onDoomScrollStart(user, habit, sessionMin);
     await this.scheduleSessionJobs(session.id, user.id, habit.id, sessionMin, platform ?? null);
 
     return this.toResponse(session, now);

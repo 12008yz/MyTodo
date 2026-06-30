@@ -218,6 +218,13 @@
       "when": 1782793200000,
       "tag": "0031_smoking_abstinence_type",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1782796800000,
+      "tag": "0032_push_pending",
+      "breakpoints": true
     }
   ]
 }

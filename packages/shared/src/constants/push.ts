@@ -2,6 +2,8 @@ export const PUSH_EVENT_TYPES = [
   "morning",
   "afternoon",
   "evening",
+  "early_rise_wake",
+  "pomodoro_break",
   "relapse",
   "success",
   "smoke_cheer",

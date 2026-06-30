@@ -3,16 +3,20 @@ import {
   effectiveHarshnessLevel,
   findDueCheerSlot,
   findDueScheduleEvents,
+  formatEarlyRiseTargetWakeTime,
   getUserLocalDate,
+  isEarlyRiseWakeDue,
   isSilenceModeActive,
+  isUserAwake,
+  isWakeFlushMinute,
 } from "@mytodo/domain";
 import {
   ApiError,
   buildDefaultPushTemplates,
   ERROR_CODES,
   HTTP_STATUS,
+  PUSH_COACH_MESSAGES,
   resolveDoomScrollEndMessage,
-  resolveDoomScrollStartMessage,
   resolveDoomScrollWarningMessage,
   type DoomScrollPlatform,
   type PushEventType,
@@ -24,12 +28,14 @@ import {
   habits,
   notificationTemplates,
   pushDeliveryLog,
+  pushPending,
   pushSubscriptions,
   users,
   type Habit,
   type User,
 } from "../db/schema/index.js";
 import type { WebPushClient } from "../lib/web-push/types.js";
+import { isEarlyRiseEnforcementActiveForUser } from "../lib/warmup.js";
 
 export type PushLogger = {
   info: (obj: Record<string, unknown>, message?: string) => void;
@@ -38,7 +44,9 @@ export type PushLogger = {
 
 type SendEventOptions = {
   slot?: number;
+  at?: Date;
   skipSilenceCheck?: boolean;
+  skipSleepCheck?: boolean;
   skipDedup?: boolean;
   harshnessLevel?: number;
   body?: string;
@@ -88,7 +96,7 @@ export class PushService {
 
   async sendTest(userId: string): Promise<boolean> {
     const user = await this.getUser(userId);
-    return this.sendEvent(user, "test", { skipDedup: true });
+    return this.sendEvent(user, "test", { skipDedup: true, skipSleepCheck: true });
   }
 
   async broadcast(
@@ -163,7 +171,7 @@ export class PushService {
   }
 
   async sendEvent(user: User, eventType: PushEventType, options: SendEventOptions = {}): Promise<boolean> {
-    const now = new Date();
+    const now = options.at ?? new Date();
 
     if (!options.skipSilenceCheck && isSilenceModeActive(user.silenceModeUntil, now)) {
       return false;
@@ -187,6 +195,16 @@ export class PushService {
       .where(eq(pushSubscriptions.userId, user.id));
 
     if (subscriptions.length === 0) {
+      return false;
+    }
+
+    if (
+      !options.skipSleepCheck &&
+      user.wakeTime &&
+      user.sleepTime &&
+      !isUserAwake(now, user.timezone, user.wakeTime, user.sleepTime)
+    ) {
+      await this.deferPush(user.id, eventType, message, harshness);
       return false;
     }
 
@@ -257,11 +275,32 @@ export class PushService {
       }
 
       const dueEvents = findDueScheduleEvents(now, user.timezone, user.wakeTime, user.sleepTime);
+      const localDate = getUserLocalDate(now, user.timezone);
+      const earlyRiseActive = await this.hasEarlyRiseEnforcementToday(user, localDate);
+      const earlyRiseTargetWake = earlyRiseActive
+        ? await this.resolveEarlyRiseTargetWake(user)
+        : null;
+
+      if (isWakeFlushMinute(now, user.timezone, user.wakeTime, earlyRiseTargetWake)) {
+        await this.flushPendingPushes(user);
+      }
+
       for (const eventType of dueEvents) {
+        if (eventType === "morning" && earlyRiseActive) {
+          continue;
+        }
+
+        if (eventType === "evening" && !(await this.shouldSendEveningReminder(user, localDate))) {
+          continue;
+        }
+
         await this.sendEvent(user, eventType, { slot: 0 });
       }
 
-      const localDate = getUserLocalDate(now, user.timezone);
+      if (earlyRiseActive && user.wakeTime) {
+        await this.maybeSendEarlyRiseWake(user, now, localDate);
+      }
+
       const cheerSlot = findDueCheerSlot(
         now,
         user.timezone,
@@ -282,27 +321,6 @@ export class PushService {
     status: string,
     previousStatus?: string | null,
   ): Promise<void> {
-    if (habit.type === "abstinence" && status === "fail") {
-      await this.sendEvent(user, "relapse", {
-        skipDedup: true,
-        harshnessLevel: habit.harshnessLevel,
-      });
-      return;
-    }
-
-    if (
-      habit.side === "light" &&
-      habit.type === "target" &&
-      status === "success" &&
-      previousStatus !== "success"
-    ) {
-      await this.sendEvent(user, "success", {
-        skipDedup: true,
-        harshnessLevel: habit.harshnessLevel,
-      });
-      return;
-    }
-
     if (
       habit.templateId === "social_media" &&
       habit.type === "limit" &&
@@ -316,16 +334,20 @@ export class PushService {
     }
   }
 
-  async onDoomScrollStart(user: User, habit: Habit, durationMin: number): Promise<void> {
+  async onPomodoroBreak(user: User, breakMin: number): Promise<boolean> {
     const harshness = effectiveHarshnessLevel(
       user.harshnessLevel,
       user.silenceModeUntil,
       new Date(),
     ) as 1 | 2 | 3;
-    await this.sendEvent(user, "doom_scroll_start", {
+    const template =
+      (await this.resolveMessage("pomodoro_break", harshness)) ??
+      PUSH_COACH_MESSAGES.pomodoro_break[harshness];
+    const body = template.replace(/\d+/g, String(breakMin));
+
+    return this.sendEvent(user, "pomodoro_break", {
       skipDedup: true,
-      harshnessLevel: habit.harshnessLevel,
-      body: resolveDoomScrollStartMessage(durationMin, harshness),
+      body,
     });
   }
 
@@ -409,6 +431,204 @@ export class PushService {
     }
 
     return true;
+  }
+
+  private async hasEarlyRiseEnforcementToday(user: User, localDate: string): Promise<boolean> {
+    if (!isEarlyRiseEnforcementActiveForUser(user, localDate)) {
+      return false;
+    }
+
+    const rows = await this.db
+      .select({ id: habits.id })
+      .from(habits)
+      .where(
+        and(
+          eq(habits.userId, user.id),
+          eq(habits.isActive, true),
+          eq(habits.categoryKey, "early_rise"),
+        ),
+      )
+      .limit(1);
+
+    return rows.length > 0;
+  }
+
+  private async maybeSendEarlyRiseWake(user: User, now: Date, localDate: string): Promise<void> {
+    if (!user.wakeTime) {
+      return;
+    }
+
+    const earlyRiseHabits = await this.db
+      .select()
+      .from(habits)
+      .where(
+        and(
+          eq(habits.userId, user.id),
+          eq(habits.isActive, true),
+          eq(habits.categoryKey, "early_rise"),
+        ),
+      );
+
+    if (earlyRiseHabits.length === 0) {
+      return;
+    }
+
+    const habit = earlyRiseHabits[0]!;
+    if (
+      !isEarlyRiseWakeDue(now, user.timezone, user.wakeTime, Number(habit.currentGoal))
+    ) {
+      return;
+    }
+
+    const [todayCheckin] = await this.db
+      .select()
+      .from(checkins)
+      .where(and(eq(checkins.habitId, habit.id), eq(checkins.date, localDate)))
+      .limit(1);
+
+    if (
+      todayCheckin &&
+      (todayCheckin.status === "success" ||
+        todayCheckin.status === "fail" ||
+        todayCheckin.status === "skipped")
+    ) {
+      return;
+    }
+
+    await this.sendEvent(user, "early_rise_wake", { slot: 0 });
+  }
+
+  private async shouldSendEveningReminder(user: User, localDate: string): Promise<boolean> {
+    const activeHabits = await this.db
+      .select()
+      .from(habits)
+      .where(and(eq(habits.userId, user.id), eq(habits.isActive, true)));
+
+    for (const habit of activeHabits) {
+      if (this.isEveningReminderExcluded(habit)) {
+        continue;
+      }
+
+      const [todayCheckin] = await this.db
+        .select()
+        .from(checkins)
+        .where(and(eq(checkins.habitId, habit.id), eq(checkins.date, localDate)))
+        .limit(1);
+
+      if (this.habitNeedsEveningReminder(habit, todayCheckin ?? null)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private isEveningReminderExcluded(habit: Habit): boolean {
+    if (habit.categoryKey === "healthy_nutrition") {
+      return true;
+    }
+
+    if (habit.categoryKey === "early_rise") {
+      return true;
+    }
+
+    if (habit.type === "abstinence") {
+      return true;
+    }
+
+    return false;
+  }
+
+  private habitNeedsEveningReminder(
+    habit: Habit,
+    checkin: { status: string; value: string | null } | null,
+  ): boolean {
+    if (!checkin) {
+      return true;
+    }
+
+    if (habit.type === "target") {
+      if (checkin.status === "success") {
+        return false;
+      }
+
+      if (
+        checkin.value != null &&
+        Number(checkin.value) >= Number(habit.currentGoal)
+      ) {
+        return false;
+      }
+
+      return true;
+    }
+
+    if (habit.type === "limit") {
+      if (checkin.status === "fail" || checkin.status === "success") {
+        return false;
+      }
+
+      return checkin.value == null;
+    }
+
+    return false;
+  }
+
+  private async resolveEarlyRiseTargetWake(user: User): Promise<string | null> {
+    if (!user.wakeTime) {
+      return null;
+    }
+
+    const [habit] = await this.db
+      .select({ currentGoal: habits.currentGoal })
+      .from(habits)
+      .where(
+        and(
+          eq(habits.userId, user.id),
+          eq(habits.isActive, true),
+          eq(habits.categoryKey, "early_rise"),
+        ),
+      )
+      .limit(1);
+
+    if (!habit) {
+      return null;
+    }
+
+    return formatEarlyRiseTargetWakeTime(user.wakeTime, Number(habit.currentGoal));
+  }
+
+  private async deferPush(
+    userId: string,
+    eventType: PushEventType,
+    body: string,
+    harshnessLevel: number,
+  ): Promise<void> {
+    await this.db.insert(pushPending).values({
+      userId,
+      eventType,
+      body,
+      harshnessLevel,
+    });
+  }
+
+  private async flushPendingPushes(user: User): Promise<void> {
+    const pending = await this.db
+      .select()
+      .from(pushPending)
+      .where(eq(pushPending.userId, user.id))
+      .orderBy(asc(pushPending.createdAt));
+
+    for (const item of pending) {
+      const sent = await this.sendEvent(user, item.eventType as PushEventType, {
+        body: item.body,
+        harshnessLevel: item.harshnessLevel ?? undefined,
+        skipDedup: true,
+        skipSleepCheck: true,
+      });
+      if (sent) {
+        await this.db.delete(pushPending).where(eq(pushPending.id, item.id));
+      }
+    }
   }
 
   private async reserveDelivery(

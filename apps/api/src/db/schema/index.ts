@@ -546,3 +546,23 @@ export const pushDeliveryLog = pgTable(
 
 export type PushDeliveryLog = typeof pushDeliveryLog.$inferSelect;
 export type NewPushDeliveryLog = typeof pushDeliveryLog.$inferInsert;
+
+export const pushPending = pgTable(
+  "push_pending",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    eventType: varchar("event_type", { length: 64 }).notNull(),
+    body: text("body").notNull(),
+    harshnessLevel: integer("harshness_level"),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdIdx: index("push_pending_user_id_idx").on(table.userId),
+  }),
+);
+
+export type PushPending = typeof pushPending.$inferSelect;
+export type NewPushPending = typeof pushPending.$inferInsert;

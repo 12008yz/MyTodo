@@ -4,6 +4,7 @@ import {
   computeDailyPushSchedule,
   findDueCheerSlot,
   findDueScheduleEvents,
+  isEarlyRiseWakeDue,
   pickCheerCount,
 } from "./schedule.js";
 
@@ -21,9 +22,9 @@ describe("push schedule", () => {
     expect(schedule.map((slot) => slot.eventType)).toEqual(["morning", "evening"]);
   });
 
-  it("picks 3 to 5 cheer slots per day", () => {
-    expect(pickCheerCount("2026-06-01")).toBeGreaterThanOrEqual(3);
-    expect(pickCheerCount("2026-06-01")).toBeLessThanOrEqual(5);
+  it("picks 2 to 3 cheer slots per day", () => {
+    expect(pickCheerCount("2026-06-01")).toBeGreaterThanOrEqual(2);
+    expect(pickCheerCount("2026-06-01")).toBeLessThanOrEqual(3);
   });
 
   it("spaces cheer slots at least 2 hours apart", () => {
@@ -51,5 +52,11 @@ describe("push schedule", () => {
     const utc = new Date(`2026-06-18T${String(first.hour).padStart(2, "0")}:${String(first.minute).padStart(2, "0")}:00.000Z`);
     const slot = findDueCheerSlot(utc, "UTC", "07:00", "23:00", localDate);
     expect(slot).toBe(1);
+  });
+
+  it("detects early rise wake time", () => {
+    const utc = new Date("2026-06-18T04:00:00.000Z");
+    expect(isEarlyRiseWakeDue(utc, "Europe/Moscow", "07:00", 0)).toBe(true);
+    expect(isEarlyRiseWakeDue(utc, "Europe/Moscow", "07:00", 5)).toBe(false);
   });
 });

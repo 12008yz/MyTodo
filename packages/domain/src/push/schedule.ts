@@ -1,3 +1,5 @@
+import { formatEarlyRiseTargetWakeTime } from "../habits/workload.js";
+
 export const PUSH_SCHEDULE_EVENTS = ["morning", "afternoon", "evening"] as const;
 
 export type PushScheduleEvent = (typeof PUSH_SCHEDULE_EVENTS)[number];
@@ -83,13 +85,13 @@ export function isLocalTimeMatch(utc: Date, timezone: string, target: LocalTime)
   return local.hour === target.hour && local.minute === target.minute;
 }
 
-/** Deterministic 3–5 cheer pushes per local day (§9.2). */
+/** Deterministic 2–3 cheer pushes per local day (§9.2). */
 export function pickCheerCount(localDate: string): number {
   let hash = 0;
   for (const char of localDate) {
     hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   }
-  return 3 + (hash % 3);
+  return 2 + (hash % 2);
 }
 
 export function computeCheerSlotTimes(
@@ -143,4 +145,14 @@ export function findDueCheerSlot(
   }
 
   return null;
+}
+
+export function isEarlyRiseWakeDue(
+  utc: Date,
+  timezone: string,
+  wakeTime: string,
+  shiftMinutes: number,
+): boolean {
+  const target = parseLocalTime(formatEarlyRiseTargetWakeTime(wakeTime, shiftMinutes));
+  return isLocalTimeMatch(utc, timezone, target);
 }

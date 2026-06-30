@@ -125,7 +125,9 @@ Test connection: `pnpm --filter @mytodo/api test:gigachat`
 | GET    | `/habits/:id/doom-scroll/active` | Active session       |
 | POST   | `/habits/:id/doom-scroll/stop`   | Stop early           |
 
-**Doom-scroll** (`social_media` only): daily limit is in minutes. Session length is `min(15, remaining minutes today)`. Start body (optional): `{ "platform": "tiktok" | "youtube_shorts" | "instagram_reels" | "youtube" | "other" }` — used for end/warning push copy. Push events: `doom_scroll_start` (immediate), `doom_scroll_warning` (5 min before end, if session &gt; 5 min), `doom_scroll_end` (natural expiry), `doom_scroll_limit` (start blocked).
+**Doom-scroll** (`social_media` only): daily limit is in minutes. Session length is `min(15, remaining minutes today)`. Start body (optional): `{ "platform": "tiktok" | "youtube_shorts" | "instagram_reels" | "youtube" | "other" }` — used for end/warning push copy. Push events: `doom_scroll_warning` (5 min before end, if session &gt; 5 min), `doom_scroll_end` (natural expiry), `doom_scroll_limit` (daily limit reached). No push on session start or early stop.
+
+**Pomodoro** (light habits with `unit: minutes`): `pomodoro_break` is sent server-side when the work timer ends (BullMQ), if the session is still active.
 
 ## Stats
 
@@ -226,6 +228,24 @@ Response: `{ weeks[] }` — each week `{ week_start, days[7] }` with `{ date, li
 | POST   | `/push/subscribe` | Save Web Push subscription |
 | DELETE | `/push/subscribe` | Remove subscription        |
 | POST   | `/push/test`      | Send test notification     |
+
+Worker push schedule (per user timezone, requires `wake_time` / `sleep_time`):
+
+| Event | When | Notes |
+| ----- | ---- | ----- |
+| `early_rise_wake` | Target wake time | Only if `early_rise` habit is active; replaces `morning` that day |
+| `morning` | `wake_time` | Skipped when early-rise enforcement is active |
+| `afternoon` | Midpoint of wake–sleep window | Omitted if span &lt; 6 h |
+| `evening` | `sleep_time − 30 min` | Only if there are unclosed checkin habits |
+| `smoke_cheer` | 2–3× between wake and sleep | Smoking abstinence only, no relapse today |
+| `pomodoro_break` | End of pomodoro work block | BullMQ job from `/pomodoro/start` |
+| `doom_scroll_warning` / `doom_scroll_end` | Session timer | BullMQ jobs from doom-scroll start |
+| `doom_scroll_limit` | Limit exceeded | On blocked start or limit checkin fail |
+| `goal_reduced` | Day close (23:59) | Dark limit habit progression; **deferred to wake** if user is asleep |
+
+Push respects the profile schedule (`wake_time` … `sleep_time`): nothing is delivered while the user is in their sleep window. Deferred pushes (e.g. `goal_reduced`, late doom-scroll / pomodoro) are sent at `wake_time` or early-rise target time.
+
+Not sent: `success`, `relapse`, `doom_scroll_start` (in-app actions).
 
 ## Admin (`role: admin`)
 
