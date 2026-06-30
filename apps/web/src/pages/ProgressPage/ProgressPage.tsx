@@ -1,48 +1,59 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import type { ProgressPeriod } from "@mytodo/shared";
 import { SideToggle } from "../../components/SideToggle/SideToggle";
 import { useHabitSide } from "../../features/shell/SideContext";
-import { HabitProgressChart } from "../../features/progress/HabitProgressChart";
+import { CalendarLegend } from "../../features/progress/CalendarLegend";
+import { AnimatedCalendarStage } from "../../features/progress/AnimatedCalendarStage";
 import {
   formatMonthParam,
   getMonthTitle,
   MonthCalendar,
   shiftMonth,
 } from "../../features/progress/MonthCalendar";
+import {
+  calendarSlideClass,
+  useCalendarMonthSlide,
+} from "../../features/progress/useCalendarMonthSlide";
 import { useTodayDashboard } from "../../features/today/useTodayData";
-import { ClientApiError, getHabitProgress, getStatsCalendar, getStatsMonth } from "../../lib/api";
+import { ClientApiError, getStatsCalendar, getStatsMonth } from "../../lib/api";
 import { isDemoMode } from "../../lib/demo-mode";
 
-const PERIOD_OPTIONS: { value: ProgressPeriod; label: string }[] = [
-  { value: "week", label: "Неделя" },
-  { value: "month", label: "Месяц" },
-  { value: "quarter", label: "Квартал" },
-];
+function monthFromDate(date: string): string {
+  return date.slice(0, 7);
+}
 
 export function ProgressPage() {
   const { side } = useHabitSide();
   const [month, setMonth] = useState(() => formatMonthParam(new Date()));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
-  const [period, setPeriod] = useState<ProgressPeriod>("month");
+  const { slideDirection, beginSlide } = useCalendarMonthSlide();
 
   const { dashboard } = useTodayDashboard(side);
-  const habits = dashboard?.habits ?? [];
+  const todayDate = dashboard?.date ?? null;
+  const monthSyncedRef = useRef(false);
 
   useEffect(() => {
+    if (!todayDate || monthSyncedRef.current) {
+      return;
+    }
+    setMonth(monthFromDate(todayDate));
+    monthSyncedRef.current = true;
+  }, [todayDate]);
+
+  useEffect(() => {
+    if (todayDate && monthFromDate(todayDate) === month) {
+      setSelectedDate(todayDate);
+      return;
+    }
     setSelectedDate(null);
   }, [month, side]);
 
   useEffect(() => {
-    if (habits.length === 0) {
-      setSelectedHabitId(null);
+    if (!todayDate || monthFromDate(todayDate) !== month) {
       return;
     }
-    if (!selectedHabitId || !habits.some((habit) => habit.id === selectedHabitId)) {
-      setSelectedHabitId(habits[0]!.id);
-    }
-  }, [habits, selectedHabitId]);
+    setSelectedDate((current) => current ?? todayDate);
+  }, [todayDate, month]);
 
   const calendarQuery = useQuery({
     queryKey: ["stats-calendar", month, side],
@@ -56,24 +67,30 @@ export function ProgressPage() {
     placeholderData: keepPreviousData,
   });
 
-  const progressQuery = useQuery({
-    queryKey: ["stats-progress", side, selectedHabitId, period],
-    queryFn: () => getHabitProgress(selectedHabitId!, period),
-    enabled: Boolean(selectedHabitId),
-    placeholderData: keepPreviousData,
-  });
+  const calendarPayload =
+    calendarQuery.data?.month === month ? calendarQuery.data : null;
+  const monthPayload = monthQuery.data?.month === month ? monthQuery.data : null;
 
   const selectedDay = useMemo(() => {
-    if (!selectedDate || !calendarQuery.data) return null;
-    return calendarQuery.data.days.find((day) => day.date === selectedDate) ?? null;
-  }, [calendarQuery.data, selectedDate]);
+    if (!selectedDate || !calendarPayload) return null;
+    return calendarPayload.days.find((day) => day.date === selectedDate) ?? null;
+  }, [calendarPayload, selectedDate]);
 
   const isCalendarInitialLoading =
-    (calendarQuery.isLoading && !calendarQuery.data) ||
-    (monthQuery.isLoading && !monthQuery.data);
+    (calendarQuery.isLoading && !calendarPayload) ||
+    (monthQuery.isLoading && !monthPayload);
   const isCalendarRefreshing =
-    (calendarQuery.isFetching && Boolean(calendarQuery.data)) ||
-    (monthQuery.isFetching && Boolean(monthQuery.data));
+    slideDirection === "none" &&
+    ((calendarQuery.isFetching && Boolean(calendarPayload)) ||
+      (monthQuery.isFetching && Boolean(monthPayload)));
+
+  const goMonth = (delta: -1 | 1) => {
+    beginSlide(delta);
+    setMonth((current) => shiftMonth(current, delta));
+  };
+
+  const titleClass = calendarSlideClass("progress__month-title", slideDirection);
+  const gridClass = calendarSlideClass("progress__calendar-grid", slideDirection);
 
   return (
     <>
@@ -94,18 +111,22 @@ export function ProgressPage() {
           <button
             type="button"
             className="progress__month-btn"
-            onClick={() => setMonth((current) => shiftMonth(current, -1))}
+            onClick={() => goMonth(-1)}
             aria-label="Предыдущий месяц"
           >
             ‹
           </button>
-          <h2 id="month-heading" className="home__section-title progress__month-title">
+          <h2
+            key={`${side}-${month}`}
+            id="month-heading"
+            className={["home__section-title", titleClass].join(" ")}
+          >
             {getMonthTitle(month)}
           </h2>
           <button
             type="button"
             className="progress__month-btn"
-            onClick={() => setMonth((current) => shiftMonth(current, 1))}
+            onClick={() => goMonth(1)}
             aria-label="Следующий месяц"
           >
             ›
@@ -121,35 +142,59 @@ export function ProgressPage() {
         ) : isCalendarInitialLoading ? (
           <div className="progress__calendar-skeleton" aria-busy="true" aria-label="Загрузка календаря" />
         ) : (
-          <div
-            className={[
-              "home__side-panel",
-              isCalendarRefreshing ? "home__side-panel--refreshing" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-          >
-            <MonthCalendar
-              month={month}
-              days={calendarQuery.data?.days ?? []}
-              selectedDate={selectedDate}
-              onSelectDate={setSelectedDate}
-            />
-          </div>
-        )}
+          <>
+            <AnimatedCalendarStage measureKey={`${side}-${month}-${calendarPayload ? "ready" : "loading"}`}>
+              <div
+                key={`${side}-${month}`}
+                className={[
+                  gridClass,
+                  isCalendarRefreshing ? "progress__calendar-grid--refreshing" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                {calendarPayload ? (
+                  <MonthCalendar
+                    month={month}
+                    days={calendarPayload.days}
+                    selectedDate={selectedDate}
+                    onSelectDate={setSelectedDate}
+                    todayDate={todayDate}
+                  />
+                ) : (
+                  <div
+                    className="progress__calendar-skeleton progress__calendar-skeleton--inline"
+                    aria-busy="true"
+                    aria-label="Загрузка календаря"
+                  />
+                )}
+              </div>
+            </AnimatedCalendarStage>
 
-        {monthQuery.data ? (
-          <div className="progress__month-summary">
-            <div className="home__stat-card home__stat-card--primary">
-              <span className="home__stat-label">Успешных дней</span>
-              <span className="home__stat-value">{monthQuery.data.success_days}</span>
-            </div>
-            <div className="home__stat-card home__stat-card--light">
-              <span className="home__stat-label">Срывы</span>
-              <span className="home__stat-value">{monthQuery.data.relapses}</span>
-            </div>
-          </div>
-        ) : null}
+            <CalendarLegend />
+
+            {monthPayload ? (
+              <div className="progress__month-summary">
+                <div className="home__stat-card home__stat-card--primary">
+                  <span className="home__stat-label">Успешных дней</span>
+                  <span className="home__stat-value">{monthPayload.success_days}</span>
+                </div>
+                <div className="home__stat-card home__stat-card--light">
+                  <span className="home__stat-label">% успеха</span>
+                  <span className="home__stat-value">{monthPayload.success_rate}%</span>
+                </div>
+                <div className="home__stat-card home__stat-card--light">
+                  <span className="home__stat-label">Срывы</span>
+                  <span className="home__stat-value">{monthPayload.relapses}</span>
+                </div>
+                <div className="home__stat-card home__stat-card--light">
+                  <span className="home__stat-label">Закрытых дней</span>
+                  <span className="home__stat-value">{monthPayload.closed_days}</span>
+                </div>
+              </div>
+            ) : null}
+          </>
+        )}
 
         {selectedDay ? (
           <div className="progress__day-detail">
@@ -181,68 +226,6 @@ export function ProgressPage() {
             )}
           </div>
         ) : null}
-      </section>
-
-      <section className="home__section" aria-labelledby="chart-heading">
-        <h2 id="chart-heading" className="home__section-title">
-          График привычки
-        </h2>
-
-        {habits.length === 0 ? (
-          <p className="home__placeholder">
-            Нет привычек на {side === "light" ? "светлой" : "тёмной"} стороне
-          </p>
-        ) : (
-          <>
-            <label className="progress__habit-select">
-              <span className="progress__habit-select-label">Привычка</span>
-              <select
-                className="progress__habit-select-input"
-                value={selectedHabitId ?? ""}
-                onChange={(event) => setSelectedHabitId(event.target.value)}
-              >
-                {habits.map((habit) => (
-                  <option key={habit.id} value={habit.id}>
-                    {habit.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="progress__period-toggle" role="tablist" aria-label="Период графика">
-              {PERIOD_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={period === option.value}
-                  className={[
-                    "progress__period-btn",
-                    period === option.value ? "progress__period-btn--active" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  onClick={() => setPeriod(option.value)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-
-            <HabitProgressChart
-              data={progressQuery.data}
-              isLoading={progressQuery.isLoading && !progressQuery.data}
-              isFetching={progressQuery.isFetching && Boolean(progressQuery.data)}
-              error={
-                progressQuery.isError
-                  ? progressQuery.error instanceof ClientApiError
-                    ? progressQuery.error.message
-                    : "Не удалось загрузить график"
-                  : null
-              }
-            />
-          </>
-        )}
       </section>
     </>
   );

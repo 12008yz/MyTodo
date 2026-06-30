@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { DayColorValue } from "@mytodo/shared";
 
 const COLOR_CLASS: Record<DayColorValue, string> = {
@@ -9,11 +10,14 @@ const COLOR_CLASS: Record<DayColorValue, string> = {
 
 const WEEKDAY_HEADERS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"] as const;
 
+const DAYS_PER_WEEK = 7;
+
 type MonthCalendarProps = {
   month: string;
   days: Array<{ date: string; color: DayColorValue }>;
   selectedDate: string | null;
   onSelectDate: (date: string) => void;
+  todayDate?: string | null;
 };
 
 function getMonthLabel(month: string): string {
@@ -40,15 +44,36 @@ function buildCalendarCells(month: string, days: MonthCalendarProps["days"]) {
     cells.push({ date: day.date, color: colorByDate.get(day.date) ?? "pending" });
   }
 
-  while (cells.length % 7 !== 0) {
+  while (cells.length % DAYS_PER_WEEK !== 0) {
     cells.push({ date: null });
   }
 
   return cells;
 }
 
-export function MonthCalendar({ month, days, selectedDate, onSelectDate }: MonthCalendarProps) {
+export function countCalendarGridCells(
+  month: string,
+  days: Array<{ date: string; color: DayColorValue }>,
+): number {
+  return buildCalendarCells(month, days).length;
+}
+
+export function countCalendarWeekRows(
+  month: string,
+  days: Array<{ date: string; color: DayColorValue }>,
+): number {
+  return countCalendarGridCells(month, days) / DAYS_PER_WEEK;
+}
+
+export function MonthCalendar({
+  month,
+  days,
+  selectedDate,
+  onSelectDate,
+  todayDate,
+}: MonthCalendarProps) {
   const cells = buildCalendarCells(month, days);
+  const weekRows = cells.length / DAYS_PER_WEEK;
 
   return (
     <div className="progress__calendar" aria-label={`Календарь: ${getMonthLabel(month)}`}>
@@ -59,7 +84,10 @@ export function MonthCalendar({ month, days, selectedDate, onSelectDate }: Month
           </span>
         ))}
       </div>
-      <div className="progress__cal-grid">
+      <div
+        className="progress__cal-grid"
+        style={{ "--cal-week-rows": weekRows } as CSSProperties}
+      >
         {cells.map((cell, index) => {
           if (!cell.date) {
             return <span key={`empty-${index}`} className="progress__cal-day progress__cal-day--empty" />;
@@ -67,6 +95,7 @@ export function MonthCalendar({ month, days, selectedDate, onSelectDate }: Month
 
           const dayNum = Number(cell.date.slice(-2));
           const isSelected = cell.date === selectedDate;
+          const isToday = todayDate != null && cell.date === todayDate;
 
           return (
             <button
@@ -75,12 +104,14 @@ export function MonthCalendar({ month, days, selectedDate, onSelectDate }: Month
               className={[
                 "progress__cal-day",
                 COLOR_CLASS[cell.color ?? "pending"],
+                isToday ? "progress__cal-day--today" : "",
                 isSelected ? "progress__cal-day--selected" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
               onClick={() => onSelectDate(cell.date!)}
-              aria-label={cell.date}
+              aria-label={isToday ? `${cell.date}, сегодня` : cell.date}
+              aria-current={isToday ? "date" : undefined}
             >
               {dayNum}
             </button>
