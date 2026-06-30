@@ -58,6 +58,7 @@ import { ExtraSessionModal } from "../sessions/ExtraSessionModal";
 import { ValuePrompt } from "../sessions/ValuePrompt";
 import { getSessionElapsedSeconds, getSessionRemainingSeconds } from "../sessions/sessionRecovery";
 import {
+  formatExtraSessionDuration,
   resolveSessionPlan,
   type StartSessionOverrides,
 } from "../sessions/sessionPlan";
@@ -410,6 +411,7 @@ export function DailyPlanHabitRow({
     () => resolveSessionPlan(habit, block),
     [habit, block],
   );
+  const startDurationLabel = formatExtraSessionDuration(defaultExtraSessionPlan, habit.unit);
   const [extraSessionOpen, setExtraSessionOpen] = useState(false);
   const [strengthResetKey, setStrengthResetKey] = useState(0);
   const [strengthExercisesDone, setStrengthExercisesDone] = useState(() =>
@@ -841,7 +843,7 @@ export function DailyPlanHabitRow({
       : goalReached
       ? "Ещё сессия"
       : block
-        ? `Начать · ${formatSessionDuration(block)}`
+        ? `Начать · ${startDurationLabel}`
         : "Начать";
 
   const quickAddChips =

@@ -391,6 +391,14 @@ export function DailyPlanList({
 }: DailyPlanListProps) {
   const activeData = activeSide === "light" ? light : dark;
   const plan = getPlan(activeData);
+  const displayMinutesCompleted =
+    activeSide === "light" && minutesLoggedToday != null
+      ? minutesLoggedToday
+      : plan.minutes_completed;
+  const displayMinutesPlanned =
+    activeSide === "light" && dailyBudgetMin != null
+      ? dailyBudgetMin
+      : plan.minutes_planned;
   const planBlockIds = useMemo(() => new Set(plan.blocks.map((block) => block.id)), [plan.blocks]);
   const queryClient = useQueryClient();
   const startSession = useStartHabitSession(activeSide);
@@ -444,8 +452,8 @@ export function DailyPlanList({
   }, [backgroundSessions, focusState?.habit.id, focusState?.sessionId, timer.elapsedSeconds]);
 
   const progressPercent =
-    plan.minutes_planned > 0
-      ? Math.min(100, Math.round((plan.minutes_completed / plan.minutes_planned) * 100))
+    displayMinutesPlanned > 0
+      ? Math.min(100, Math.round((displayMinutesCompleted / displayMinutesPlanned) * 100))
       : 0;
 
   const submitCompletion = useCallback(
@@ -1049,7 +1057,7 @@ export function DailyPlanList({
           План дня
         </h2>
         <span className="home__plan-summary">
-          {plan.minutes_completed}/{plan.minutes_planned} мин
+          {displayMinutesCompleted}/{displayMinutesPlanned} мин
         </span>
       </div>
 

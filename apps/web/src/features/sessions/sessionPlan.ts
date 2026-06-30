@@ -1,5 +1,5 @@
 import type { DailyPlanBlock, TodayDarkHabit, TodayLightHabit } from "@mytodo/shared";
-import { SESSION_TARGET_MIN, sessionBudgetMinutes } from "@mytodo/shared";
+import { isWarmupHabit, SESSION_TARGET_MIN, sessionBudgetMinutes, STRETCH_TARGET_MINUTES } from "@mytodo/shared";
 
 export const EXTRA_SESSION_MIN_MIN = 5;
 export const EXTRA_SESSION_MAX_MIN = 30;
@@ -40,6 +40,13 @@ export function resolveSessionPlan(
   block: DailyPlanBlock | null,
   fallbackMin = SESSION_TARGET_MIN,
 ): SessionPlan {
+  if (isWarmupHabit(habit)) {
+    return {
+      plannedMin: STRETCH_TARGET_MINUTES,
+      plannedSeconds: null,
+    };
+  }
+
   if (block?.unit === "seconds" && block.expected_yield > 0) {
     const plannedSeconds = Math.max(1, Math.round(block.expected_yield));
     return {
