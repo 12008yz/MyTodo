@@ -9,6 +9,8 @@ import {
   isPlankHabit,
   isWarmupHabit,
   isStrengthWorkoutHabit,
+  isCoachEligibleDarkHabit,
+  darkReductionDots,
   resolveStrengthProgressionLevel,
   strengthRepsPerExercise,
   STRENGTH_WORKOUT_REPS_PER_ROUND,
@@ -62,6 +64,7 @@ import { PlankTechniqueDemo } from "./PlankTechniqueDemo";
 import { WarmupTechniqueDemo } from "./WarmupTechniqueDemo";
 import { MeditationGuide } from "./MeditationGuide";
 import { EnglishLessonDrawer } from "./EnglishLessonDrawer";
+import { DarkCoachSheet } from "../coach/DarkCoachSheet";
 import { stopVkEmbedsInContainer } from "../english/vk-api";
 import { clearEnglishLessonManualMinutes, readEnglishLessonManualMinutes, resolveEnglishCardMinutes } from "../english/englishLessonManual";
 import {
@@ -230,8 +233,14 @@ export function DailyPlanHabitRow({
   const [expandedLook, setExpandedLook] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [bookPickerOpen, setBookPickerOpen] = useState(false);
+  const [coachOpen, setCoachOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<SelectedBook | null>(null);
   const status = habit.checkin?.status;
+  const showCoachButton = side === "dark" && isCoachEligibleDarkHabit(habit.template_id);
+  const showReductionTrack =
+    side === "dark" &&
+    habit.type === "limit" &&
+    habit.progression_interval_days > 1;
   const isBooks = isBooksHabit(habit);
   const isStrengthWorkout = isStrengthWorkoutHabit(habit);
   const isPlank = isPlankHabit(habit);
@@ -321,6 +330,13 @@ export function DailyPlanHabitRow({
   const goalReached = isForeignLanguage
     ? timerComplete || englishLessonComplete
     : status === "success";
+  const reductionDots = showReductionTrack
+    ? darkReductionDots(
+        habit.success_days_at_goal,
+        habit.progression_interval_days,
+        goalReached,
+      )
+    : [];
   const showAsCompleted = goalReached && !(isForeignLanguage && expanded);
   const canStartSession =
     !isNonSessionHabit &&
@@ -774,6 +790,23 @@ export function DailyPlanHabitRow({
           <p className="home__task-timer">Чистое время: {formatTimer(timer.elapsed)}</p>
         ) : null}
 
+        {showReductionTrack ? (
+          <div className="home__dark-reduction" aria-label="Прогресс к снижению лимита">
+            {reductionDots.map((dot, index) => (
+              <span
+                key={index}
+                className={[
+                  "home__dark-reduction-dot",
+                  dot === "done" ? "home__dark-reduction-dot--done" : "",
+                  dot === "current" ? "home__dark-reduction-dot--current" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              />
+            ))}
+          </div>
+        ) : null}
+
         {!timer && habit.type !== "abstinence" && !isNonSessionHabit ? (
           <div className="home__plan-item-progress">
             <div
@@ -878,6 +911,20 @@ export function DailyPlanHabitRow({
               }}
             >
               +
+            </button>
+          ) : null}
+
+          {showCoachButton ? (
+            <button
+              type="button"
+              className="home__task-btn home__task-btn--coach"
+              disabled={isPending || sessionBusy}
+              onClick={(event) => {
+                event.stopPropagation();
+                setCoachOpen(true);
+              }}
+            >
+              Поговорить
             </button>
           ) : null}
 
@@ -1062,6 +1109,16 @@ export function DailyPlanHabitRow({
           onStart?.(plan);
         }}
       />
+
+      {showCoachButton ? (
+        <DarkCoachSheet
+          open={coachOpen}
+          habitId={habit.id}
+          habitName={habit.name}
+          templateId={habit.template_id}
+          onClose={() => setCoachOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

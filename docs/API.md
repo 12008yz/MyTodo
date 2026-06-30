@@ -63,6 +63,39 @@ Only habits with `category_key: healthy_nutrition` (or name «Правильно
 
 Recipe catalog is bundled in the web app (`@mytodo/shared` / `@mytodo/domain`), not served via API.
 
+## Coach (dark-side urge support)
+
+| Method | Path          | Description                                   |
+| ------ | ------------- | --------------------------------------------- |
+| POST   | `/coach/chat` | Chat with habit coach `{ habit_id, message }` |
+
+Response: `{ reply, messages_left, source }` where `source` is `gigachat` or `template`.
+
+- Habits: smoking, sugar, sweets, nail_biting (not social_media).
+- Limit: 5 user messages per local day.
+- Env: `GIGACHAT_CREDENTIALS` (optional; template fallback if unset).
+- Push `goal_reduced` when dark limit decreases after 3 successful days.
+
+### GigaChat setup
+
+1. Register at [developers.sber.ru](https://developers.sber.ru) (Sber ID) → create project → **GigaChat API** (scope `GIGACHAT_API_PERS` for individuals).
+2. In project settings, copy **Authorization key** (ключ авторизации).
+3. Add to `apps/api/.env` (create from `apps/api/.env.example`). Full guide: [SETUP.md](./SETUP.md#gigachat--пошагово).
+
+```env
+GIGACHAT_CREDENTIALS=<Authorization key as-is>
+```
+
+The key is sent as `Authorization: Basic <key>` to Sber OAuth — paste the value from the cabinet, do not add `Basic ` prefix.
+
+**TLS (Windows/macOS):** Sber uses the Russian Trusted Root CA. The repo bundles `apps/api/certs/russian_trusted_root_ca.cer`; the API loads it automatically. Override with `GIGACHAT_CA_CERT` if needed.
+
+Test connection: `pnpm --filter @mytodo/api test:gigachat`
+
+**Without the key:** chat still works via built-in templates (`source: "template"`).
+
+**Freemium:** ~1M tokens/year on personal scope — enough for dev and early users with the 5 messages/day limit.
+
 ## Checkins
 
 | Method | Path                        | Description                                                                        |

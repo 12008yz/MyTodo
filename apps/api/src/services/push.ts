@@ -37,6 +37,7 @@ type SendEventOptions = {
   skipSilenceCheck?: boolean;
   skipDedup?: boolean;
   harshnessLevel?: number;
+  body?: string;
 };
 
 export class PushService {
@@ -170,7 +171,7 @@ export class PushService {
     const harshness =
       options.harshnessLevel ??
       effectiveHarshnessLevel(user.harshnessLevel, user.silenceModeUntil, now);
-    const message = await this.resolveMessage(eventType, harshness);
+    const message = options.body ?? (await this.resolveMessage(eventType, harshness));
 
     if (!message) {
       return false;
@@ -421,10 +422,21 @@ export class PushService {
 export const DEFAULT_PUSH_TEMPLATES = buildDefaultPushTemplates();
 
 export async function seedPushTemplates(db: DbExecutor): Promise<void> {
-  const existing = await db.select({ id: notificationTemplates.id }).from(notificationTemplates).limit(1);
-  if (existing.length > 0) {
-    return;
-  }
+  const existing = await db
+    .select({
+      eventType: notificationTemplates.eventType,
+      harshnessLevel: notificationTemplates.harshnessLevel,
+    })
+    .from(notificationTemplates);
 
-  await db.insert(notificationTemplates).values(DEFAULT_PUSH_TEMPLATES);
+  const existingKeys = new Set(
+    existing.map((row) => `${row.eventType}:${row.harshnessLevel}`),
+  );
+  const missing = DEFAULT_PUSH_TEMPLATES.filter(
+    (template) => !existingKeys.has(`${template.eventType}:${template.harshnessLevel}`),
+  );
+
+  if (missing.length > 0) {
+    await db.insert(notificationTemplates).values(missing);
+  }
 }

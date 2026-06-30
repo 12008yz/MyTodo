@@ -23,6 +23,7 @@ import { registerEnglishRoutes } from "./routes/english.js";
 import { registerBillingRoutes } from "./routes/billing.js";
 import { registerPledgeRoutes } from "./routes/pledges.js";
 import { registerPushRoutes } from "./routes/push.js";
+import { registerCoachRoutes } from "./routes/coach.js";
 import { registerAdminRoutes } from "./routes/admin.js";
 import { createAuthServices } from "./services/auth.js";
 import { HabitService } from "./services/habits.js";
@@ -40,6 +41,7 @@ import { PledgeService } from "./services/pledges.js";
 import { PushService, seedPushTemplates } from "./services/push.js";
 import { seedEnglishLessons } from "./services/seed.js";
 import { AdminService } from "./services/admin.js";
+import { CoachService, resolveCoachGigaChatClient } from "./services/coach.js";
 import { createYukassaClient } from "./lib/yukassa/client.js";
 import { resolveWebPushClient, type WebPushClient } from "./lib/web-push/index.js";
 import { createPushQueue } from "./worker/push-queue.js";
@@ -118,6 +120,11 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
   const requireAccess = createRequireAccess(db, billingService);
   const requireAdmin = createRequireAdmin(db);
   const adminService = new AdminService(db, billingService, pledgeService);
+  const coachService = new CoachService(
+    db,
+    env.NODE_ENV === "test" ? null : redis,
+    resolveCoachGigaChatClient(env.GIGACHAT_CREDENTIALS),
+  );
 
   await registerHealthRoutes(app, { dbClient, redis });
   await registerAuthRoutes(app, authService);
@@ -135,6 +142,7 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
   await registerBillingRoutes(app, billingService);
   await registerPledgeRoutes(app, pledgeService, requireAccess);
   await registerPushRoutes(app, pushService, requireAccess);
+  await registerCoachRoutes(app, userService, coachService, requireAccess);
   await registerAdminRoutes(app, adminService, pushService, requireAdmin);
 
   app.addHook("onClose", async () => {

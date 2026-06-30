@@ -397,6 +397,32 @@ export {
   type HarshnessLevel,
 } from "./constants/coach-messages.js";
 export {
+  BADGE_SWEET_FREEDOM,
+  BADGE_SWEET_FREEDOM_TITLE,
+  COACH_DAILY_MESSAGE_LIMIT,
+  COACH_ELIGIBLE_DARK_TEMPLATES,
+  COACH_QUICK_REPLIES,
+  DARK_COACH_URGE_MESSAGES,
+  detectCoachMessageIntent,
+  isCoachEligibleDarkHabit,
+  resolveDarkCoachReply,
+  resolveDarkCoachUrgeMessage,
+  type CoachEligibleDarkTemplate,
+  type CoachMessageIntent,
+} from "./constants/coach.js";
+export {
+  darkReductionDots,
+  formatDarkReductionProgressLabel,
+  formatGoalReducedPushBody,
+  type DarkReductionDot,
+} from "./coach/dark-progress.js";
+export {
+  coachChatRequestSchema,
+  coachChatResponseSchema,
+  type CoachChatRequest,
+  type CoachChatResponse,
+} from "./schemas/coach.js";
+export {
   DAY_START_SLOTS,
   getWarmupDayMessage,
   WARMUP_DAY_BANNER,

@@ -79,6 +79,10 @@ import {
   type EnglishSelectLessonResponse,
   type EnglishWatchRequest,
   type EnglishWatchResponse,
+  coachChatRequestSchema,
+  coachChatResponseSchema,
+  type CoachChatRequest,
+  type CoachChatResponse,
 } from "@mytodo/shared";
 import {
   clearTokens,
@@ -124,6 +128,7 @@ import {
   demoGetEnglishHistory,
   demoUpdateMe,
   demoEnterShowcase,
+  demoSendCoachChat,
 } from "./demo-api";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
@@ -714,6 +719,29 @@ export async function sendPushTest(): Promise<PushTestResponse> {
     method: "POST",
   });
   return pushTestResponseSchema.parse(response);
+}
+
+export async function sendCoachChat(body: CoachChatRequest): Promise<CoachChatResponse> {
+  if (isDemoMode()) {
+    return demoSendCoachChat(body);
+  }
+
+  try {
+    const response = await apiFetch<unknown>("/api/v1/coach/chat", {
+      method: "POST",
+      body: JSON.stringify(coachChatRequestSchema.parse(body)),
+    });
+    return coachChatResponseSchema.parse(response);
+  } catch (err) {
+    if (err instanceof ClientApiError) {
+      throw err;
+    }
+    throw new ClientApiError(
+      "Сервер не отвечает. Запустите pnpm dev (API + Docker) или pnpm dev:demo",
+      0,
+      "SERVICE_UNAVAILABLE",
+    );
+  }
 }
 
 export async function enterDemoShowcase(): Promise<AuthResponse> {

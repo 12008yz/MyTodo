@@ -17,6 +17,7 @@ const baseEnvSchema = z.object({
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
+  GIGACHAT_CREDENTIALS: z.string().optional(),
 });
 
 export type Env = z.infer<typeof baseEnvSchema>;

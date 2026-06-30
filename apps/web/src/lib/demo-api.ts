@@ -75,6 +75,11 @@ import {
   type TodayLightHabit,
   type TodayLightResponse,
   type UserProfile,
+  COACH_DAILY_MESSAGE_LIMIT,
+  resolveDarkCoachReply,
+  isCoachEligibleDarkHabit,
+  type CoachChatRequest,
+  type CoachChatResponse,
 } from "@mytodo/shared";
 import { setTokens } from "./auth-storage";
 import { DEMO_EMAIL, DEMO_PASSWORD } from "./demo-mode";
@@ -130,6 +135,7 @@ type DemoState = {
   sessions: DemoHabitSession[];
   readingByHabitId: Record<string, DemoReadingProgress>;
   nutritionByHabitId: Record<string, HabitNutritionLog>;
+  coachChatUsage?: { date: string; count: number };
 };
 
 type DemoHabitSession = Omit<HabitSessionResponse, "remaining_seconds" | "is_paused"> & {
@@ -2640,5 +2646,35 @@ export function demoSubscribePush(data: PushSubscribeRequest): PushSubscribeResp
   return {
     id: crypto.randomUUID(),
     endpoint: data.endpoint,
+  };
+}
+
+export function demoSendCoachChat(body: CoachChatRequest): CoachChatResponse {
+  const state = ensureState();
+  const habit = state.habits.find((row) => row.id === body.habit_id);
+  if (!habit) {
+    throw new Error("Habit not found");
+  }
+  if (habit.side !== "dark" || !isCoachEligibleDarkHabit(habit.template_id)) {
+    throw new Error("Coach is not available for this habit");
+  }
+
+  const date = todayDate();
+  const usage =
+    state.coachChatUsage?.date === date ? state.coachChatUsage.count : 0;
+  if (usage >= COACH_DAILY_MESSAGE_LIMIT) {
+    throw new Error(`Лимит сообщений на сегодня (${COACH_DAILY_MESSAGE_LIMIT}) исчерпан`);
+  }
+
+  const harshness = Math.min(3, Math.max(1, state.user.harshness_level)) as 1 | 2 | 3;
+  const reply = resolveDarkCoachReply(habit.template_id, harshness, body.message);
+
+  state.coachChatUsage = { date, count: usage + 1 };
+  saveState(state);
+
+  return {
+    reply,
+    messages_left: Math.max(0, COACH_DAILY_MESSAGE_LIMIT - usage - 1),
+    source: "template",
   };
 }

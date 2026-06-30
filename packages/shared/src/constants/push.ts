@@ -8,6 +8,7 @@ export const PUSH_EVENT_TYPES = [
   "doom_scroll_start",
   "doom_scroll_end",
   "doom_scroll_limit",
+  "goal_reduced",
   "test",
 ] as const;
 

@@ -5,7 +5,7 @@ import {
   isDayCloseMinute,
   type HabitForDayClose,
 } from "@mytodo/domain";
-import { SOCIAL_MEDIA_MIN_GOAL, isCompanionLightHabit, isEarlyRiseCategoryKey } from "@mytodo/shared";
+import { SOCIAL_MEDIA_MIN_GOAL, formatGoalReducedPushBody, isCompanionLightHabit, isEarlyRiseCategoryKey, type HabitUnit } from "@mytodo/shared";
 import { and, eq } from "drizzle-orm";
 import type { Database, DbExecutor } from "../db/index.js";
 import { isWeekendDate } from "@mytodo/domain";
@@ -26,6 +26,19 @@ import type { DoomScrollService } from "./doom-scroll.js";
 import { applyPendingTimezoneIfDue } from "../lib/user-timezone.js";
 import { isWarmupDayForUser } from "../lib/warmup.js";
 import type { PledgeService } from "./pledges.js";
+import { awardSweetFreedomBadge } from "./badges.js";
+import type { PushService } from "./push.js";
+
+const UNIT_LABELS: Record<HabitUnit, string> = {
+  pages: "стр.",
+  minutes: "мин",
+  reps: "повт.",
+  seconds: "сек",
+  cigarettes: "сиг.",
+  spoons: "лож.",
+  pieces: "шт.",
+  lessons: "урок.",
+};
 
 export type DayCloseSummary = {
   user_id: string;
@@ -39,6 +52,7 @@ export class DayCloseService {
     private readonly db: DbExecutor,
     private readonly doomScrollService: DoomScrollService,
     private readonly pledgeService?: PledgeService,
+    private readonly pushService?: PushService,
   ) {}
 
   /** Users whose local time is 23:59 at the given instant. */
@@ -248,6 +262,36 @@ export class DayCloseService {
 
       if (result.status === "fail") {
         await this.pledgeService?.failActivePledgeForHabit(habit.id, executor);
+      }
+
+      const goalReduced =
+        habit.side === "dark" &&
+        habit.type === "limit" &&
+        result.nextGoal < goalBeforeClose;
+
+      if (goalReduced) {
+        const unitLabel = UNIT_LABELS[habit.unit as HabitUnit] ?? habit.unit ?? "";
+        const body =
+          result.nextPhase === "abstinence"
+            ? "Отлично! Ты дошёл до нуля. Завтра — полный отказ. Таймер «не курю» запущен."
+            : formatGoalReducedPushBody(
+                result.nextGoal,
+                unitLabel,
+                Math.min(3, Math.max(1, user.harshnessLevel)) as 1 | 2 | 3,
+              );
+        await this.pushService?.sendEvent(user, "goal_reduced", {
+          skipDedup: true,
+          harshnessLevel: habit.harshnessLevel,
+          body,
+        });
+      }
+
+      if (
+        habit.templateId === "sweets" &&
+        goalBeforeClose > 0 &&
+        result.nextGoal === 0
+      ) {
+        await awardSweetFreedomBadge(executor, user.id);
       }
 
       return true;

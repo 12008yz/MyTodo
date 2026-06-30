@@ -7,6 +7,7 @@ import {
   isStrengthWorkoutHabit,
   resolveStrengthProgressionLevel,
   strengthRepsPerExercise,
+  formatDarkReductionProgressLabel,
 } from "@mytodo/shared";
 import { formatEarlyRiseTargetWakeTime, isWeekendDate } from "@mytodo/domain";
 import { EARLY_RISE_WEEKEND_MESSAGE } from "@mytodo/shared";
@@ -219,6 +220,27 @@ export function formatCardHint(params: {
       };
     }
 
+    if (
+      habit.side === "dark" &&
+      habit.type === "limit" &&
+      habit.progression_interval_days > 1
+    ) {
+      if (habit.preview_next_goal < habit.current_goal) {
+        return {
+          text: `Цель выполнена · завтра лимит: ${habit.preview_next_goal} ${unit}`,
+          variant: "success",
+        };
+      }
+      return {
+        text: `Цель выполнена · ${formatDarkReductionProgressLabel(
+          habit.success_days_at_goal,
+          habit.progression_interval_days,
+          true,
+        )}`,
+        variant: "success",
+      };
+    }
+
     return {
       text: `Цель выполнена · завтра: ${habit.preview_next_goal} ${unit}`,
       variant: "success",
@@ -260,6 +282,22 @@ export function formatCardHint(params: {
   if (habit.streak_days >= 2) {
     return {
       text: `Серия: ${formatStreakDays(habit.streak_days)}`,
+      variant: "hint",
+    };
+  }
+
+  if (
+    habit.side === "dark" &&
+    habit.type === "limit" &&
+    habit.progression_interval_days > 1 &&
+    habit.preview_next_goal >= habit.current_goal
+  ) {
+    return {
+      text: formatDarkReductionProgressLabel(
+        habit.success_days_at_goal,
+        habit.progression_interval_days,
+        false,
+      ),
       variant: "hint",
     };
   }

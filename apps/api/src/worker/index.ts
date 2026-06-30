@@ -37,7 +37,7 @@ async function main(): Promise<void> {
   await seedPushTemplates(db);
   const checkinService = new CheckinService(db, pledgeService, pushService);
   const doomScrollService = new DoomScrollService(db, checkinService, pushService);
-  const dayCloseService = new DayCloseService(db, doomScrollService, pledgeService);
+  const dayCloseService = new DayCloseService(db, doomScrollService, pledgeService, pushService);
   const billingService = new BillingService(db, yukassa, pledgeService);
 
   const { worker } = await startWorker(

@@ -1040,6 +1040,37 @@
   background: #ff7d53;
 }
 
+.home__task-btn--coach {
+  background: #2f3a58;
+  color: #eef2ff;
+  border: 1px solid rgba(148, 163, 207, 0.35);
+}
+
+.home__dark-reduction {
+  display: flex;
+  gap: calc(8 * var(--s));
+  margin: calc(6 * var(--s)) 0 calc(2 * var(--s));
+}
+
+.home__dark-reduction-dot {
+  width: calc(12 * var(--s));
+  height: calc(12 * var(--s));
+  border-radius: 999px;
+  background: rgba(148, 163, 207, 0.2);
+  border: 1px solid rgba(148, 163, 207, 0.35);
+}
+
+.home__dark-reduction-dot--done {
+  background: #6d8cff;
+  border-color: #6d8cff;
+}
+
+.home__dark-reduction-dot--current {
+  background: rgba(109, 140, 255, 0.25);
+  border-color: #6d8cff;
+  box-shadow: 0 0 0 calc(2 * var(--s)) rgba(109, 140, 255, 0.2);
+}
+
 .home__task-btn--start {
   flex: 1;
   min-width: 0;
