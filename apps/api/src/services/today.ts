@@ -359,7 +359,11 @@ export class TodayService {
 
     return userHabits.map((habit) => {
       const checkin = todayCheckins.get(habit.id) ?? null;
-      const dayStatus = previewStatusFromCheckin(checkin?.status);
+      const dayStatus = previewStatusFromCheckin(
+        checkin?.status,
+        toProgressionHabit(habit),
+        checkin?.value === null || checkin?.value === undefined ? null : Number(checkin.value),
+      );
       const previewNextGoal = computeNextGoal(toProgressionHabit(habit), dayStatus);
       const activeFrom = getUserLocalDate(habit.createdAt, user.timezone);
       const streakDays = computeHabitStreak(

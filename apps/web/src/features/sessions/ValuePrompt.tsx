@@ -6,7 +6,8 @@ type ValuePromptProps = {
   isOpen: boolean;
   habitName: string;
   unit: HabitUnit;
-  expectedYield: number;
+  expectedYield?: number;
+  showExpectedHint?: boolean;
   inputLabel?: string;
   isSubmitting?: boolean;
   onCancel: () => void;
@@ -17,7 +18,8 @@ export function ValuePrompt({
   isOpen,
   habitName,
   unit,
-  expectedYield,
+  expectedYield = 0,
+  showExpectedHint = true,
   inputLabel = "Сколько сделал?",
   isSubmitting = false,
   onCancel,
@@ -57,9 +59,11 @@ export function ValuePrompt({
         <h3 id="value-prompt-title" className="home__value-prompt-title">
           {habitName}
         </h3>
-        <p className="home__value-prompt-hint">
-          Ожидаемо: {expectedYield} {formatUnit(unit)}
-        </p>
+        {showExpectedHint ? (
+          <p className="home__value-prompt-hint">
+            Ожидаемо: {expectedYield} {formatUnit(unit)}
+          </p>
+        ) : null}
         <label className="home__value-prompt-label" htmlFor="value-prompt-input">
           {inputLabel}
         </label>

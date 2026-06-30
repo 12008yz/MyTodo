@@ -304,7 +304,11 @@ export class DoomScrollService {
       current_goal: currentGoal,
       preview_next_goal: computeNextGoal(
         toProgressionHabit(habit),
-        previewStatusFromCheckin(status === "pending" ? undefined : status),
+        previewStatusFromCheckin(
+          status,
+          toProgressionHabit(habit),
+          existing?.value == null ? null : Number(existing.value),
+        ),
       ),
     };
   }

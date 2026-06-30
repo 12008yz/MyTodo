@@ -1,3 +1,5 @@
+import type { DayStatus } from "./progression.js";
+
 export type CheckinStatus = "success" | "fail" | "skipped" | "pending";
 
 export type HabitForCheckin = {
@@ -47,7 +49,31 @@ export function resolveCheckinStatus(
     return input.value >= habit.currentGoal ? "success" : "fail";
   }
 
-  return input.value <= habit.currentGoal ? "success" : "fail";
+  if (input.value > habit.currentGoal) {
+    return "fail";
+  }
+
+  return "pending";
+}
+
+export function previewDayStatusForProgression(
+  habit: HabitForCheckin,
+  status: string | undefined,
+  value: number | null | undefined,
+): DayStatus {
+  if (status === "success" || status === "fail" || status === "skipped") {
+    return status;
+  }
+
+  if (status === "pending") {
+    if (habit.type === "limit" && value != null && value <= habit.currentGoal) {
+      return "success";
+    }
+
+    return "fail";
+  }
+
+  return "success";
 }
 
 function parseIsoDate(dateStr: string): { y: number; m: number; d: number } {

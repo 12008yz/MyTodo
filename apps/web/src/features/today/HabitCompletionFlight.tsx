@@ -9,7 +9,7 @@ export type CompletionFlightRect = {
 
 export function captureHabitPlanItemRect(habitId: string): CompletionFlightRect | null {
   const element = document.querySelector(
-    `.home__plan-list-layer--active [data-habit-plan-item="${CSS.escape(habitId)}"]`,
+    `.home__plan-list-layer [data-habit-plan-item="${CSS.escape(habitId)}"]`,
   );
   if (!element) {
     return null;

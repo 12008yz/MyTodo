@@ -94,7 +94,7 @@ describe("Checkins", () => {
     return habitResponseSchema.parse(JSON.parse(response.body));
   }
 
-  it("records dark limit success with unchanged preview_next_goal until interval met", async () => {
+  it("records dark limit as pending while within allowance and keeps preview_next_goal until interval met", async () => {
     const auth = await createOnboardedUser("dark-success@example.com");
     const habit = await createDarkHabit(auth.access_token);
 
@@ -111,7 +111,7 @@ describe("Checkins", () => {
 
     expect(response.statusCode).toBe(201);
     const checkin = checkinResponseSchema.parse(JSON.parse(response.body));
-    expect(checkin.status).toBe("success");
+    expect(checkin.status).toBe("pending");
     expect(checkin.preview_next_goal).toBe(20);
     expect(habit.progression_interval_days).toBe(3);
   });

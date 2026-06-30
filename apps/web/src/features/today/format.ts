@@ -29,6 +29,23 @@ export function formatUnit(unit: HabitUnit | null): string {
   return UNIT_LABELS[unit] ?? unit;
 }
 
+function formatCigarettesCount(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 14) return `${count} сигарет`;
+  if (mod10 === 1) return `${count} сигарета`;
+  if (mod10 >= 2 && mod10 <= 4) return `${count} сигареты`;
+  return `${count} сигарет`;
+}
+
+export function formatSmokingRemainingLabel(consumed: number, limit: number): string {
+  const remaining = limit - Math.floor(consumed);
+  if (remaining <= 0) {
+    return "лимит на сегодня исчерпан";
+  }
+  return `осталось ${formatCigarettesCount(remaining)}`;
+}
+
 function formatPagesGoalLabel(count: number): string {
   const mod10 = count % 10;
   const mod100 = count % 100;
@@ -302,7 +319,12 @@ export function formatCardHint(params: {
     };
   }
 
-  if (block && block.unit !== "minutes" && block.expected_yield > 0) {
+  if (
+    block &&
+    block.unit !== "minutes" &&
+    block.expected_yield > 0 &&
+    !(habit.side === "dark" && habit.type === "limit")
+  ) {
     const prefix = block.unit === "seconds" ? "" : "~";
     return {
       text: `Сессия: ${prefix}${block.expected_yield} ${formatUnit(block.unit)}`,

@@ -5,6 +5,7 @@ import {
   computeNextGoal,
   getUserLocalDate,
   isWeekendDate,
+  previewDayStatusForProgression,
   resolveCheckinStatus,
   resolveForeignLanguageCheckinStatus,
   type CheckinStatus,
@@ -27,7 +28,7 @@ import {
   type User,
 } from "../db/schema/index.js";
 import { toCheckinResponse } from "../lib/checkin-mapper.js";
-import { previewStatusFromCheckin, toProgressionHabit } from "../lib/habit-progression.js";
+import { toProgressionHabit } from "../lib/habit-progression.js";
 import {
   isEarlyRiseEnforcementActiveForUser,
   isWarmupDayForUser,
@@ -191,7 +192,7 @@ export class CheckinService {
       currentGoal,
       previewNextGoal: computeNextGoal(
         toProgressionHabit(habit),
-        previewStatusFromCheckin(status),
+        previewDayStatusForProgression(this.toCheckinHabit(habit), status, value),
       ),
       created: !existing,
     };
@@ -273,7 +274,7 @@ export class CheckinService {
       current_goal: currentGoal,
       preview_next_goal: computeNextGoal(
         toProgressionHabit(habit),
-        previewStatusFromCheckin(status),
+        previewDayStatusForProgression(this.toCheckinHabit(habit), status, newValue),
       ),
     };
   }
@@ -707,7 +708,11 @@ export class CheckinService {
     const currentGoal = Number(habit.currentGoal);
     const previewNextGoal = computeNextGoal(
       toProgressionHabit(habit),
-      previewStatusFromCheckin(checkin.status),
+      previewDayStatusForProgression(
+        this.toCheckinHabit(habit),
+        checkin.status,
+        checkin.value === null ? null : Number(checkin.value),
+      ),
     );
 
     return toCheckinResponse(checkin, currentGoal, previewNextGoal);

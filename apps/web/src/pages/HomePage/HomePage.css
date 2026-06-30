@@ -311,8 +311,8 @@
 .home__page {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: min-content;
+  flex: 0 0 auto;
+  width: 100%;
 }
 
 @keyframes home-page-from-right {
@@ -1190,28 +1190,32 @@
 }
 
 .home__plan-lists-crossfade {
-  display: grid;
+  display: flex;
+  flex-direction: column;
 }
 
 .home__plan-list-layer {
-  grid-area: 1 / 1;
   min-width: 0;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition:
-    opacity var(--home-habit-crossfade-duration) var(--side-ease),
-    visibility 0s linear var(--home-habit-crossfade-duration);
+  width: 100%;
+  animation: home-plan-layer-in var(--home-habit-crossfade-duration) var(--side-ease) both;
 }
 
-.home__plan-list-layer--active {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: auto;
-  z-index: 1;
-  transition:
-    opacity var(--home-habit-crossfade-duration) var(--side-ease),
-    visibility 0s linear 0s;
+@keyframes home-plan-layer-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(6 * var(--s)));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home__plan-list-layer {
+    animation: none;
+  }
 }
 
 .home__plan-item {
@@ -3000,7 +3004,6 @@
   .home__task-card,
   .home__stat-card--light,
   .home__plan-list-layer,
-  .home__plan-list-layer--active,
   .home__plan-summary,
   .home__plan-progress,
   .home__demo-banner,

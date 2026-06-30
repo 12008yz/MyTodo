@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canSkipThisWeek,
   countSkipsInWeek,
+  previewDayStatusForProgression,
   resolveCheckinStatus,
   resolveForeignLanguageCheckinStatus,
   type HabitForCheckin,
@@ -47,13 +48,17 @@ describe("resolveCheckinStatus", () => {
     expect(resolveCheckinStatus(booksHabit(5), { value: 8 })).toBe("success");
   });
 
-  it("marks dark limit success when value is within goal", () => {
-    expect(resolveCheckinStatus(darkLimit(20), { value: 18 })).toBe("success");
-    expect(resolveCheckinStatus(darkLimit(20), { value: 20 })).toBe("success");
+  it("keeps dark limit in progress while within the daily allowance", () => {
+    expect(resolveCheckinStatus(darkLimit(20), { value: 0 })).toBe("pending");
+    expect(resolveCheckinStatus(darkLimit(20), { value: 1 })).toBe("pending");
+    expect(resolveCheckinStatus(darkLimit(12), { value: 12 })).toBe("pending");
+    expect(resolveCheckinStatus(darkLimit(20), { value: 18 })).toBe("pending");
+    expect(resolveCheckinStatus(darkLimit(20), { value: 20 })).toBe("pending");
   });
 
   it("marks dark limit fail when value exceeds goal", () => {
     expect(resolveCheckinStatus(darkLimit(20), { value: 21 })).toBe("fail");
+    expect(resolveCheckinStatus(darkLimit(12), { value: 13 })).toBe("fail");
   });
 
   it("returns skipped when explicitly requested for light habits", () => {
@@ -62,6 +67,17 @@ describe("resolveCheckinStatus", () => {
 
   it("returns fail for abstinence relapse", () => {
     expect(resolveCheckinStatus(abstinence, { status: "fail" })).toBe("fail");
+  });
+});
+
+describe("previewDayStatusForProgression", () => {
+  it("treats in-limit pending checkins as successful for progression preview", () => {
+    expect(previewDayStatusForProgression(darkLimit(12), "pending", 1)).toBe("success");
+    expect(previewDayStatusForProgression(darkLimit(20), "pending", 18)).toBe("success");
+  });
+
+  it("treats over-limit pending checkins as failed for progression preview", () => {
+    expect(previewDayStatusForProgression(darkLimit(12), "pending", 13)).toBe("fail");
   });
 });
 

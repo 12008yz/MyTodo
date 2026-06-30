@@ -1,6 +1,7 @@
 import type { Habit } from "../db/schema/index.js";
 import { SOCIAL_MEDIA_MIN_GOAL } from "@mytodo/shared";
 import type { DayStatus, HabitForProgression } from "@mytodo/domain";
+import { previewDayStatusForProgression } from "@mytodo/domain";
 
 export function toProgressionHabit(habit: Habit): HabitForProgression {
   return {
@@ -18,15 +19,28 @@ export function toProgressionHabit(habit: Habit): HabitForProgression {
   };
 }
 
-export function previewStatusFromCheckin(status: string | undefined): DayStatus {
-  if (status === "success" || status === "fail" || status === "skipped") {
-    return status;
+export function previewStatusFromCheckin(
+  status: string | undefined,
+  habit?: Pick<HabitForProgression, "type" | "side" | "currentGoal">,
+  value?: number | null,
+): DayStatus {
+  if (!habit) {
+    if (status === "success" || status === "fail" || status === "skipped") {
+      return status;
+    }
+    if (status === "pending") {
+      return "fail";
+    }
+    return "success";
   }
 
-  if (status === "pending") {
-    return "fail";
-  }
-
-  // No checkin yet — show optimistic preview ("goal tomorrow on success").
-  return "success";
+  return previewDayStatusForProgression(
+    {
+      type: habit.type,
+      side: habit.side,
+      currentGoal: habit.currentGoal,
+    },
+    status,
+    value,
+  );
 }

@@ -293,6 +293,7 @@ function HabitListLayer({
         timezone={timezone}
         warmupDay={warmupDay}
         onStart={
+          side === "light" &&
           habit.type !== "abstinence" &&
           !isNonSessionLightCategory(habit.category_key) &&
           !isStrengthWorkoutHabit(habit)
@@ -368,12 +369,7 @@ function HabitListLayer({
 
   return (
     <div
-      className={[
-        "home__plan-list-layer",
-        isActive ? "home__plan-list-layer--active" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className="home__plan-list-layer"
       data-side={side}
       aria-hidden={!isActive}
     >
@@ -1039,6 +1035,11 @@ export function DailyPlanList({
       window.clearTimeout(completionFlightTimeoutRef.current);
       completionFlightTimeoutRef.current = null;
     }
+
+    const scroll = document.querySelector(".home__scroll");
+    if (scroll instanceof HTMLElement) {
+      scroll.scrollTop = 0;
+    }
   }, [activeSide]);
 
   return (
@@ -1064,10 +1065,11 @@ export function DailyPlanList({
 
       <div className="home__plan-lists-crossfade">
         <HabitListLayer
-          side="light"
-          sideData={light}
-          isActive={activeSide === "light"}
-          focusHabitId={activeSide === "light" ? focusHabitId : null}
+          key={activeSide}
+          side={activeSide}
+          sideData={activeData}
+          isActive
+          focusHabitId={focusHabitId}
           sessionBusy={isBusy}
           backgroundSessions={backgroundSessions}
           focusElapsedByHabitId={focusElapsedByHabitId}
@@ -1077,23 +1079,7 @@ export function DailyPlanList({
           warmupDay={warmupDay}
           onStart={(habit, block, overrides) => void handleStart(habit, block, overrides)}
           onAbortSessionForBookChange={abortSessionForBookChange}
-          completionFlight={activeSide === "light" ? completionFlight : null}
-        />
-        <HabitListLayer
-          side="dark"
-          sideData={dark}
-          isActive={activeSide === "dark"}
-          focusHabitId={activeSide === "dark" ? focusHabitId : null}
-          sessionBusy={isBusy}
-          backgroundSessions={backgroundSessions}
-          focusElapsedByHabitId={focusElapsedByHabitId}
-          isRecoveringSessions={isRecovering}
-          wakeTime={wakeTime}
-          timezone={timezone}
-          warmupDay={warmupDay}
-          onStart={(habit, block, overrides) => void handleStart(habit, block, overrides)}
-          onAbortSessionForBookChange={abortSessionForBookChange}
-          completionFlight={activeSide === "dark" ? completionFlight : null}
+          completionFlight={completionFlight}
         />
       </div>
 

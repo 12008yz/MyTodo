@@ -40,6 +40,7 @@ import {
   formatCardHint,
   formatGoalLabel,
   formatSessionDuration,
+  formatSmokingRemainingLabel,
   formatTimer,
   formatUnit,
   statusLabel,
@@ -53,6 +54,7 @@ import {
   getLiveSessionProgressLabel,
 } from "../sessions/sessionProgress";
 import { ExtraSessionModal } from "../sessions/ExtraSessionModal";
+import { ValuePrompt } from "../sessions/ValuePrompt";
 import { getSessionElapsedSeconds, getSessionRemainingSeconds } from "../sessions/sessionRecovery";
 import {
   resolveSessionPlan,
@@ -234,9 +236,18 @@ export function DailyPlanHabitRow({
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [bookPickerOpen, setBookPickerOpen] = useState(false);
   const [coachOpen, setCoachOpen] = useState(false);
+  const [darkValueOpen, setDarkValueOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<SelectedBook | null>(null);
   const status = habit.checkin?.status;
   const showCoachButton = side === "dark" && isCoachEligibleDarkHabit(habit.template_id);
+  const isSmoking =
+    side === "dark" &&
+    habit.template_id === "smoking" &&
+    habit.type === "limit" &&
+    habit.phase === "reduction" &&
+    habit.current_goal > 0;
+  const showDarkValueLog =
+    side === "dark" && habit.type === "limit" && habit.template_id !== "smoking";
   const showReductionTrack =
     side === "dark" &&
     habit.type === "limit" &&
@@ -554,6 +565,8 @@ export function DailyPlanHabitRow({
     ? strengthProgressLabel
     : isBooks
       ? formatBooksDailyProgressLabel(booksDailyProgress, habit.current_goal)
+      : isSmoking
+        ? formatSmokingRemainingLabel(currentValue, habit.current_goal)
       : `${progressLabelValue} / ${habit.current_goal} ${formatUnit(habit.unit)}`;
   const cardHint = isEarlyRise
     ? null
@@ -624,6 +637,10 @@ export function DailyPlanHabitRow({
             : "Не удалось добавить",
       );
     }
+  };
+
+  const handleSmokedCigarette = () => {
+    void runCheckin({ habit_id: habit.id, value: currentValue + 1 });
   };
 
   const handleBookSelect = async (book: SelectedBook | null) => {
@@ -914,6 +931,34 @@ export function DailyPlanHabitRow({
             </button>
           ) : null}
 
+          {isSmoking ? (
+            <button
+              type="button"
+              className="home__task-btn home__task-btn--start"
+              disabled={isPending || sessionBusy}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleSmokedCigarette();
+              }}
+            >
+              Покурил сигарету
+            </button>
+          ) : null}
+
+          {showDarkValueLog ? (
+            <button
+              type="button"
+              className="home__task-btn home__task-btn--start"
+              disabled={isPending || sessionBusy}
+              onClick={(event) => {
+                event.stopPropagation();
+                setDarkValueOpen(true);
+              }}
+            >
+              Записать
+            </button>
+          ) : null}
+
           {showCoachButton ? (
             <button
               type="button"
@@ -1007,6 +1052,10 @@ export function DailyPlanHabitRow({
                         ? `«${selectedBook.title}» прочитана. Можно выбрать следующую книгу.`
                         : `Читаешь «${selectedBook.title}». Нажми «${booksStartLabel}» на карточке — откроется книга.`
                       : "Выбери книгу из рекомендаций — или нажми «Начать» для таймера фокуса."
+                    : isSmoking
+                      ? "После каждой сигареты нажмите «Покурил сигарету»."
+                    : showDarkValueLog
+                      ? "Нажмите «Записать», чтобы указать, сколько всего сегодня."
                     : block
                       ? block.unit === "seconds"
                         ? `Следующая сессия: ${block.expected_yield} ${formatUnit(block.unit)}.`
@@ -1117,6 +1166,29 @@ export function DailyPlanHabitRow({
           habitName={habit.name}
           templateId={habit.template_id}
           onClose={() => setCoachOpen(false)}
+        />
+      ) : null}
+
+      {showDarkValueLog ? (
+        <ValuePrompt
+          isOpen={darkValueOpen}
+          habitName={habit.name}
+          unit={habit.unit}
+          expectedYield={currentValue}
+          showExpectedHint={false}
+          inputLabel="Сколько всего сегодня?"
+          isSubmitting={checkinMutation.isPending}
+          onCancel={() => setDarkValueOpen(false)}
+          onSubmit={(value) => {
+            void (async () => {
+              try {
+                await runCheckin({ habit_id: habit.id, value });
+                setDarkValueOpen(false);
+              } catch {
+                // runCheckin already sets actionError
+              }
+            })();
+          }}
         />
       ) : null}
     </>
