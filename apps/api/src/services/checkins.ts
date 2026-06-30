@@ -1,4 +1,4 @@
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import {
   canSkipThisWeek,
   computeEarlyRiseWindowState,
@@ -6,6 +6,7 @@ import {
   getUserLocalDate,
   isWeekendDate,
   resolveCheckinStatus,
+  resolveForeignLanguageCheckinStatus,
   type CheckinStatus,
 } from "@mytodo/domain";
 import {
@@ -20,9 +21,6 @@ import {
 import type { DbExecutor } from "../db/index.js";
 import {
   checkins,
-  englishLessons,
-  englishProgress,
-  englishSettings,
   habits,
   users,
   type Habit,
@@ -89,44 +87,35 @@ export class CheckinService {
     );
   }
 
-  async reconcileForeignLanguageMinutes(user: User): Promise<void> {
+  async resetForeignLanguageCheckinForToday(user: User): Promise<void> {
     const habit = await this.findForeignLanguageHabit(user.id);
     if (!habit) {
       return;
     }
 
     const today = getUserLocalDate(new Date(), user.timezone);
-    const [row] = await this.db
-      .select({ total: count() })
-      .from(englishProgress)
-      .where(
-        and(
-          eq(englishProgress.userId, user.id),
-          eq(englishProgress.date, today),
-          eq(englishProgress.status, "success"),
-        ),
-      );
+    await this.deleteForDate(user.id, habit.id, today);
+  }
 
-    const completedLessons = Number(row?.total ?? 0);
-    if (completedLessons === 0) {
+  async markForeignLanguageDayCompleteFromVideo(user: User): Promise<void> {
+    const habit = await this.findForeignLanguageHabit(user.id);
+    if (!habit) {
       return;
     }
 
-    const expectedMinutes = completedLessons * Number(habit.currentGoal);
+    const today = getUserLocalDate(new Date(), user.timezone);
     const existing = await this.findExistingCheckin(habit.id, today);
-    const currentValue = existing?.value == null ? 0 : Number(existing.value);
-    const nextValue = Math.max(currentValue, expectedMinutes);
 
-    if (existing && currentValue === nextValue) {
+    if (existing?.status === "skipped" || existing?.status === "success") {
       return;
     }
 
-    if (existing?.status === "pending") {
-      await this.saveCheckin(habit.id, today, "pending", nextValue);
-      return;
-    }
+    const value = existing?.value == null ? 0 : Number(existing.value);
+    await this.saveCheckin(habit.id, today, "success", value);
+  }
 
-    await this.applySessionValue(user, habit.id, nextValue, { mode: "set" });
+  async reconcileForeignLanguageMinutes(_user: User): Promise<void> {
+    // Video progress is tracked separately from timer checkins.
   }
 
   async findForeignLanguageHabitForUser(userId: string) {
@@ -239,7 +228,13 @@ export class CheckinService {
     const rawValue = mode === "set" ? value : currentValue + value;
     const newValue =
       habit.templateId === "books" ? Math.max(currentValue, rawValue) : rawValue;
-    const status = await this.resolveTargetHabitCheckinStatus(user, habit, date, newValue);
+    let status = this.resolveTargetHabitCheckinStatus(habit, newValue);
+    if (
+      isForeignLanguageHabit({ category_key: habit.categoryKey, name: habit.name }) &&
+      existing?.status === "success"
+    ) {
+      status = "success";
+    }
     const checkin = await this.saveCheckin(habit.id, date, status, newValue);
 
     if (habit.templateId === "books") {
@@ -482,67 +477,22 @@ export class CheckinService {
       );
     }
 
-    const status = await this.resolveTargetHabitCheckinStatus(
-      user,
+    const status = this.resolveTargetHabitCheckinStatus(
       habit,
-      date,
       body.value,
     );
     return { status, value: body.value };
   }
 
-  private async resolveTargetHabitCheckinStatus(
-    user: User,
+  private resolveTargetHabitCheckinStatus(
     habit: Habit,
-    date: string,
     value: number,
-  ): Promise<CheckinStatus> {
+  ): CheckinStatus {
     if (isForeignLanguageHabit({ category_key: habit.categoryKey, name: habit.name })) {
-      const lessonComplete = await this.isActiveEnglishLessonComplete(user.id, date);
-      return lessonComplete && value >= Number(habit.currentGoal) ? "success" : "pending";
+      return resolveForeignLanguageCheckinStatus(value, Number(habit.currentGoal));
     }
 
     return resolveCheckinStatus(this.toCheckinHabit(habit), { value });
-  }
-
-  private async isActiveEnglishLessonComplete(userId: string, date: string): Promise<boolean> {
-    const [settings] = await this.db
-      .select()
-      .from(englishSettings)
-      .where(eq(englishSettings.userId, userId))
-      .limit(1);
-
-    if (!settings?.isEnabled) {
-      return false;
-    }
-
-    let lessonId = settings.selectedLessonId;
-    if (!lessonId) {
-      const [lesson] = await this.db
-        .select({ id: englishLessons.id })
-        .from(englishLessons)
-        .where(eq(englishLessons.dayNumber, settings.currentDay))
-        .limit(1);
-      lessonId = lesson?.id ?? null;
-    }
-
-    if (!lessonId) {
-      return false;
-    }
-
-    const [progress] = await this.db
-      .select({ status: englishProgress.status })
-      .from(englishProgress)
-      .where(
-        and(
-          eq(englishProgress.userId, userId),
-          eq(englishProgress.date, date),
-          eq(englishProgress.lessonId, lessonId),
-        ),
-      )
-      .limit(1);
-
-    return progress?.status === "success";
   }
 
   private resolveEarlyRiseStatus(

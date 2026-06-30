@@ -121,8 +121,14 @@ export class EnglishService {
 
   async selectLesson(user: User, lessonId: string) {
     const settings = await this.requireEnabledSettings(user.id);
+    const previousLesson = await this.resolveActiveLesson(settings);
     const lesson = await this.requireLessonById(lessonId);
     const today = getUserLocalDate(new Date(), user.timezone);
+
+    if (previousLesson.id !== lesson.id) {
+      await this.checkinService.resetForeignLanguageCheckinForToday(user);
+      await this.clearLessonProgressForToday(user.id, today, lesson.id);
+    }
 
     await this.db
       .update(englishSettings)
@@ -178,10 +184,12 @@ export class EnglishService {
       );
     }
 
+    const wasAlreadySuccess = existing?.status === "success";
+
     await this.saveLessonProgress(user.id, lesson.id, today, "success", watchedSec);
 
-    if (existing?.status !== "success") {
-      await this.creditForeignLanguageLessonMinutes(user);
+    if (!wasAlreadySuccess) {
+      await this.checkinService.markForeignLanguageDayCompleteFromVideo(user);
     }
 
     return {
@@ -373,13 +381,20 @@ export class EnglishService {
     await seedEnglishLessons(this.db);
   }
 
-  private async creditForeignLanguageLessonMinutes(user: User) {
-    const habit = await this.checkinService.findForeignLanguageHabitForUser(user.id);
-    if (!habit) {
-      return;
-    }
-
-    await this.checkinService.applySessionMinutes(user, habit.id, Number(habit.currentGoal));
+  private async clearLessonProgressForToday(
+    userId: string,
+    date: string,
+    lessonId: string,
+  ): Promise<void> {
+    await this.db
+      .delete(englishProgress)
+      .where(
+        and(
+          eq(englishProgress.userId, userId),
+          eq(englishProgress.date, date),
+          eq(englishProgress.lessonId, lessonId),
+        ),
+      );
   }
 
   private async getSettings(userId: string): Promise<EnglishSettings | null> {

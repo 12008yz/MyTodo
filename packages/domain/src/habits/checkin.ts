@@ -16,6 +16,13 @@ function resolveLightTargetCheckinStatus(value: number, currentGoal: number): Ch
   return value >= currentGoal ? "success" : "pending";
 }
 
+export function resolveForeignLanguageCheckinStatus(
+  value: number,
+  currentGoal: number,
+): CheckinStatus {
+  return value >= currentGoal ? "success" : "pending";
+}
+
 export function resolveCheckinStatus(
   habit: HabitForCheckin,
   input: ResolveCheckinInput,

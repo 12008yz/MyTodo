@@ -3,6 +3,7 @@ import {
   canSkipThisWeek,
   countSkipsInWeek,
   resolveCheckinStatus,
+  resolveForeignLanguageCheckinStatus,
   type HabitForCheckin,
 } from "./checkin.js";
 
@@ -61,6 +62,18 @@ describe("resolveCheckinStatus", () => {
 
   it("returns fail for abstinence relapse", () => {
     expect(resolveCheckinStatus(abstinence, { status: "fail" })).toBe("fail");
+  });
+});
+
+describe("resolveForeignLanguageCheckinStatus", () => {
+  it("marks success when timer minutes reach the daily goal", () => {
+    expect(resolveForeignLanguageCheckinStatus(25, 25)).toBe("success");
+    expect(resolveForeignLanguageCheckinStatus(30, 25)).toBe("success");
+  });
+
+  it("stays pending until timer reaches the goal", () => {
+    expect(resolveForeignLanguageCheckinStatus(10, 25)).toBe("pending");
+    expect(resolveForeignLanguageCheckinStatus(0, 25)).toBe("pending");
   });
 });
 

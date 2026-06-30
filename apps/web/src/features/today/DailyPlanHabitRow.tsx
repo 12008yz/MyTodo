@@ -16,7 +16,7 @@ import {
 } from "@mytodo/shared";
 import { isWeekendDate } from "@mytodo/domain";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ClientApiError, clearHabitBook, getEnglishToday, reopenTodayCheckin, resetTodayCheckin, selectHabitBook } from "../../lib/api";
+import { ClientApiError, clearHabitBook, getEnglishToday, resetTodayCheckin, selectHabitBook } from "../../lib/api";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import { BookPickerModal } from "./BookPickerModal";
 import {
@@ -63,11 +63,7 @@ import { WarmupTechniqueDemo } from "./WarmupTechniqueDemo";
 import { MeditationGuide } from "./MeditationGuide";
 import { EnglishLessonDrawer } from "./EnglishLessonDrawer";
 import { stopVkEmbedsInContainer } from "../english/vk-api";
-import {
-  clearEnglishLessonManualMinutes,
-  readEnglishLessonManualMinutes,
-  resolveEnglishCardMinutes,
-} from "../english/englishLessonManual";
+import { clearEnglishLessonManualMinutes, readEnglishLessonManualMinutes, resolveEnglishCardMinutes } from "../english/englishLessonManual";
 import {
   resolveEnglishHabitGoalMinutes,
   resolveEnglishLessonDuration,
@@ -157,9 +153,18 @@ function habitReading(
 function resolveBadge(
   habit: TodayLightHabit | TodayDarkHabit,
   _block: DailyPlanBlock | null,
-  options?: { earlyRiseEnforcementActive?: boolean; warmupDayActive?: boolean; earlyRiseWeekendRest?: boolean },
+  options?: {
+    earlyRiseEnforcementActive?: boolean;
+    warmupDayActive?: boolean;
+    earlyRiseWeekendRest?: boolean;
+    goalReached?: boolean;
+  },
 ): { label: string; className: string } {
   const status = habit.checkin?.status;
+
+  if (options?.goalReached) {
+    return { label: statusLabel("success", habit.type), className: "home__plan-badge--completed" };
+  }
 
   if (status === "success") {
     return { label: statusLabel(status, habit.type), className: "home__plan-badge--completed" };
@@ -309,7 +314,11 @@ export function DailyPlanHabitRow({
     isForeignLanguage &&
     englishToday?.enabled === true &&
     englishToday.day_status === "success";
-  const goalReached = isForeignLanguage ? englishLessonComplete : status === "success";
+  const timerComplete =
+    isForeignLanguage && (status === "success" || currentValue >= habit.current_goal);
+  const goalReached = isForeignLanguage
+    ? timerComplete || englishLessonComplete
+    : status === "success";
   const showAsCompleted = goalReached && !(isForeignLanguage && expanded);
   const canStartSession =
     !isNonSessionHabit &&
@@ -332,9 +341,9 @@ export function DailyPlanHabitRow({
   const [strengthRoundComplete, setStrengthRoundComplete] = useState(() =>
     isStrengthWorkout ? isStrengthCircuitRoundComplete(habit.id, planDate, strengthReps) : false,
   );
+  const [englishPlayerOpen, setEnglishPlayerOpen] = useState(false);
   const [lessonWatchMinutes, setLessonWatchMinutes] = useState(0);
   const [lessonManualMinutes, setLessonManualMinutes] = useState(0);
-  const [englishPlayerOpen, setEnglishPlayerOpen] = useState(false);
   const habitCardRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!isStrengthWorkout) {
@@ -394,33 +403,11 @@ export function DailyPlanHabitRow({
 
     if (lessonSucceeded) {
       clearEnglishLessonManualMinutes(planDate, englishToday.lesson.id);
-      setLessonManualMinutes(0);
-    }
-
-    if (!lessonSucceeded && status === "success") {
-      void reopenTodayCheckin(habit.id, planDate).then(() => {
-        void queryClient.invalidateQueries({ queryKey: ["today", side] });
-      });
-      return;
-    }
-
-    if (lessonSucceeded && status !== "success") {
-      void checkinMutation.mutateAsync({
-        habit_id: habit.id,
-        value: Math.max(currentValue, habit.current_goal),
-      });
     }
   }, [
-    checkinMutation,
-    currentValue,
     englishToday,
-    habit.current_goal,
-    habit.id,
     isForeignLanguage,
     planDate,
-    queryClient,
-    side,
-    status,
   ]);
 
   const englishLessonIdRef = useRef<string | null>(null);
@@ -444,6 +431,7 @@ export function DailyPlanHabitRow({
 
     if (hadPreviousLesson) {
       setEnglishPlayerOpen(false);
+      englishLessonKeyRef.current = null;
     }
   }, [englishToday, habit.current_goal, isForeignLanguage, planDate]);
 
@@ -464,6 +452,16 @@ export function DailyPlanHabitRow({
   const booksDailyProgress = isBooks
     ? Math.max(currentValue, todayPagesRead, booksSessionPages)
     : currentValue;
+  const pausedSessionMinutes =
+    isForeignLanguage && resumeSession
+      ? Math.floor(getSessionElapsedSeconds(resumeSession) / 60)
+      : 0;
+  const timerProgressValue = isForeignLanguage
+    ? Math.min(
+        habit.current_goal,
+        currentValue + (hasSessionProgress ? sessionProgress : pausedSessionMinutes),
+      )
+    : 0;
   const englishVideoMinutes =
     isForeignLanguage && englishToday?.enabled === true
       ? Math.max(
@@ -476,7 +474,7 @@ export function DailyPlanHabitRow({
           ),
         )
       : 0;
-  const englishInLessonMinutes =
+  const englishCardMinutes =
     isForeignLanguage && englishToday?.enabled === true
       ? resolveEnglishCardMinutes(
           englishVideoMinutes,
@@ -484,22 +482,13 @@ export function DailyPlanHabitRow({
           habit.current_goal,
         )
       : 0;
-  const pausedSessionMinutes =
-    isForeignLanguage && resumeSession
-      ? Math.floor(getSessionElapsedSeconds(resumeSession) / 60)
-      : 0;
-  const foreignLanguageProgressValue = Math.min(
-    habit.current_goal,
-    hasSessionProgress
-      ? englishInLessonMinutes + sessionProgress
-      : Math.max(englishInLessonMinutes, pausedSessionMinutes),
-  );
-  const progressValue = hasSessionProgress
-    ? isForeignLanguage
-      ? foreignLanguageProgressValue
-      : currentValue + sessionProgress
-    : isForeignLanguage
-      ? foreignLanguageProgressValue
+  const foreignLanguageProgressValue = isForeignLanguage
+    ? Math.min(habit.current_goal, Math.max(timerProgressValue, englishCardMinutes))
+    : 0;
+  const progressValue = isForeignLanguage
+    ? foreignLanguageProgressValue
+    : hasSessionProgress
+      ? currentValue + sessionProgress
       : currentValue;
   const effectiveProgressValue = isBooks ? booksDailyProgress : progressValue;
   const effectiveProgressPercent =
@@ -527,23 +516,21 @@ export function DailyPlanHabitRow({
       : progressValue;
   const progressLabelValue = isBooks
     ? String(booksDailyProgress)
+    : isForeignLanguage
+      ? habit.unit === "minutes" && foreignLanguageProgressValue < 10
+        ? foreignLanguageProgressValue.toFixed(1)
+        : String(Math.floor(foreignLanguageProgressValue))
     : hasSessionProgress
       ? habit.unit === "minutes" && progressValue < 10
         ? progressValue.toFixed(1)
         : String(
             Math.floor(
-              isForeignLanguage
-                ? Math.min(
-                    habit.current_goal,
-                    englishInLessonMinutes +
-                      getLiveSessionProgressLabel(habit.unit, sessionElapsedSeconds),
-                  )
-                : currentValue + getLiveSessionProgressLabel(habit.unit, sessionElapsedSeconds),
+              currentValue + getLiveSessionProgressLabel(habit.unit, sessionElapsedSeconds),
             ),
           )
-      : habit.unit === "minutes" && isForeignLanguage && progressValue < 10
+      : habit.unit === "minutes" && progressValue < 10
         ? progressValue.toFixed(1)
-        : String(Math.floor(isForeignLanguage ? progressValue : currentValue));
+        : String(Math.floor(currentValue));
   const strengthProgressLabel = `${displayProgressValue} / ${STRENGTH_WORKOUT_REPS_PER_ROUND} упражн.`;
   const progressLabelText = isStrengthWorkout
     ? strengthProgressLabel
@@ -716,6 +703,7 @@ export function DailyPlanHabitRow({
           earlyRiseEnforcementActive,
           warmupDayActive,
           earlyRiseWeekendRest: isEarlyRiseWeekendRest && status === "skipped",
+          goalReached,
         });
 
   const startLabel = hasActiveFocus

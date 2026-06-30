@@ -44,6 +44,7 @@ export {
   canSkipThisWeek,
   countSkipsInWeek,
   resolveCheckinStatus,
+  resolveForeignLanguageCheckinStatus,
   type CheckinStatus,
   type HabitForCheckin,
   type ResolveCheckinInput,

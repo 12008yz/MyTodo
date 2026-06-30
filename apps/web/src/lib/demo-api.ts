@@ -1,4 +1,4 @@
-import { buildDailyPlan, calibrateHabit, canSkipThisWeek, computeEarlyRiseWindowState, computeGlobalStreak, computeNextEnglishDay, computeNextGoal, isEarlyRiseEnforcementActive, isWarmupDay, isWeekendDate, recalculateLightGoal, resolveWarmupAnchor, resolveWarmupDayInfo, type CalibrationProfile } from "@mytodo/domain";
+import { buildDailyPlan, calibrateHabit, canSkipThisWeek, computeEarlyRiseWindowState, computeGlobalStreak, computeNextEnglishDay, computeNextGoal, isEarlyRiseEnforcementActive, isWarmupDay, isWeekendDate, recalculateLightGoal, resolveForeignLanguageCheckinStatus, resolveWarmupAnchor, resolveWarmupDayInfo, type CalibrationProfile } from "@mytodo/domain";
 import {
   AWARENESS_SESSION_MIN,
   SESSION_TARGET_MIN,
@@ -653,91 +653,68 @@ function findDemoForeignLanguageHabit(state: DemoState) {
   );
 }
 
-function reconcileDemoForeignLanguageMinutes(state: DemoState): DemoState {
-  const habit = findDemoForeignLanguageHabit(state);
-  if (!habit) {
-    return state;
-  }
-
-  const today = todayDate();
-  const completedLessons = state.englishProgress.filter(
-    (row) => row.date === today && row.status === "success",
-  ).length;
-
-  if (completedLessons === 0) {
-    return state;
-  }
-
-  const expectedMinutes = completedLessons * habit.current_goal;
-  const existingIndex = state.checkins.findIndex(
-    (checkin) => checkin.habit_id === habit.id && checkin.date === today,
-  );
-  const currentValue = existingIndex >= 0 ? (state.checkins[existingIndex]!.value ?? 0) : 0;
-  const nextValue = Math.max(currentValue, expectedMinutes);
-  if (existingIndex >= 0 && currentValue === nextValue) {
-    return state;
-  }
-  const existingStatus = existingIndex >= 0 ? state.checkins[existingIndex]!.status : null;
-  const status =
-    existingStatus === "pending"
-      ? "pending"
-      : nextValue >= habit.current_goal
-        ? "success"
-        : "pending";
-  const previewNextGoal = demoPreviewNextGoal(habit, status);
-  const checkin: CheckinResponse = {
-    id: existingIndex >= 0 ? state.checkins[existingIndex]!.id : crypto.randomUUID(),
-    habit_id: habit.id,
-    date: today,
-    status,
-    value: nextValue,
-    updated_at: nowIso(),
-    current_goal: habit.current_goal,
-    preview_next_goal: previewNextGoal,
+function clearDemoEnglishProgressForLesson(
+  state: DemoState,
+  date: string,
+  lessonDayNumber: number,
+): DemoState {
+  return {
+    ...state,
+    englishProgress: state.englishProgress.filter(
+      (row) => !(row.date === date && row.lesson_day_number === lessonDayNumber),
+    ),
   };
-
-  if (existingIndex >= 0) {
-    state.checkins[existingIndex] = checkin;
-  } else {
-    state.checkins.push(checkin);
-  }
-
-  return state;
 }
 
-function creditDemoForeignLanguageLessonMinutes(state: DemoState): DemoState {
-  const habit = findDemoForeignLanguageHabit(state);
-  if (!habit) {
+function removeDemoTodayCheckin(state: DemoState, habitId: string, date: string): DemoState {
+  return {
+    ...state,
+    checkins: state.checkins.filter(
+      (checkin) => !(checkin.habit_id === habitId && checkin.date === date),
+    ),
+  };
+}
+
+function markDemoForeignLanguageDayCompleteFromVideo(
+  state: DemoState,
+  habit: HabitResponse,
+  date: string,
+): DemoState {
+  const existingIndex = state.checkins.findIndex(
+    (checkin) => checkin.habit_id === habit.id && checkin.date === date,
+  );
+  const existing = existingIndex >= 0 ? state.checkins[existingIndex]! : null;
+
+  if (existing?.status === "skipped" || existing?.status === "success") {
     return state;
   }
 
-  const today = todayDate();
-  const existingIndex = state.checkins.findIndex(
-    (checkin) => checkin.habit_id === habit.id && checkin.date === today,
-  );
-  const currentValue = existingIndex >= 0 ? (state.checkins[existingIndex]!.value ?? 0) : 0;
-  const nextValue = currentValue + habit.current_goal;
-  const lessonDay = resolveDemoActiveLessonDay(state);
-  const progress = getDemoEnglishProgressForLesson(state, today, lessonDay);
-  const lessonComplete = progress?.status === "success";
-  const status = lessonComplete && nextValue >= habit.current_goal ? "success" : "pending";
+  const value = existing?.value ?? 0;
   const checkin: CheckinResponse = {
-    id: existingIndex >= 0 ? state.checkins[existingIndex]!.id : crypto.randomUUID(),
+    id: existing?.id ?? crypto.randomUUID(),
     habit_id: habit.id,
-    date: today,
-    status,
-    value: nextValue,
-    updated_at: nowIso(),
+    date,
+    status: "success",
+    value,
+    updated_at: new Date().toISOString(),
     current_goal: habit.current_goal,
-    preview_next_goal: demoPreviewNextGoal(habit, status),
+    preview_next_goal: demoPreviewNextGoal(habit, "success"),
   };
 
   if (existingIndex >= 0) {
-    state.checkins[existingIndex] = checkin;
-  } else {
-    state.checkins.push(checkin);
+    return {
+      ...state,
+      checkins: state.checkins.map((row, index) => (index === existingIndex ? checkin : row)),
+    };
   }
 
+  return {
+    ...state,
+    checkins: [...state.checkins, checkin],
+  };
+}
+
+function reconcileDemoForeignLanguageMinutes(state: DemoState): DemoState {
   return state;
 }
 
@@ -852,7 +829,16 @@ export function demoSelectEnglishLesson(
     throw new Error("Lesson not found");
   }
 
+  const previousLessonDay = resolveDemoActiveLessonDay(state);
   const today = todayDate();
+  if (previousLessonDay !== seed.dayNumber) {
+    const habit = findDemoForeignLanguageHabit(state);
+    if (habit) {
+      state = removeDemoTodayCheckin(state, habit.id, today);
+    }
+    state = clearDemoEnglishProgressForLesson(state, today, seed.dayNumber);
+  }
+
   const progress = getDemoEnglishProgressForLesson(state, today, seed.dayNumber);
   const dayStatus = toDemoDayStatus(progress?.status);
 
@@ -917,7 +903,10 @@ export function demoCompleteEnglishLesson(
   });
 
   if (!wasAlreadySuccess) {
-    state = creditDemoForeignLanguageLessonMinutes(state);
+    const habit = findDemoForeignLanguageHabit(state);
+    if (habit) {
+      state = markDemoForeignLanguageDayCompleteFromVideo(state, habit, today);
+    }
   }
 
   saveState(state);
@@ -1411,12 +1400,9 @@ function resolveDemoCheckinStatus(
   }
 
   if (isForeignLanguageHabit({ category_key: habit.category_key, name: habit.name })) {
-    const lessonDay = resolveDemoActiveLessonDay(state);
-    const progress = getDemoEnglishProgressForLesson(state, date, lessonDay);
-    const lessonComplete = progress?.status === "success";
     const value = data.value;
     return {
-      status: lessonComplete && value >= habit.current_goal ? "success" : "pending",
+      status: resolveForeignLanguageCheckinStatus(value, habit.current_goal),
       value,
     };
   }
@@ -1622,10 +1608,7 @@ export function demoClearHabitBook(habitId: string): void {
 export function demoResetTodayCheckin(habitId: string, date?: string): void {
   const state = ensureState();
   const planDate = date ?? todayDate();
-  state.checkins = state.checkins.filter(
-    (checkin) => !(checkin.habit_id === habitId && checkin.date === planDate),
-  );
-  saveState(state);
+  saveState(removeDemoTodayCheckin(state, habitId, planDate));
 }
 
 export function demoReopenTodayCheckin(habitId: string, date?: string): void {
@@ -2053,16 +2036,24 @@ function upsertSessionCheckin(
 
   const currentValue = existing?.value ?? 0;
   const nextValue = mode === "set" ? value : currentValue + value;
-  const status: CheckinResponse["status"] =
-    habit.type === "target"
-      ? nextValue >= habit.current_goal
+  let status: CheckinResponse["status"];
+  if (isForeignLanguageHabit({ category_key: habit.category_key, name: habit.name })) {
+    status =
+      existing?.status === "success"
         ? "success"
-        : "fail"
-      : habit.type === "limit"
-        ? nextValue <= habit.current_goal
+        : resolveForeignLanguageCheckinStatus(nextValue, habit.current_goal);
+  } else {
+    status =
+      habit.type === "target"
+        ? nextValue >= habit.current_goal
           ? "success"
           : "fail"
-        : "pending";
+        : habit.type === "limit"
+          ? nextValue <= habit.current_goal
+            ? "success"
+            : "fail"
+          : "pending";
+  }
 
   const previewNextGoal = demoPreviewNextGoal(habit, status);
 
