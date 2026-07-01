@@ -23,6 +23,14 @@
   color: inherit !important;
 }
 
+.habit-trend-chart--dark .recharts-area-curve {
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.18));
+}
+
+.habit-trend-chart:not(.habit-trend-chart--dark) .recharts-area-curve {
+  filter: drop-shadow(0 2px 4px rgba(95, 51, 225, 0.2));
+}
+
 .habit-trend-tooltip {
   padding: calc(8 * var(--s)) calc(10 * var(--s));
   border-radius: calc(10 * var(--s));
@@ -54,6 +62,8 @@
   display: flex;
   flex-direction: column;
   gap: calc(4 * var(--s));
+  max-height: calc(220 * var(--s));
+  overflow-y: auto;
 }
 
 .habit-trend-tooltip__item {

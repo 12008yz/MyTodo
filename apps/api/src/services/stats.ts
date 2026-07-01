@@ -7,18 +7,23 @@ import {
   getWeekStartMonday,
   isWeekendDate,
   listDatesInclusive,
+  sumEnglishWatchSecondsToMinutes,
+  sumMinutesHabitValueForTodayStats,
   usesAbstinenceStreakRules,
   type DayColor,
   type HabitDayStatus,
 } from "@mytodo/domain";
-import { isCompanionLightHabit, isEarlyRiseCategoryKey, resolveHabitDisplayName, type HabitTemplateId } from "@mytodo/shared";
+import { isCompanionLightHabit, isEarlyRiseCategoryKey, isForeignLanguageHabit, resolveHabitDisplayName, type HabitTemplateId } from "@mytodo/shared";
 import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
 import type { Database } from "../db/index.js";
 import {
   checkins,
   dailyStats,
+  englishProgress,
   goalSnapshots,
+  habitSessions,
   habits,
+  pomodoroSessions,
   type Habit,
   type User,
 } from "../db/schema/index.js";
@@ -65,7 +70,7 @@ export class StatsService {
     const { start, end } = getMonthRange(month);
     const dates = listDatesInclusive(start, end);
     const scopedHabits = side
-      ? await this.listScopedHabits(user, side)
+      ? await this.listScopedHabits(user, side, { activeOnly: true })
       : await this.listAllScopedHabits(user);
     const resolved = await this.resolveDays(user, scopedHabits, dates);
 
@@ -98,7 +103,7 @@ export class StatsService {
   async getMonthSummary(user: User, month: string, side?: Side) {
     const { start, end } = getMonthRange(month);
     const scopedHabits = side
-      ? await this.listScopedHabits(user, side)
+      ? await this.listScopedHabits(user, side, { activeOnly: true })
       : await this.listAllScopedHabits(user);
     const habitIds = scopedHabits.map((scope) => scope.habit.id);
 
@@ -298,10 +303,13 @@ export class StatsService {
     const start = dates[0]!;
     const end = dates.at(-1)!;
 
-    const [statsRows, snapshotRows, checkinRows] = await Promise.all([
+    const [statsRows, snapshotRows, checkinRows, trackedMinutesByKey, englishWatchMinutesByDate] =
+      await Promise.all([
       this.listDailyStats(habitIds, start, end),
       this.listGoalSnapshots(habitIds, start, end),
       this.listCheckins(habitIds, start, end),
+      this.listTrackedMinutesByHabitAndDate(habitIds, start, end, user.timezone),
+      this.listEnglishWatchMinutesByDate(user.id, start, end),
     ]);
 
     const statsByKey = new Map(
@@ -340,6 +348,40 @@ export class StatsService {
               ? Number(scope.habit.currentGoal)
               : null;
 
+        const checkinValue = checkin?.value != null ? Number(checkin.value) : null;
+        let value = stat?.value != null ? Number(stat.value) : checkinValue;
+        let minutesTotal =
+          stat?.minutesTotal ??
+          this.resolveOpenDayMinutesTotal(
+            scope.habit,
+            trackedMinutesByKey.get(key) ?? 0,
+            checkinValue,
+          );
+
+        if (
+          isForeignLanguageHabit({
+            category_key: scope.habit.categoryKey,
+            name: scope.habit.name,
+          }) &&
+          scope.habit.unit === "minutes"
+        ) {
+          const timerMinutes = Math.max(minutesTotal, value ?? 0, trackedMinutesByKey.get(key) ?? 0);
+          const chartMinutes = sumMinutesHabitValueForTodayStats(
+            {
+              unit: scope.habit.unit,
+              category_key: scope.habit.categoryKey,
+              name: scope.habit.name,
+            },
+            timerMinutes,
+            englishWatchMinutesByDate.get(date) ?? 0,
+          );
+
+          if (chartMinutes > 0) {
+            value = chartMinutes;
+            minutesTotal = stat?.minutesTotal != null ? Math.max(stat.minutesTotal, chartMinutes) : chartMinutes;
+          }
+        }
+
         rows.push({
           habitId: scope.habit.id,
           name: resolveHabitDisplayName({
@@ -353,12 +395,8 @@ export class StatsService {
           unit: (scope.habit.unit as import("@mytodo/shared").HabitUnit | null) ?? null,
           templateId: (scope.habit.templateId as HabitTemplateId | null) ?? null,
           status,
-          value: stat?.value != null ? Number(stat.value) : checkin?.value != null ? Number(checkin.value) : null,
-          minutesTotal:
-            stat?.minutesTotal ??
-            (scope.habit.templateId === "social_media" && checkin?.value != null
-              ? Number(checkin.value)
-              : 0),
+          value,
+          minutesTotal,
           goal,
         });
       }
@@ -450,6 +488,125 @@ export class StatsService {
       habit,
       activeFrom: getUserLocalDate(habit.createdAt, user.timezone),
     }));
+  }
+
+  private resolveOpenDayMinutesTotal(
+    habit: Habit,
+    trackedMinutes: number,
+    checkinValue: number | null,
+  ): number {
+    if (trackedMinutes > 0) {
+      return trackedMinutes;
+    }
+
+    if (checkinValue == null || checkinValue <= 0) {
+      return 0;
+    }
+
+    if (habit.templateId === "social_media") {
+      return checkinValue;
+    }
+
+    if (habit.side === "light" && habit.unit === "minutes") {
+      return checkinValue;
+    }
+
+    if (habit.side === "dark" && habit.unit === "minutes") {
+      return checkinValue;
+    }
+
+    return 0;
+  }
+
+  private async listTrackedMinutesByHabitAndDate(
+    habitIds: string[],
+    start: string,
+    end: string,
+    timezone: string,
+  ): Promise<Map<string, number>> {
+    const totals = new Map<string, number>();
+
+    const addMinutes = (habitId: string, date: string, minutes: number) => {
+      if (date < start || date > end || minutes <= 0) {
+        return;
+      }
+
+      const key = `${habitId}:${date}`;
+      totals.set(key, (totals.get(key) ?? 0) + minutes);
+    };
+
+    const [pomodoroRows, sessionRows] = await Promise.all([
+      this.db
+        .select({
+          habitId: pomodoroSessions.habitId,
+          workMin: pomodoroSessions.workMin,
+          startedAt: pomodoroSessions.startedAt,
+        })
+        .from(pomodoroSessions)
+        .where(
+          and(inArray(pomodoroSessions.habitId, habitIds), eq(pomodoroSessions.completed, true)),
+        ),
+      this.db
+        .select({
+          habitId: habitSessions.habitId,
+          actualMin: habitSessions.actualMin,
+          startedAt: habitSessions.startedAt,
+        })
+        .from(habitSessions)
+        .where(and(inArray(habitSessions.habitId, habitIds), eq(habitSessions.completed, true))),
+    ]);
+
+    for (const row of pomodoroRows) {
+      addMinutes(row.habitId, getUserLocalDate(row.startedAt, timezone), row.workMin);
+    }
+
+    for (const row of sessionRows) {
+      if (row.actualMin != null) {
+        addMinutes(row.habitId, getUserLocalDate(row.startedAt, timezone), row.actualMin);
+      }
+    }
+
+    return totals;
+  }
+
+  private async listEnglishWatchMinutesByDate(
+    userId: string,
+    start: string,
+    end: string,
+  ): Promise<Map<string, number>> {
+    const rows = await this.db
+      .select({
+        date: englishProgress.date,
+        watchedSec: englishProgress.watchedSec,
+      })
+      .from(englishProgress)
+      .where(
+        and(
+          eq(englishProgress.userId, userId),
+          gte(englishProgress.date, start),
+          lte(englishProgress.date, end),
+        ),
+      );
+
+    const secondsByDate = new Map<string, number[]>();
+
+    for (const row of rows) {
+      const watchedSec = Number(row.watchedSec);
+      if (watchedSec <= 0) {
+        continue;
+      }
+
+      const bucket = secondsByDate.get(row.date) ?? [];
+      bucket.push(watchedSec);
+      secondsByDate.set(row.date, bucket);
+    }
+
+    const totals = new Map<string, number>();
+    for (const [date, watchedSeconds] of secondsByDate) {
+      totals.set(date, sumEnglishWatchSecondsToMinutes(watchedSeconds));
+    }
+
+    return totals;
   }
 
   private async listDailyStats(habitIds: string[], start: string, end: string) {

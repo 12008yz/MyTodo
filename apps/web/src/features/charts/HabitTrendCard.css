@@ -164,6 +164,10 @@
   transition: opacity 0.35s ease;
 }
 
+.habit-trend-card__legend:has(.habit-trend-card__legend-item:nth-child(7)) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .habit-trend-card:has(.habit-trend-card__chart-block--refreshing) .habit-trend-card__legend {
   opacity: 0.88;
 }

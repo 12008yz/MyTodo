@@ -146,8 +146,9 @@ export function TimeDistributionSection() {
         variant={variant}
         total={data.total}
         unit={data.unit}
-        animationKey={side}
+        animationKey={`${side}-${period}`}
         chartKey={`${side}-${period}`}
+        period={period}
         isRefreshing={isChartRefreshing}
       />
     </div>,

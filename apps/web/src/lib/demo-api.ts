@@ -2874,6 +2874,31 @@ function resolveDemoStatsHabitStatus(
   return "fail";
 }
 
+function resolveDemoChartMinutesTotal(
+  habit: HabitResponse,
+  checkin: { value: number | null } | undefined,
+  englishWatchMinutes = 0,
+): number {
+  if (isForeignLanguageHabit({ category_key: habit.category_key, name: habit.name })) {
+    return sumMinutesHabitValueForTodayStats(habit, checkin?.value ?? 0, englishWatchMinutes);
+  }
+
+  const value = checkin?.value ?? 0;
+  if (value <= 0) {
+    return 0;
+  }
+
+  if (habit.template_id === "social_media") {
+    return value;
+  }
+
+  if (habit.unit === "minutes") {
+    return value;
+  }
+
+  return 0;
+}
+
 function resolveDemoDayForSide(
   state: DemoState,
   side: StatsSide,
@@ -2892,6 +2917,12 @@ function resolveDemoDayForSide(
   const habits = habitsForSide.map((habit) => {
     const checkin = dayCheckins.find((row) => row.habit_id === habit.id);
     const status = resolveDemoStatsHabitStatus(habit, dayDate, checkin);
+    const englishWatchMinutes = sumDemoEnglishWatchMinutesToday(state, dayDate);
+    const chartMinutes = resolveDemoChartMinutesTotal(habit, checkin, englishWatchMinutes);
+    const isForeignLanguage = isForeignLanguageHabit({
+      category_key: habit.category_key,
+      name: habit.name,
+    });
     return {
       habit_id: habit.id,
       name: habit.name,
@@ -2901,9 +2932,9 @@ function resolveDemoDayForSide(
       unit: habit.unit,
       template_id: habit.template_id,
       status,
-      value: checkin?.value ?? null,
+      value: isForeignLanguage ? (chartMinutes > 0 ? chartMinutes : null) : (checkin?.value ?? null),
       goal: habit.current_goal,
-      minutes_total: checkin?.value ?? 0,
+      minutes_total: chartMinutes,
     };
   });
 
@@ -2977,12 +3008,18 @@ export function demoGetHabitProgress(
 
   const points = dates.map((date) => {
     const checkin = state.checkins.find((row) => row.habit_id === habitId && row.date === date);
+    const englishWatchMinutes = sumDemoEnglishWatchMinutesToday(state, date);
+    const chartMinutes = resolveDemoChartMinutesTotal(habit, checkin, englishWatchMinutes);
+    const isForeignLanguage = isForeignLanguageHabit({
+      category_key: habit.category_key,
+      name: habit.name,
+    });
     return {
       date,
       goal: habit.current_goal,
-      value: checkin?.value ?? null,
+      value: isForeignLanguage ? (chartMinutes > 0 ? chartMinutes : null) : (checkin?.value ?? null),
       status: checkin?.status ?? (date === today ? "pending" : null),
-      minutes_total: checkin?.value ?? 0,
+      minutes_total: chartMinutes,
     };
   });
 

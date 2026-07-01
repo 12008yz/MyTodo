@@ -1,4 +1,4 @@
-import type { HabitUnit } from "@mytodo/shared";
+import type { HabitUnit, ProgressPeriod } from "@mytodo/shared";
 import { formatUnit } from "../today/format";
 import type { TrendSeries, TrendPoint } from "./buildHabitTrendSeries";
 import { HabitTrendChart } from "./HabitTrendChart";
@@ -17,6 +17,7 @@ type HabitTrendCardProps = {
   unit?: HabitUnit | "days" | null;
   animationKey: string;
   chartKey: string;
+  period: ProgressPeriod;
   isRefreshing?: boolean;
 };
 
@@ -45,6 +46,7 @@ export function HabitTrendCard({
   unit,
   animationKey,
   chartKey,
+  period,
   isRefreshing = false,
 }: HabitTrendCardProps) {
   const animatedTotal = useAnimatedNumber(total, total > 0, 450, animationKey);
@@ -59,16 +61,18 @@ export function HabitTrendCard({
         <div className="habit-trend-card__heading">
           <div className="habit-trend-card__title-row">
             <h3 className="habit-trend-card__title">{title}</h3>
-            <div className="habit-trend-card__total" aria-live="polite">
-              <span className="habit-trend-card__total-value">{animatedTotal}</span>
-              {unitLabel ? (
-                <span className="habit-trend-card__total-unit">{unitLabel}</span>
-              ) : (
-                <span className="habit-trend-card__total-unit habit-trend-card__total-unit--muted">
-                  всего
-                </span>
-              )}
-            </div>
+            {unit !== null ? (
+              <div className="habit-trend-card__total" aria-live="polite">
+                <span className="habit-trend-card__total-value">{animatedTotal}</span>
+                {unitLabel ? (
+                  <span className="habit-trend-card__total-unit">{unitLabel}</span>
+                ) : (
+                  <span className="habit-trend-card__total-unit habit-trend-card__total-unit--muted">
+                    всего
+                  </span>
+                )}
+              </div>
+            ) : null}
           </div>
           <p className="habit-trend-card__subtitle">{subtitle}</p>
         </div>
@@ -87,6 +91,7 @@ export function HabitTrendCard({
           series={series}
           variant={variant}
           chartKey={chartKey}
+          period={period}
         />
       </div>
 
@@ -99,7 +104,9 @@ export function HabitTrendCard({
               aria-hidden="true"
             />
             <span className="habit-trend-card__legend-label">{item.label}</span>
-            <span className="habit-trend-card__legend-meta">{formatLegendValue(item.total, unit)}</span>
+            <span className="habit-trend-card__legend-meta">
+              {formatLegendValue(item.total, unit ?? item.unit)}
+            </span>
           </li>
         ))}
       </ul>

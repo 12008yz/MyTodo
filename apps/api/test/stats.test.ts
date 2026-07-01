@@ -12,7 +12,7 @@ import {
 } from "@mytodo/shared";
 import { buildApp } from "../src/app.js";
 import { loadEnv } from "../src/config/env.js";
-import { dailyStats, goalSnapshots, habits } from "../src/db/schema/index.js";
+import { dailyStats, englishProgress, goalSnapshots, habits, users } from "../src/db/schema/index.js";
 import { ensureMigrated, truncateAuthTables } from "./helpers/db.js";
 
 const env = loadEnv({
@@ -289,6 +289,118 @@ describe("Stats", () => {
       true,
     );
     expect(skippedDay?.color).toBe("skipped");
+  });
+
+  it("includes today's open checkin minutes in calendar stats", async () => {
+    const auth = await createOnboardedUser("stats-open-day@example.com");
+    const habit = await createRunningHabit(auth.access_token);
+    const today = todayLocal();
+    const month = currentMonth();
+    await backdateHabit(habit.id, today);
+
+    const checkinResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: {
+        habit_id: habit.id,
+        value: 30,
+      },
+    });
+    expect([200, 201]).toContain(checkinResponse.statusCode);
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/stats/calendar?month=${month}&side=light`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    const body = statsCalendarResponseSchema.parse(JSON.parse(response.body));
+    const todayDay = body.days.find((day) => day.date === today);
+    expect(todayDay?.habits[0]?.value).toBe(30);
+    expect(todayDay?.habits[0]?.minutes_total).toBe(30);
+  });
+
+  it("includes today's dark limit checkin values in calendar stats", async () => {
+    const auth = await createOnboardedUser("stats-open-dark@example.com");
+    const today = todayLocal();
+    const month = currentMonth();
+
+    const habitResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: {
+        template_id: "sweets",
+        baseline_value: 5,
+      },
+    });
+    const habit = habitResponseSchema.parse(JSON.parse(habitResponse.body));
+    await backdateHabit(habit.id, today);
+
+    const checkinResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: {
+        habit_id: habit.id,
+        value: 3,
+      },
+    });
+    expect([200, 201]).toContain(checkinResponse.statusCode);
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/stats/calendar?month=${month}&side=dark`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    const body = statsCalendarResponseSchema.parse(JSON.parse(response.body));
+    const todayDay = body.days.find((day) => day.date === today);
+    expect(todayDay?.habits[0]?.value).toBe(3);
+    expect(todayDay?.habits[0]?.minutes_total).toBe(0);
+  });
+
+  it("includes foreign language video minutes in calendar stats", async () => {
+    const email = "stats-english@example.com";
+    const auth = await createOnboardedUser(email);
+    const today = todayLocal();
+    const month = currentMonth();
+
+    const habitResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/habits",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: {
+        name: "Иностранный язык",
+        category_key: "language",
+        unit: "minutes",
+        baseline_value: 25,
+      },
+    });
+    const habit = habitResponseSchema.parse(JSON.parse(habitResponse.body));
+
+    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    expect(user).toBeTruthy();
+
+    await db.insert(englishProgress).values({
+      userId: user!.id,
+      date: today,
+      status: "success",
+      watchedSec: 1500,
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/stats/calendar?month=${month}&side=light`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    const body = statsCalendarResponseSchema.parse(JSON.parse(response.body));
+    const todayDay = body.days.find((day) => day.date === today);
+    const languageHabit = todayDay?.habits.find((row) => row.habit_id === habit.id);
+    expect(languageHabit?.value).toBe(25);
+    expect(languageHabit?.minutes_total).toBe(25);
   });
 
   it("uses goal_snapshots for progress and ignores current_goal changes", async () => {

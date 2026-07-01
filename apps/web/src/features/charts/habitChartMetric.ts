@@ -3,9 +3,36 @@ import type { StatsCalendarResponse, StatsSide } from "@mytodo/shared";
 type CalendarHabit = StatsCalendarResponse["days"][number]["habits"][number];
 export type HabitChartUnit = CalendarHabit["unit"] | "days" | null;
 
+function positiveNumber(value: number | null | undefined): number {
+  if (value == null || value <= 0) {
+    return 0;
+  }
+  return value;
+}
+
+function resolveMinutesMetric(habit: CalendarHabit): number {
+  if (habit.minutes_total > 0) {
+    return habit.minutes_total;
+  }
+  return positiveNumber(habit.value);
+}
+
+function resolveLightMetric(habit: CalendarHabit): number {
+  if (habit.unit === "minutes") {
+    return resolveMinutesMetric(habit);
+  }
+
+  const value = positiveNumber(habit.value);
+  if (value > 0) {
+    return value;
+  }
+
+  return positiveNumber(habit.minutes_total);
+}
+
 export function habitChartMetric(habit: CalendarHabit, side: StatsSide): number {
   if (side === "light") {
-    return habit.minutes_total;
+    return resolveLightMetric(habit);
   }
 
   if (habit.type === "abstinence") {
@@ -13,18 +40,19 @@ export function habitChartMetric(habit: CalendarHabit, side: StatsSide): number 
   }
 
   if (habit.type === "limit") {
-    if (habit.value != null && habit.value > 0) {
-      return habit.value;
+    const value = positiveNumber(habit.value);
+    if (value > 0) {
+      return value;
     }
-    return habit.minutes_total;
+    return positiveNumber(habit.minutes_total);
   }
 
-  return habit.minutes_total > 0 ? habit.minutes_total : (habit.value ?? 0);
+  return resolveMinutesMetric(habit);
 }
 
 export function habitChartUnit(habit: CalendarHabit, side: StatsSide): HabitChartUnit {
   if (side === "light") {
-    return "minutes";
+    return habit.unit ?? "minutes";
   }
 
   if (habit.type === "abstinence") {

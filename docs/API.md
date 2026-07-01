@@ -134,7 +134,7 @@ Test connection: `pnpm --filter @mytodo/api test:gigachat`
 | Method | Path                                                     | Description     |
 | ------ | -------------------------------------------------------- | --------------- |
 | GET    | `/stats/week?side=light\|dark`                           | Week strip (active habits only) |
-| GET    | `/stats/calendar?month=YYYY-MM&side=light\|dark`         | Month calendar (all habits, incl. deactivated) |
+| GET    | `/stats/calendar?month=YYYY-MM&side=light\|dark`         | Month calendar (active habits only) |
 | GET    | `/stats/month?month=YYYY-MM&side=light\|dark`            | Month summary   |
 | GET    | `/stats/habits/:id/progress?period=week\|month\|quarter` | Progress chart  |
 | GET    | `/stats/summary?weeks=1..52`                             | Heatmap summary |
