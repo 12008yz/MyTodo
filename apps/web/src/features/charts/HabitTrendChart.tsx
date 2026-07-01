@@ -28,6 +28,16 @@ function chartHeight(seriesCount: number, pointCount: number): number {
   return base;
 }
 
+function seriesFillOpacity(seriesCount: number): number {
+  if (seriesCount <= 3) {
+    return 0.38;
+  }
+  if (seriesCount <= 6) {
+    return 0.24;
+  }
+  return 0.16;
+}
+
 function xAxisTickInterval(period: ProgressPeriod, pointCount: number): number | "preserveStartEnd" {
   if (period === "week") {
     return 0;
@@ -75,7 +85,12 @@ function TrendTooltip({
       value: Number(point[item.dataKey] ?? 0),
       unit: formatTooltipUnit(item.unit),
     }))
+    .filter((entry) => entry.value > 0)
     .sort((left, right) => right.value - left.value || left.name.localeCompare(right.name, "ru"));
+
+  if (entries.length === 0) {
+    return null;
+  }
 
   return (
     <div className="habit-trend-tooltip">
@@ -100,38 +115,12 @@ function seriesFillId(chartKey: string, seriesId: string): string {
   return `${chartKey}-fill-${seriesId}`;
 }
 
-function renderValueDot(
-  color: string,
-  isDark: boolean,
-  props: { cx?: number; cy?: number; payload?: TrendPoint; dataKey?: string | number },
-) {
-  const { cx, cy, payload, dataKey } = props;
-  if (cx == null || cy == null || payload == null || dataKey == null) {
-    return null;
-  }
-
-  const value = Number(payload[String(dataKey)] ?? 0);
-  if (value <= 0) {
-    return null;
-  }
-
-  return (
-    <circle
-      cx={cx}
-      cy={cy}
-      r={4}
-      fill={color}
-      stroke={isDark ? "#1f2029" : "#ffffff"}
-      strokeWidth={2}
-    />
-  );
-}
-
 export function HabitTrendChart({ points, series, variant, chartKey, period }: HabitTrendChartProps) {
   const isDark = variant === "dark-side";
+  const fillOpacity = seriesFillOpacity(series.length);
+  const showDots = series.length <= 6;
   const height = chartHeight(series.length, points.length);
   const tickInterval = xAxisTickInterval(period, points.length);
-  const showAllDots = period === "week" || points.length <= 31;
 
   return (
     <div
@@ -143,8 +132,8 @@ export function HabitTrendChart({ points, series, variant, chartKey, period }: H
           <defs>
             {series.map((item) => (
               <linearGradient key={item.id} id={seriesFillId(chartKey, item.id)} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={item.color} stopOpacity={isDark ? 0.4 : 0.3} />
-                <stop offset="100%" stopColor={item.color} stopOpacity={0.02} />
+                <stop offset="0%" stopColor={item.color} stopOpacity={fillOpacity} />
+                <stop offset="95%" stopColor={item.color} stopOpacity={0.02} />
               </linearGradient>
             ))}
           </defs>
@@ -177,24 +166,30 @@ export function HabitTrendChart({ points, series, variant, chartKey, period }: H
               name={item.label}
               dataKey={item.dataKey}
               stroke={item.color}
-              strokeWidth={2.5}
-              strokeOpacity={0.95}
               fill={`url(#${seriesFillId(chartKey, item.id)})`}
-              fillOpacity={1}
+              strokeWidth={series.length > 6 ? 2 : 2.5}
               dot={
-                showAllDots
-                  ? (props) => renderValueDot(item.color, isDark, { ...props, dataKey: item.dataKey })
+                showDots
+                  ? {
+                      r: 3,
+                      fill: item.color,
+                      stroke: isDark ? "#1f2029" : "#ffffff",
+                      strokeWidth: 2,
+                    }
                   : false
               }
-              activeDot={{
-                r: 6,
-                fill: item.color,
-                stroke: isDark ? "#1f2029" : "#ffffff",
-                strokeWidth: 2,
-              }}
+              activeDot={
+                showDots
+                  ? {
+                      r: 5,
+                      fill: item.color,
+                      stroke: isDark ? "#1f2029" : "#ffffff",
+                      strokeWidth: 2,
+                    }
+                  : { r: 4, fill: item.color }
+              }
               animationDuration={650}
               animationEasing="ease-out"
-              isAnimationActive={series.length <= 12}
             />
           ))}
         </AreaChart>
