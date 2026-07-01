@@ -321,6 +321,82 @@ describe("Stats", () => {
     expect(todayDay?.habits[0]?.minutes_total).toBe(30);
   });
 
+  it("counts today in month summary when all habits are complete before day-close", async () => {
+    const auth = await createOnboardedUser("stats-month-today@example.com");
+    const habit = await createRunningHabit(auth.access_token);
+    const today = todayLocal();
+    const month = currentMonth();
+    await backdateHabit(habit.id, today);
+
+    const checkinResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: {
+        habit_id: habit.id,
+        value: 30,
+      },
+    });
+    expect([200, 201]).toContain(checkinResponse.statusCode);
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/stats/month?month=${month}&side=light`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    const body = statsMonthResponseSchema.parse(JSON.parse(response.body));
+    expect(body.closed_days).toBe(1);
+    expect(body.success_days).toBe(1);
+    expect(body.success_rate).toBe(100);
+  });
+
+  it("does not count today in month summary while habits are still open", async () => {
+    const auth = await createOnboardedUser("stats-month-today-open@example.com");
+    await createRunningHabit(auth.access_token);
+    const month = currentMonth();
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/stats/month?month=${month}&side=light`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    const body = statsMonthResponseSchema.parse(JSON.parse(response.body));
+    expect(body.closed_days).toBe(0);
+    expect(body.success_days).toBe(0);
+  });
+
+  it("does not count today when only some habits are complete", async () => {
+    const auth = await createOnboardedUser("stats-month-today-partial@example.com");
+    const first = await createRunningHabit(auth.access_token);
+    await createRunningHabit(auth.access_token);
+    const today = todayLocal();
+    const month = currentMonth();
+    await backdateHabit(first.id, today);
+
+    const checkinResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: {
+        habit_id: first.id,
+        value: 30,
+      },
+    });
+    expect([200, 201]).toContain(checkinResponse.statusCode);
+
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/stats/month?month=${month}&side=light`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+
+    const body = statsMonthResponseSchema.parse(JSON.parse(response.body));
+    expect(body.closed_days).toBe(0);
+    expect(body.success_days).toBe(0);
+  });
+
   it("includes today's dark limit checkin values in calendar stats", async () => {
     const auth = await createOnboardedUser("stats-open-dark@example.com");
     const today = todayLocal();

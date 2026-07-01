@@ -2926,7 +2926,7 @@ function resolveDemoDayForSide(
   side: StatsSide,
   dayDate: string,
 ): { color: DayColorValue; habits: StatsCalendarResponse["days"][number]["habits"] } {
-  const habitsForSide = state.habits.filter((habit) => habit.side === side);
+  const habitsForSide = state.habits.filter((habit) => habit.side === side && habit.is_active);
   const habitIds = new Set(habitsForSide.map((habit) => habit.id));
   const dayCheckins = state.checkins.filter(
     (checkin) => checkin.date === dayDate && habitIds.has(checkin.habit_id),

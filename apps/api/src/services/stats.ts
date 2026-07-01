@@ -101,6 +101,7 @@ export class StatsService {
   }
 
   async getMonthSummary(user: User, month: string, side?: Side) {
+    const today = getUserLocalDate(new Date(), user.timezone);
     const { start, end } = getMonthRange(month);
     const scopedHabits = side
       ? await this.listScopedHabits(user, side, { activeOnly: true })
@@ -135,13 +136,15 @@ export class StatsService {
         continue;
       }
 
-      const fullyClosed = rows.every((row) => statsByKey.has(`${row.habitId}:${date}`));
+      const color = computeDayColor(rows.map((row) => row.status));
+      const hasDailyStats = rows.every((row) => statsByKey.has(`${row.habitId}:${date}`));
+      const fullyClosed = hasDailyStats || (date === today && color !== "pending");
+
       if (!fullyClosed) {
         continue;
       }
 
       closedDays += 1;
-      const color = computeDayColor(rows.map((row) => row.status));
 
       if (color === "success") {
         successDays += 1;
