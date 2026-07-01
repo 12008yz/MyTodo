@@ -1,10 +1,11 @@
 import { SideToggle } from "../../components/SideToggle/SideToggle";
 import { TimeDistributionSection } from "../../features/charts/TimeDistributionSection";
 import { isDemoMode } from "../../lib/demo-mode";
+import "./ChartsPage.css";
 
 export function ChartsPage() {
   return (
-    <>
+    <div className="charts-page">
       <header className="home__page-header">
         <h1 className="home__page-title">Графики</h1>
       </header>
@@ -23,6 +24,6 @@ export function ChartsPage() {
         </h2>
         <TimeDistributionSection />
       </section>
-    </>
+    </div>
   );
 }

@@ -1,0 +1,79 @@
+.charts-page--loading {
+  animation: charts-page-fade-in 0.35s ease-out both;
+}
+
+.charts-page__content {
+  animation: charts-page-fade-in 0.4s ease-out both;
+}
+
+@keyframes charts-page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(6 * var(--s)));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.charts-page__skeleton-title,
+.charts-page__skeleton-section-title,
+.charts-page__skeleton-toggle,
+.charts-page__skeleton-period {
+  display: block;
+  border-radius: calc(8 * var(--s));
+  background: linear-gradient(
+    90deg,
+    rgba(95, 51, 225, 0.06) 0%,
+    rgba(95, 51, 225, 0.12) 50%,
+    rgba(95, 51, 225, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: home__shimmer 1.2s ease-in-out infinite;
+}
+
+.charts-page__skeleton-title {
+  width: calc(120 * var(--s));
+  height: calc(24 * var(--s));
+}
+
+.charts-page__skeleton-toggle {
+  width: calc(200 * var(--s));
+  height: calc(36 * var(--s));
+  margin-bottom: calc(20 * var(--s));
+}
+
+.charts-page__skeleton-section-title {
+  width: calc(180 * var(--s));
+  height: calc(20 * var(--s));
+  margin-bottom: calc(11 * var(--s));
+}
+
+.charts-page__skeleton-period {
+  width: calc(220 * var(--s));
+  height: calc(32 * var(--s));
+  margin-bottom: calc(12 * var(--s));
+  border-radius: calc(12 * var(--s));
+}
+
+.home[data-side="dark"] .charts-page__skeleton-title,
+.home[data-side="dark"] .charts-page__skeleton-section-title,
+.home[data-side="dark"] .charts-page__skeleton-toggle,
+.home[data-side="dark"] .charts-page__skeleton-period {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .charts-page--loading,
+  .charts-page__content {
+    animation: none;
+  }
+}

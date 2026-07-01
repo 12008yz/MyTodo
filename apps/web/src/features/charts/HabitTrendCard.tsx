@@ -1,13 +1,9 @@
-import { lazy, Suspense } from "react";
 import type { HabitUnit } from "@mytodo/shared";
 import { formatUnit } from "../today/format";
 import type { TrendSeries, TrendPoint } from "./buildHabitTrendSeries";
+import { HabitTrendChart } from "./HabitTrendChart";
 import { useAnimatedNumber } from "./useAnimatedNumber";
 import "./HabitTrendCard.css";
-
-const HabitTrendChart = lazy(() =>
-  import("./HabitTrendChart").then((module) => ({ default: module.HabitTrendChart })),
-);
 
 export type HabitTrendVariant = "light-side" | "dark-side";
 
@@ -37,14 +33,6 @@ function formatCenterUnit(unit: HabitUnit | "days" | null | undefined): string |
 function formatLegendValue(value: number, unit: HabitUnit | "days" | null | undefined): string {
   const unitLabel = formatCenterUnit(unit);
   return unitLabel ? `${value} ${unitLabel}` : String(value);
-}
-
-function ChartLoadingFallback() {
-  return (
-    <div className="habit-trend-chart habit-trend-chart--loading" aria-hidden="true">
-      <div className="habit-trend-chart__loading-shimmer" />
-    </div>
-  );
 }
 
 export function HabitTrendCard({
@@ -94,14 +82,12 @@ export function HabitTrendCard({
           .filter(Boolean)
           .join(" ")}
       >
-        <Suspense fallback={<ChartLoadingFallback />}>
-          <HabitTrendChart
-            points={points}
-            series={series}
-            variant={variant}
-            chartKey={chartKey}
-          />
-        </Suspense>
+        <HabitTrendChart
+          points={points}
+          series={series}
+          variant={variant}
+          chartKey={chartKey}
+        />
       </div>
 
       <ul className="habit-trend-card__legend" aria-label="Легенда">

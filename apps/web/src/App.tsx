@@ -12,18 +12,13 @@ import { BookReaderPage } from "./pages/BookReaderPage/BookReaderPage";
 import { EnglishPage } from "./pages/EnglishPage/EnglishPage";
 import { NutritionPage } from "./pages/NutritionPage/NutritionPage";
 import { ProgressPage } from "./pages/ProgressPage/ProgressPage";
+import { ChartsPageSkeleton } from "./pages/ChartsPage/ChartsPageSkeleton";
 import { AuthGuard, GuestGuard, OnboardingGuard } from "./routes/guards";
 import { NotFoundRedirect } from "./routes/NotFoundRedirect";
 
 const ChartsPage = lazy(() =>
   import("./pages/ChartsPage/ChartsPage").then((module) => ({ default: module.ChartsPage })),
 );
-
-function ChartsPageFallback() {
-  return (
-    <div className="habit-trend-card habit-trend-card--skeleton" aria-busy="true" aria-label="Загрузка графиков" />
-  );
-}
 
 export default function App() {
   return (
@@ -51,7 +46,7 @@ export default function App() {
                 <Route
                   path="/charts"
                   element={
-                    <Suspense fallback={<ChartsPageFallback />}>
+                    <Suspense fallback={<ChartsPageSkeleton />}>
                       <ChartsPage />
                     </Suspense>
                   }

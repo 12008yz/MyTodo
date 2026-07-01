@@ -1,15 +1,72 @@
 .habit-trend-card--skeleton {
-  width: 100%;
-  min-height: calc(320 * var(--s));
-  border-radius: calc(16 * var(--s));
+  pointer-events: none;
+}
+
+.habit-trend-card__skeleton-line {
+  display: block;
+  border-radius: calc(6 * var(--s));
   background: linear-gradient(
     90deg,
-    rgba(95, 51, 225, 0.05) 0%,
-    rgba(95, 51, 225, 0.1) 50%,
-    rgba(95, 51, 225, 0.05) 100%
+    rgba(95, 51, 225, 0.06) 0%,
+    rgba(95, 51, 225, 0.12) 50%,
+    rgba(95, 51, 225, 0.06) 100%
   );
   background-size: 200% 100%;
   animation: home__shimmer 1.2s ease-in-out infinite;
+}
+
+.habit-trend-card__skeleton-line--title {
+  width: 58%;
+  height: calc(18 * var(--s));
+}
+
+.habit-trend-card__skeleton-line--total {
+  width: calc(52 * var(--s));
+  height: calc(22 * var(--s));
+}
+
+.habit-trend-card__skeleton-line--subtitle {
+  width: 72%;
+  height: calc(14 * var(--s));
+}
+
+.habit-trend-card__skeleton-chart {
+  width: 100%;
+  min-height: calc(220 * var(--s));
+  margin-top: calc(4 * var(--s));
+  border-radius: calc(12 * var(--s));
+  background: linear-gradient(
+    90deg,
+    rgba(95, 51, 225, 0.04) 0%,
+    rgba(95, 51, 225, 0.09) 50%,
+    rgba(95, 51, 225, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: home__shimmer 1.2s ease-in-out infinite;
+}
+
+.habit-trend-card__legend--skeleton {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(8 * var(--s)) calc(10 * var(--s));
+}
+
+.habit-trend-card__skeleton-line--legend {
+  width: 100%;
+  height: calc(14 * var(--s));
+}
+
+.habit-trend-card--dark-side .habit-trend-card__skeleton-line,
+.habit-trend-card--dark-side .habit-trend-card__skeleton-chart,
+.home[data-side="dark"] .habit-trend-card--light-side .habit-trend-card__skeleton-line,
+.home[data-side="dark"] .habit-trend-card--light-side .habit-trend-card__skeleton-chart {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
 }
 
 .habit-trend-card {

@@ -4,6 +4,7 @@ import { AddHabitModal } from "../../components/AddHabitModal/AddHabitModal";
 import { SideProvider, useHabitSide } from "../../features/shell/SideContext";
 import { FocusSessionProvider, useFocusSession } from "../../features/shell/FocusSessionContext";
 import { requestPushSubscription } from "../../lib/push";
+import { prefetchChartsTab } from "../../features/charts/prefetchChartsTab";
 import { AnimatedOutlet } from "./AnimatedOutlet";
 import "../../pages/HomePage/HomePage.css";
 
@@ -14,6 +15,18 @@ function AppShellInner() {
 
   useEffect(() => {
     void requestPushSubscription();
+  }, []);
+
+  useEffect(() => {
+    const schedulePrefetch = () => prefetchChartsTab();
+
+    if (typeof window.requestIdleCallback === "function") {
+      const idleId = window.requestIdleCallback(schedulePrefetch, { timeout: 2500 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timeoutId = window.setTimeout(schedulePrefetch, 1200);
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   return (

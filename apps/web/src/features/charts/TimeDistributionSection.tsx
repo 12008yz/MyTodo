@@ -5,6 +5,7 @@ import { useHabitSide } from "../shell/SideContext";
 import { formatUnit } from "../today/format";
 import { useTodayDashboard } from "../today/useTodayData";
 import { HabitTrendCard } from "./HabitTrendCard";
+import { HabitTrendCardSkeleton } from "./HabitTrendCardSkeleton";
 import { useTimeDistribution } from "./useTimeDistribution";
 import "./pieChartDemo.css";
 
@@ -64,14 +65,8 @@ function PeriodToggle({
   );
 }
 
-function ChartSkeleton() {
-  return (
-    <div
-      className="habit-trend-card habit-trend-card--skeleton"
-      aria-busy="true"
-      aria-label="Загрузка диаграммы"
-    />
-  );
+function ChartSkeleton({ variant }: { variant: "light-side" | "dark-side" }) {
+  return <HabitTrendCardSkeleton variant={variant} />;
 }
 
 function buildSubtitle(
@@ -120,7 +115,7 @@ export function TimeDistributionSection() {
   }
 
   if (isChartLoading) {
-    return panel(<ChartSkeleton />);
+    return panel(<ChartSkeleton variant={variant} />);
   }
 
   if (distributionQuery.isError && !data) {
@@ -142,17 +137,19 @@ export function TimeDistributionSection() {
   }
 
   return panel(
-    <HabitTrendCard
-      title={data.chartTitle}
-      subtitle={buildSubtitle(side, period, data.unit)}
-      points={data.points}
-      series={data.series}
-      variant={variant}
-      total={data.total}
-      unit={data.unit}
-      animationKey={side}
-      chartKey={`${side}-${period}`}
-      isRefreshing={isChartRefreshing}
-    />,
+    <div className="charts-page__content">
+      <HabitTrendCard
+        title={data.chartTitle}
+        subtitle={buildSubtitle(side, period, data.unit)}
+        points={data.points}
+        series={data.series}
+        variant={variant}
+        total={data.total}
+        unit={data.unit}
+        animationKey={side}
+        chartKey={`${side}-${period}`}
+        isRefreshing={isChartRefreshing}
+      />
+    </div>,
   );
 }

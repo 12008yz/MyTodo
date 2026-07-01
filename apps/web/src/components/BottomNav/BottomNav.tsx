@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { prefetchChartsTab } from "../../features/charts/prefetchChartsTab";
 import { getNavTabIndex, useNavShadow } from "./useNavShadow";
 
 const NAV_ITEMS = [
@@ -82,6 +83,9 @@ export function BottomNav({ onAddClick }: BottomNavProps) {
           }}
           to={NAV_ITEMS[2]!.to}
           end={NAV_ITEMS[2]!.end}
+          onMouseEnter={prefetchChartsTab}
+          onFocus={prefetchChartsTab}
+          onTouchStart={prefetchChartsTab}
           className={({ isActive }) =>
             ["home__nav-item", isActive ? "home__nav-item--active" : ""].filter(Boolean).join(" ")
           }
