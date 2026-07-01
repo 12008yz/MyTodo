@@ -11,6 +11,7 @@ export function SideToggle() {
         role="tab"
         aria-selected={side === "light"}
         className={["home__side-btn", side === "light" ? "is-active" : ""].filter(Boolean).join(" ")}
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => setSide("light")}
       >
         ☀️ Светлая
@@ -20,6 +21,7 @@ export function SideToggle() {
         role="tab"
         aria-selected={side === "dark"}
         className={["home__side-btn", side === "dark" ? "is-active" : ""].filter(Boolean).join(" ")}
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => setSide("dark")}
       >
         🌑 Тёмная

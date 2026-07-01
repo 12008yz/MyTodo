@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { HabitUnit, ProgressPeriod } from "@mytodo/shared";
 import { ClientApiError } from "../../lib/api";
 import { useHabitSide } from "../shell/SideContext";
@@ -85,6 +85,25 @@ function buildSubtitle(
   return `${PERIOD_LABEL[period]}, ${sideLabel}${unitPart}`;
 }
 
+function useChartLayerEnterAnimation(dataSide: "light" | "dark") {
+  const layerRef = useRef<HTMLDivElement>(null);
+  const previousSideRef = useRef(dataSide);
+  const [enter, setEnter] = useState(true);
+
+  useEffect(() => {
+    if (previousSideRef.current === dataSide) {
+      return;
+    }
+
+    previousSideRef.current = dataSide;
+    setEnter(false);
+    const frameId = requestAnimationFrame(() => setEnter(true));
+    return () => cancelAnimationFrame(frameId);
+  }, [dataSide]);
+
+  return { layerRef, enterClass: enter ? "charts-page__chart-layer--enter" : "" };
+}
+
 export function TimeDistributionSection() {
   const { side } = useHabitSide();
   const [period, setPeriod] = useState<ProgressPeriod>("week");
@@ -102,6 +121,7 @@ export function TimeDistributionSection() {
     Boolean(data) && side !== dataSide && distributionQuery.isFetching;
   const isChartRefreshing =
     distributionQuery.isFetching && hasChartData && !distributionQuery.isPlaceholderData;
+  const { layerRef, enterClass } = useChartLayerEnterAnimation(dataSide);
 
   const panel = (content: ReactNode) => (
     <div className="pie-chart-panel">
@@ -144,9 +164,10 @@ export function TimeDistributionSection() {
   return panel(
     <div className="charts-page__content">
       <div
-        key={dataSide}
+        ref={layerRef}
         className={[
           "charts-page__chart-layer",
+          enterClass,
           isSideTransitioning ? "charts-page__chart-layer--transitioning" : "",
         ]
           .filter(Boolean)
