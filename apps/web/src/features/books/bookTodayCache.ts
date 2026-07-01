@@ -1,6 +1,33 @@
 import { resolveCheckinStatus } from "@mytodo/domain";
-import type { TodayLightResponse } from "@mytodo/shared";
+import type { HabitReadingProgress, TodayLightResponse } from "@mytodo/shared";
 import type { QueryClient } from "@tanstack/react-query";
+
+export function resetBooksHabitOnToday(
+  queryClient: QueryClient,
+  habitId: string,
+  reading: HabitReadingProgress | null,
+): void {
+  queryClient.setQueryData<TodayLightResponse>(["today", "light"], (old) => {
+    if (!old) {
+      return old;
+    }
+
+    return {
+      ...old,
+      habits: old.habits.map((habit) => {
+        if (habit.id !== habitId || habit.template_id !== "books") {
+          return habit;
+        }
+
+        return {
+          ...habit,
+          checkin: null,
+          reading,
+        };
+      }),
+    };
+  });
+}
 
 export function patchBooksHabitOnToday(
   queryClient: QueryClient,

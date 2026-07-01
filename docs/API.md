@@ -42,8 +42,8 @@ Auth: `Authorization: Bearer <access_token>` unless noted.
 | Method | Path                           | Description                                                                                                                                                      |
 | ------ | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | GET    | `/habits/:id/reading`          | Current book progress `{ reading }`                                                                                                                              |
-| PUT    | `/habits/:id/reading/select`   | Select book `{ book_id, checkin_baseline? }`                                                                                                                     |
-| DELETE | `/habits/:id/reading`          | Clear selected book `{ reading: null }`                                                                                                                          |
+| PUT    | `/habits/:id/reading/select`   | Select book `{ book_id, checkin_baseline? }`. If `book_id` changes, today's checkin for this habit is cleared |
+| DELETE | `/habits/:id/reading`          | Clear selected book `{ reading: null }` and today's checkin for this habit                                      |
 | PATCH  | `/habits/:id/reading/bookmark` | Save reader state: `{ last_read_page? }`, `{ timer_remaining_seconds?, timer_saved_date? }`, `{ reader_day_start_page?, reader_day_date? }` (at least one field) |
 
 `reading` fields: `book_id`, `pages_read` (habit credit), `pages_credited_today`, `last_read_page` (reader bookmark), `timer_remaining_seconds`, `timer_saved_date` (paused reading timer for today), `reader_day_start_page`, `reader_day_date` (today's reading baseline for page credit), `last_checkin_date`, `completed_at`, `page_count`.

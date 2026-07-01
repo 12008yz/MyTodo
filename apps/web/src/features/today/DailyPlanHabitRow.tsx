@@ -19,7 +19,8 @@ import {
 } from "@mytodo/shared";
 import { isWeekendDate } from "@mytodo/domain";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { ClientApiError, clearHabitBook, getEnglishToday, resetTodayCheckin, selectHabitBook, startDoomScroll, stopDoomScroll } from "../../lib/api";
+import { patchBooksHabitOnToday, resetBooksHabitOnToday } from "../../features/books/bookTodayCache";
+import { ClientApiError, clearHabitBook, getEnglishToday, selectHabitBook, startDoomScroll, stopDoomScroll } from "../../lib/api";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import { BookPickerModal } from "./BookPickerModal";
 import {
@@ -735,8 +736,8 @@ export function DailyPlanHabitRow({
       setActionError(null);
       try {
         await onAbortSessionForBookChange?.(habit.id);
-        await resetTodayCheckin(habit.id);
         await clearHabitBook(habit.id);
+        resetBooksHabitOnToday(queryClient, habit.id, null);
         await queryClient.invalidateQueries({ queryKey: ["today", side] });
         setSelectedBook(null);
       } catch (err) {
@@ -759,16 +760,12 @@ export function DailyPlanHabitRow({
     try {
       if (isBooks && selectedBook) {
         await onAbortSessionForBookChange?.(habit.id);
-        await resetTodayCheckin(habit.id);
-        await selectHabitBook(habit.id, {
-          book_id: book.id,
-          checkin_baseline: 0,
-        });
-      } else {
-        await selectHabitBook(habit.id, {
-          book_id: book.id,
-        });
       }
+      const reading = await selectHabitBook(habit.id, {
+        book_id: book.id,
+        ...(isBooks && selectedBook ? { checkin_baseline: 0 } : {}),
+      });
+      resetBooksHabitOnToday(queryClient, habit.id, reading);
       await queryClient.invalidateQueries({ queryKey: ["today", side] });
       setSelectedBook(book);
     } catch (err) {

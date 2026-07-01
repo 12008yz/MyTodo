@@ -1,4 +1,4 @@
-import { buildDailyPlan, calibrateHabit, canSkipThisWeek, computeEarlyRiseWindowState, computeGlobalStreak, computeNextEnglishDay, computeNextGoal, isEarlyRiseEnforcementActive, isWarmupDay, isWeekendDate, previewDayStatusForProgression, recalculateLightGoal, resolveCheckinStatus, resolveForeignLanguageCheckinStatus, resolveWarmupAnchor, resolveWarmupDayInfo, sumEnglishWatchSecondsToMinutes, sumMinutesHabitValueForTodayStats, usesAbstinenceStreakRules, type CalibrationProfile } from "@mytodo/domain";
+import { buildDailyPlan, calibrateHabit, canSkipThisWeek, computeEarlyRiseWindowState, computeGlobalStreak, computeHabitStreak, computeNextEnglishDay, computeNextGoal, isAbstinenceTimerHabit, isEarlyRiseEnforcementActive, isWarmupDay, isWeekendDate, previewDayStatusForProgression, recalculateLightGoal, resolveCheckinStatus, resolveForeignLanguageCheckinStatus, resolveWarmupAnchor, resolveWarmupDayInfo, sumEnglishWatchSecondsToMinutes, sumMinutesHabitValueForTodayStats, usesAbstinenceStreakRules, type CalibrationProfile } from "@mytodo/domain";
 import {
   AWARENESS_SESSION_MIN,
   SESSION_TARGET_MIN,
@@ -1373,7 +1373,11 @@ function resolveDemoCheckinStatus(
   }
 
   if (data.status === "fail") {
-    return { status: "fail", value: null };
+    if (usesAbstinenceStreakRules(habit.type, habit.phase)) {
+      return { status: "fail", value: null };
+    }
+
+    throw new Error("Explicit fail status is only allowed for abstinence and early rise habits");
   }
 
   if (data.value === undefined) {
@@ -1477,11 +1481,24 @@ function buildTodayStats(
 ) {
   const habitIds = new Set(sideHabits.map((habit) => habit.id));
   const scoped = checkinsToday.filter((checkin) => habitIds.has(checkin.habit_id));
-  const completedToday = scoped.filter((c) => c.status === "success").length;
-  const relapsesThisWeek = scoped.filter(
-    (c) => c.status === "fail" && !isDemoWarmupDay(state, c.date),
-  ).length;
   const today = todayDate();
+  const weekStart = weekStartMonday(today);
+  const completedToday = sideHabits.filter((habit) => {
+    if (isCompanionLightHabit(habit)) {
+      return false;
+    }
+
+    const checkin = scoped.find((row) => row.habit_id === habit.id);
+    return checkin?.status === "success";
+  }).length;
+  const relapsesThisWeek = state.checkins.filter(
+    (checkin) =>
+      checkin.status === "fail" &&
+      habitIds.has(checkin.habit_id) &&
+      checkin.date >= weekStart &&
+      checkin.date <= today &&
+      !isDemoWarmupDay(state, checkin.date),
+  ).length;
   const englishWatchMinutes = sumDemoEnglishWatchMinutesToday(state, today);
   const minutesToday = sideHabits.reduce((sum, habit) => {
     const checkin = scoped.find((row) => row.habit_id === habit.id);
@@ -1530,10 +1547,12 @@ function creditDemoReadingFromCheckin(
   }
 
   const pageCount = getKnownBookPageCount(existing.book_id);
-  const completedAt =
-    pageCount != null && pagesRead >= pageCount
-      ? (existing.completed_at ?? nowIso())
-      : existing.completed_at;
+  const finishedBook =
+    pageCount != null &&
+    (pagesRead >= pageCount || existing.last_read_page >= pageCount);
+  const completedAt = finishedBook
+    ? (existing.completed_at ?? nowIso())
+    : existing.completed_at;
 
   state.readingByHabitId[habit.id] = {
     ...existing,
@@ -1576,6 +1595,11 @@ export function demoSelectHabitBook(
     return normalized;
   }
 
+  const planDateForReset = todayDate();
+  state.checkins = state.checkins.filter(
+    (checkin) => !(checkin.habit_id === habitId && checkin.date === planDateForReset),
+  );
+
   const next: DemoReadingProgress = {
     book_id: data.book_id,
     pages_read: 0,
@@ -1607,6 +1631,10 @@ export function demoClearHabitBook(habitId: string): void {
     throw new Error("Reading progress is only available for books habits");
   }
 
+  const planDate = todayDate();
+  state.checkins = state.checkins.filter(
+    (checkin) => !(checkin.habit_id === habitId && checkin.date === planDate),
+  );
   delete state.readingByHabitId[habitId];
   saveState(state);
 }
@@ -1658,14 +1686,19 @@ export function demoUpdateReadingBookmark(
   }
 
   const pageCount = existing.page_count ?? getKnownBookPageCount(existing.book_id);
+  const nextLastReadPage =
+    data.last_read_page !== undefined
+      ? pageCount != null
+        ? Math.min(Math.max(1, data.last_read_page), pageCount)
+        : Math.max(1, data.last_read_page)
+      : existing.last_read_page;
+  const finishedBook =
+    pageCount != null && nextLastReadPage >= pageCount;
   const next: DemoReadingProgress = {
     ...existing,
     ...(data.last_read_page !== undefined
       ? {
-          last_read_page:
-            pageCount != null
-              ? Math.min(Math.max(1, data.last_read_page), pageCount)
-              : Math.max(1, data.last_read_page),
+          last_read_page: nextLastReadPage,
         }
       : {}),
     ...(data.timer_remaining_seconds !== undefined
@@ -1678,6 +1711,9 @@ export function demoUpdateReadingBookmark(
       ? { reader_day_start_page: Math.max(1, data.reader_day_start_page) }
       : {}),
     ...(data.reader_day_date !== undefined ? { reader_day_date: data.reader_day_date } : {}),
+    ...(finishedBook
+      ? { completed_at: existing.completed_at ?? nowIso() }
+      : {}),
   };
 
   state.readingByHabitId[habitId] = next;
@@ -1699,11 +1735,25 @@ function computeDemoAbstinenceElapsed(lastRelapseAt: string) {
   };
 }
 
+function demoHabitStreakDays(state: DemoState, habit: HabitResponse, planDate: string): number {
+  return computeHabitStreak(
+    state.checkins
+      .filter((row) => row.habit_id === habit.id)
+      .map((row) => ({ date: row.date, status: row.status })),
+    planDate,
+    habit.created_at.slice(0, 10),
+    habit.type,
+    habit.phase,
+  );
+}
+
 function mapHabitToTodayLight(
   habit: HabitResponse,
   checkin: CheckinResponse | null,
   reading: DemoReadingProgress | null = null,
   nutritionLog: HabitNutritionLog | null = null,
+  state?: DemoState,
+  planDate?: string,
 ): TodayLightHabit {
   const previewNextGoal = demoPreviewNextGoal(habit, checkin?.status, checkin?.value ?? null);
   const displayName = demoHabitDisplayName(habit);
@@ -1729,7 +1779,8 @@ function mapHabitToTodayLight(
         }
       : null,
     preview_next_goal: previewNextGoal,
-    streak_days: checkin?.status === "success" ? 1 : 0,
+    streak_days:
+      state && planDate ? demoHabitStreakDays(state, habit, planDate) : 0,
     ...(habit.template_id === "books" ? { reading } : {}),
     ...(isNutritionHabit(habit) ? { nutrition_log: nutritionLog } : {}),
   };
@@ -1739,11 +1790,13 @@ function mapHabitToTodayDark(
   habit: HabitResponse,
   checkin: CheckinResponse | null,
   doomScrollActive: DoomScrollSessionResponse | null = null,
+  state?: DemoState,
+  planDate?: string,
 ): TodayDarkHabit {
   return {
-    ...mapHabitToTodayLight(habit, checkin),
+    ...mapHabitToTodayLight(habit, checkin, null, null, state, planDate),
     timer:
-      habit.type === "abstinence" && habit.last_relapse_at
+      isAbstinenceTimerHabit(habit.phase) && habit.last_relapse_at
         ? {
             started_at: habit.last_relapse_at,
             elapsed: computeDemoAbstinenceElapsed(habit.last_relapse_at),
@@ -1826,7 +1879,7 @@ function buildLightTodayResponse(): TodayLightResponse {
       const checkin = todayCheckins.find((c) => c.habit_id === habit.id) ?? null;
       const reading = state.readingByHabitId[habit.id] ?? null;
       const nutritionLog = state.nutritionByHabitId[habit.id] ?? null;
-      return mapHabitToTodayLight(habit, checkin, reading, nutritionLog);
+      return mapHabitToTodayLight(habit, checkin, reading, nutritionLog, state, date);
     }),
     daily_plan: buildDemoDailyPlan(state, "light", date),
     warmup_day: buildDemoWarmupDay(state.user, date),
@@ -2075,7 +2128,7 @@ function buildDarkTodayResponse(): TodayDarkResponse {
     habits: sideHabits.map((habit) => {
       const checkin = todayCheckins.find((c) => c.habit_id === habit.id) ?? null;
       const doomActive = toDemoDoomScrollResponse(findDemoActiveDoomScrollSession(state, habit.id));
-      return mapHabitToTodayDark(habit, checkin, doomActive);
+      return mapHabitToTodayDark(habit, checkin, doomActive, state, date);
     }),
     daily_plan: buildDemoDailyPlan(state, "dark", date),
     warmup_day: buildDemoWarmupDay(state.user, date),
@@ -2278,7 +2331,9 @@ function upsertSessionCheckin(
   }
 
   const currentValue = existing?.value ?? 0;
-  const nextValue = mode === "set" ? value : currentValue + value;
+  const rawValue = mode === "set" ? value : currentValue + value;
+  const nextValue =
+    habit.template_id === "books" ? Math.max(currentValue, rawValue) : rawValue;
   let status: CheckinResponse["status"];
   if (isForeignLanguageHabit({ category_key: habit.category_key, name: habit.name })) {
     status =
@@ -2286,19 +2341,18 @@ function upsertSessionCheckin(
         ? "success"
         : resolveForeignLanguageCheckinStatus(nextValue, habit.current_goal);
   } else {
-    status =
-      habit.type === "target"
-        ? nextValue >= habit.current_goal
-          ? "success"
-          : "fail"
-        : habit.type === "limit"
-          ? nextValue <= habit.current_goal
-            ? "success"
-            : "fail"
-          : "pending";
+    status = resolveCheckinStatus(
+      {
+        type: habit.type,
+        side: habit.side,
+        currentGoal: habit.current_goal,
+        templateId: habit.template_id,
+      },
+      { value: nextValue },
+    );
   }
 
-  const previewNextGoal = demoPreviewNextGoal(habit, status, value);
+  const previewNextGoal = demoPreviewNextGoal(habit, status, nextValue);
 
   const checkin: CheckinResponse = {
     id: existing?.id ?? crypto.randomUUID(),
@@ -2317,7 +2371,9 @@ function upsertSessionCheckin(
     state.checkins.push(checkin);
   }
 
-  creditDemoReadingFromCheckin(state, habit, date, nextValue);
+  if (habit.template_id === "books") {
+    creditDemoReadingFromCheckin(state, habit, date, nextValue);
+  }
 
   return {
     date,
@@ -2437,6 +2493,19 @@ export function demoCreateCheckin(data: CreateCheckinRequest): CheckinResponse {
 
   if (resolvedValue != null) {
     creditDemoReadingFromCheckin(state, habit, date, resolvedValue);
+  }
+
+  if (
+    usesAbstinenceStreakRules(habit.type, habit.phase) &&
+    resolvedStatus === "fail"
+  ) {
+    const habitIndex = state.habits.findIndex((row) => row.id === habit.id);
+    if (habitIndex >= 0) {
+      state.habits[habitIndex] = {
+        ...state.habits[habitIndex]!,
+        last_relapse_at: nowIso(),
+      };
+    }
   }
 
   saveState(state);

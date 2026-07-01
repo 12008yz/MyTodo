@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { QueryClient } from "@tanstack/react-query";
 import type { TodayLightResponse } from "@mytodo/shared";
-import { patchBooksHabitOnToday } from "./bookTodayCache";
+import { patchBooksHabitOnToday, resetBooksHabitOnToday } from "./bookTodayCache";
 
 const baseToday: TodayLightResponse = {
   date: "2026-06-28",
@@ -112,5 +112,38 @@ describe("patchBooksHabitOnToday", () => {
     expect(habit?.checkin?.status).toBe("success");
     expect(habit?.reading?.last_read_page).toBe(1);
     expect(habit?.reading?.pages_credited_today).toBe(17);
+  });
+});
+
+describe("resetBooksHabitOnToday", () => {
+  it("clears checkin and applies new reading state", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["today", "light"], baseToday);
+
+    resetBooksHabitOnToday(queryClient, "habit-1", {
+      book_id: "self-help-smiles",
+      pages_read: 0,
+      pages_credited_today: 0,
+      last_read_page: 1,
+      last_checkin_date: "2026-06-28",
+      completed_at: null,
+      page_count: 120,
+    });
+
+    const habit = queryClient.getQueryData<TodayLightResponse>(["today", "light"])?.habits[0];
+    expect(habit?.checkin).toBeNull();
+    expect(habit?.reading?.book_id).toBe("self-help-smiles");
+    expect(habit?.reading?.pages_credited_today).toBe(0);
+  });
+
+  it("clears reading when reset with null", () => {
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(["today", "light"], baseToday);
+
+    resetBooksHabitOnToday(queryClient, "habit-1", null);
+
+    const habit = queryClient.getQueryData<TodayLightResponse>(["today", "light"])?.habits[0];
+    expect(habit?.checkin).toBeNull();
+    expect(habit?.reading).toBeNull();
   });
 });

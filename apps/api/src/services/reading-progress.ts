@@ -155,6 +155,9 @@ export class ReadingProgressService {
         pageCount != null
           ? Math.min(Math.max(1, data.lastReadPage), pageCount)
           : Math.max(1, data.lastReadPage);
+      if (pageCount != null && updates.lastReadPage >= pageCount) {
+        updates.completedAt = row.completedAt ?? now;
+      }
     }
 
     if (data.timerRemainingSeconds !== undefined) {
@@ -230,8 +233,9 @@ export class ReadingProgressService {
     }
 
     const pageCount = getKnownBookPageCount(row.bookId);
-    const completedAt =
-      pageCount != null && pagesRead >= pageCount ? (row.completedAt ?? now) : null;
+    const finishedBook =
+      pageCount != null && (pagesRead >= pageCount || row.lastReadPage >= pageCount);
+    const completedAt = finishedBook ? (row.completedAt ?? now) : row.completedAt;
 
     await db
       .update(habitReadingProgress)

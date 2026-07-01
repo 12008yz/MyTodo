@@ -134,7 +134,7 @@ export async function buildApp({ env, yukassaClient, webPushClient }: AppDepende
   await registerTodayRoutes(app, userService, todayService, requireAccess);
   await registerPomodoroRoutes(app, userService, pomodoroService, requireAccess);
   await registerHabitSessionRoutes(app, userService, habitSessionService, requireAccess);
-  await registerReadingRoutes(app, userService, readingProgressService, requireAccess);
+  await registerReadingRoutes(app, userService, readingProgressService, checkinService, requireAccess);
   await registerNutritionRoutes(app, userService, nutritionLogService, requireAccess);
   await registerDoomScrollRoutes(app, userService, doomScrollService, requireAccess);
   await registerStatsRoutes(app, userService, statsService, requireAccess);

@@ -260,6 +260,50 @@ describe("Reading progress", () => {
     expect(reading.timer_remaining_seconds).toBe(345);
   });
 
+  it("clears today's checkin when switching books after a successful day", async () => {
+    const auth = await createOnboardedUser("reading-switch-checkin@example.com");
+    const habit = await createBooksHabit(auth.access_token);
+
+    await app.inject({
+      method: "PUT",
+      url: `/api/v1/habits/${habit.id}/reading/select`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: { book_id: "meditations" },
+    });
+
+    const checkinResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/checkins",
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: {
+        habit_id: habit.id,
+        value: 5,
+      },
+    });
+    expect(checkinResponse.statusCode).toBe(201);
+    const savedCheckin = checkinResponseSchema.parse(JSON.parse(checkinResponse.body));
+    expect(savedCheckin.status).toBe("success");
+
+    const changeResponse = await app.inject({
+      method: "PUT",
+      url: `/api/v1/habits/${habit.id}/reading/select`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+      payload: {
+        book_id: "self-help-smiles",
+        checkin_baseline: 0,
+      },
+    });
+    expect(changeResponse.statusCode).toBe(200);
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: `/api/v1/checkins?date=${savedCheckin.date}`,
+      headers: { authorization: `Bearer ${auth.access_token}` },
+    });
+    const checkins = JSON.parse(listResponse.body) as Array<{ habit_id: string }>;
+    expect(checkins.find((row) => row.habit_id === habit.id)).toBeUndefined();
+  });
+
   it("clears book selection", async () => {
     const auth = await createOnboardedUser("reading-clear@example.com");
     const habit = await createBooksHabit(auth.access_token);
