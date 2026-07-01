@@ -108,6 +108,10 @@
   background: #fcfefd;
 }
 
+.profile-modal__panel--home-header .profile-modal__content {
+  max-height: calc(min(calc(100vh - 2rem), 40rem) - 5.5rem + 0.375rem);
+}
+
 .profile-modal__content::before {
   content: "";
   position: absolute;

@@ -1,11 +1,17 @@
-import { type FormEvent, useEffect, useState } from "react";
-import type { HabitUnit } from "@mytodo/shared";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
+import type { HabitCategoryKey, HabitSide, HabitTemplateId, HabitUnit } from "@mytodo/shared";
+import { ProfileModal } from "../../components/profile/ProfileModal";
 import { formatUnit } from "./format";
 
 type QuickAddPromptProps = {
   isOpen: boolean;
+  habitId: string;
   habitName: string;
   unit: HabitUnit;
+  side: HabitSide;
+  templateId?: HabitTemplateId | null;
+  categoryKey?: HabitCategoryKey | null;
+  icon?: string | null;
   chips?: number[];
   hint?: string;
   isSubmitting?: boolean;
@@ -15,8 +21,13 @@ type QuickAddPromptProps = {
 
 export function QuickAddPrompt({
   isOpen,
+  habitId,
   habitName,
   unit,
+  side,
+  templateId,
+  categoryKey,
+  icon,
   chips = [],
   hint = "Добавить сверх плана",
   isSubmitting = false,
@@ -24,6 +35,8 @@ export function QuickAddPrompt({
   onAdd,
 }: QuickAddPromptProps) {
   const [value, setValue] = useState("");
+  const inputId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -31,9 +44,17 @@ export function QuickAddPrompt({
     }
   }, [isOpen]);
 
-  if (!isOpen) {
-    return null;
-  }
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const id = window.requestAnimationFrame(() => {
+      inputRef.current?.focus({ preventScroll: true });
+    });
+
+    return () => window.cancelAnimationFrame(id);
+  }, [isOpen]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -45,19 +66,23 @@ export function QuickAddPrompt({
   };
 
   return (
-    <div className="home__value-prompt" role="presentation" onClick={onCancel}>
-      <form
-        className="home__value-prompt-panel home__quick-add-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="quick-add-title"
-        onClick={(event) => event.stopPropagation()}
-        onSubmit={handleSubmit}
-      >
-        <h3 id="quick-add-title" className="home__value-prompt-title">
-          {habitName}
-        </h3>
-        <p className="home__value-prompt-hint">{hint}</p>
+    <ProfileModal
+      open={isOpen}
+      title={habitName}
+      onClose={onCancel}
+      isSaving={isSubmitting}
+      hideActions
+      homeHeader={{
+        habitId,
+        habitName,
+        side,
+        templateId,
+        categoryKey,
+        icon,
+      }}
+    >
+      <form onSubmit={handleSubmit}>
+        <p className="profile-modal__hint">{hint}</p>
 
         {chips.length > 0 ? (
           <div className="home__quick-add-chips">
@@ -75,24 +100,25 @@ export function QuickAddPrompt({
           </div>
         ) : null}
 
-        <label className="home__value-prompt-label" htmlFor="quick-add-input">
-          Или введите своё число
+        <label className="profile-modal__field" htmlFor={inputId}>
+          <span className="profile-modal__label">Или введите своё число</span>
+          <input
+            ref={inputRef}
+            id={inputId}
+            className="profile-modal__input"
+            type="number"
+            min={1}
+            step={unit === "minutes" ? 1 : "any"}
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            placeholder={`0 ${formatUnit(unit)}`}
+          />
         </label>
-        <input
-          id="quick-add-input"
-          className="home__value-prompt-input"
-          type="number"
-          min={1}
-          step={unit === "minutes" ? 1 : "any"}
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          placeholder={`0 ${formatUnit(unit)}`}
-          autoFocus
-        />
-        <div className="home__value-prompt-actions">
+
+        <div className="profile-modal__actions">
           <button
             type="button"
-            className="home__value-prompt-btn home__value-prompt-btn--ghost"
+            className="profile-modal__btn profile-modal__btn--ghost"
             onClick={onCancel}
             disabled={isSubmitting}
           >
@@ -100,13 +126,13 @@ export function QuickAddPrompt({
           </button>
           <button
             type="submit"
-            className="home__value-prompt-btn home__value-prompt-btn--primary"
+            className="profile-modal__btn profile-modal__btn--primary"
             disabled={isSubmitting || !value}
           >
             Добавить
           </button>
         </div>
       </form>
-    </div>
+    </ProfileModal>
   );
 }
