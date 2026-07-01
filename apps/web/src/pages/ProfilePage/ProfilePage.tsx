@@ -24,6 +24,8 @@ import {
   UserIcon,
 } from "../../components/profile/ProfileIcons";
 import { ProfileInfoModal } from "../../components/profile/ProfileInfoModal";
+import { SubscriptionModal } from "../../components/profile/SubscriptionModal";
+import { formatContractLabel } from "../../components/profile/formatContractUntil";
 import { ProfileMenuRow } from "../../components/profile/ProfileMenuRow";
 import { ProfileMenuSection } from "../../components/profile/ProfileMenuSection";
 import { isDemoMode } from "../../lib/demo-mode";
@@ -67,6 +69,7 @@ export function ProfilePage() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const [faqOpen, setFaqOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [subscriptionOpen, setSubscriptionOpen] = useState(false);
 
   const englishHint =
     englishToday?.enabled === true
@@ -83,6 +86,7 @@ export function ProfilePage() {
       ? `${formatTime(user.wake_time)} – ${formatTime(user.sleep_time)}`
       : "Не задано";
   const pomodoroHint = `${user.pomodoro_work_min} / ${user.pomodoro_break_min} мин`;
+  const contractHint = user.trial_ends_at ? formatContractLabel(user.trial_ends_at) : undefined;
 
   return (
     <div className="profile-page">
@@ -159,7 +163,12 @@ export function ProfilePage() {
           onClick={() => navigate("/english")}
         />
         <ProfileMenuRow icon={<ShieldIcon />} label="Залог" hint="5000 ₽ · скоро" disabled />
-        <ProfileMenuRow icon={<CardIcon />} label="Подписка" hint="Скоро" disabled />
+        <ProfileMenuRow
+          icon={<CardIcon />}
+          label="Подписка"
+          hint={contractHint}
+          onClick={() => setSubscriptionOpen(true)}
+        />
       </ProfileMenuSection>
 
       <ProfileMenuSection title="О приложении">
@@ -240,6 +249,8 @@ export function ProfilePage() {
       >
         {HELP_TEXT}
       </ProfileInfoModal>
+
+      <SubscriptionModal open={subscriptionOpen} onClose={() => setSubscriptionOpen(false)} />
     </div>
   );
 }

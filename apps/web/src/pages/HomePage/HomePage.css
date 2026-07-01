@@ -69,8 +69,7 @@
 .home__tasks-count,
 .home__week-day-label,
 .home__task-manual-input,
-.home__budget,
-.home__trial {
+.home__contract {
   transition:
     color var(--home-block-recolor-duration) var(--side-ease),
     background-color var(--home-block-recolor-duration) var(--side-ease),
@@ -2642,12 +2641,40 @@
   background: var(--color-primary);
 }
 
-.home__budget,
-.home__trial {
+.home__contract {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(8 * var(--s));
   margin: calc(12 * var(--s)) 0 0;
   font-size: calc(12 * var(--s));
   line-height: 1.4;
   color: var(--color-secondary);
+}
+
+.home__contract-text {
+  min-width: 0;
+}
+
+.home__contract-btn {
+  flex-shrink: 0;
+  padding: calc(4 * var(--s)) calc(10 * var(--s));
+  border: none;
+  border-radius: 999px;
+  background: rgba(95, 51, 225, 0.12);
+  color: #5f33e1;
+  font: inherit;
+  font-size: calc(11 * var(--s));
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.home__contract-btn:active {
+  transform: scale(0.97);
 }
 
 /* --- Dark side theme --- */
@@ -2783,9 +2810,13 @@
   color: #fca5a5;
 }
 
-.home[data-side="dark"] .home__budget,
-.home[data-side="dark"] .home__trial {
+.home[data-side="dark"] .home__contract {
   color: rgba(245, 245, 247, 0.62);
+}
+
+.home[data-side="dark"] .home__contract-btn {
+  background: rgba(167, 139, 250, 0.18);
+  color: #c4b5fd;
 }
 
 /* Habit cards — theme is scoped per crossfade layer */
@@ -3004,8 +3035,8 @@
   .home__name,
   .home__section-title,
   .home__profile-link,
-  .home__budget,
-  .home__trial,
+  .home__contract,
+  .home__contract-btn,
   .home__task-card,
   .home__stat-card--light,
   .home__plan-list-layer,

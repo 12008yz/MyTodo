@@ -38,6 +38,8 @@ import {
   waitForHabitCompletion,
 } from "./habitCompletionTiming";
 import type { TodaySide } from "./useTodayData";
+import { SubscriptionModal } from "../../components/profile/SubscriptionModal";
+import { formatContractLabel } from "../../components/profile/formatContractUntil";
 
 const EMPTY_PLAN: DailyPlan = {
   blocks: [],
@@ -414,6 +416,7 @@ export function DailyPlanList({
   );
   const [completionBurst, setCompletionBurst] = useState(false);
   const [completionRetryAvailable, setCompletionRetryAvailable] = useState(false);
+  const [subscriptionOpen, setSubscriptionOpen] = useState(false);
   const [completionFlight, setCompletionFlight] = useState<{
     habitId: string;
     fromRect: CompletionFlightRect | null;
@@ -1082,17 +1085,20 @@ export function DailyPlanList({
         />
       </div>
 
-      {minutesLoggedToday != null && dailyBudgetMin != null ? (
-        <p className="home__budget">
-          Сегодня: {minutesLoggedToday} из {dailyBudgetMin} мин
-        </p>
+      {trialEndsAt ? (
+        <div className="home__contract">
+          <span className="home__contract-text">{formatContractLabel(trialEndsAt)}</span>
+          <button
+            type="button"
+            className="home__contract-btn"
+            onClick={() => setSubscriptionOpen(true)}
+          >
+            Подписаться
+          </button>
+        </div>
       ) : null}
 
-      {trialEndsAt ? (
-        <p className="home__trial">
-          Trial до {new Date(trialEndsAt).toLocaleDateString("ru-RU")}
-        </p>
-      ) : null}
+      <SubscriptionModal open={subscriptionOpen} onClose={() => setSubscriptionOpen(false)} />
 
       {actionError && !focusState ? <p className="home__task-error">{actionError}</p> : null}
 

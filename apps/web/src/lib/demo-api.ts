@@ -64,6 +64,8 @@ import {
   type PushSubscribeRequest,
   type PushSubscribeResponse,
   type RegisterRequest,
+  SUBSCRIPTION_PLANS,
+  type SubscribeRequest,
   type StartHabitSessionRequest,
   type ProgressPeriod,
   type StatsCalendarResponse,
@@ -3133,5 +3135,16 @@ export function demoSendCoachChat(body: CoachChatRequest): CoachChatResponse {
     reply,
     messages_left: Math.max(0, COACH_DAILY_MESSAGE_LIMIT - usage - 1),
     source: "template",
+  };
+}
+
+export async function demoSubscribeBilling(input: SubscribeRequest) {
+  const plan = SUBSCRIPTION_PLANS[input.plan];
+
+  return {
+    payment_id: `demo-${crypto.randomUUID()}`,
+    confirmation_url: "https://yookassa.ru/",
+    plan: input.plan,
+    amount_rub: plan.priceRub,
   };
 }
