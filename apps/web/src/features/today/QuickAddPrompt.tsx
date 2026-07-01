@@ -1,17 +1,12 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
-import type { HabitCategoryKey, HabitSide, HabitTemplateId, HabitUnit } from "@mytodo/shared";
+import type { HabitUnit } from "@mytodo/shared";
 import { ProfileModal } from "../../components/profile/ProfileModal";
 import { formatUnit } from "./format";
 
 type QuickAddPromptProps = {
   isOpen: boolean;
-  habitId: string;
   habitName: string;
   unit: HabitUnit;
-  side: HabitSide;
-  templateId?: HabitTemplateId | null;
-  categoryKey?: HabitCategoryKey | null;
-  icon?: string | null;
   chips?: number[];
   hint?: string;
   isSubmitting?: boolean;
@@ -21,13 +16,8 @@ type QuickAddPromptProps = {
 
 export function QuickAddPrompt({
   isOpen,
-  habitId,
   habitName,
   unit,
-  side,
-  templateId,
-  categoryKey,
-  icon,
   chips = [],
   hint = "Добавить сверх плана",
   isSubmitting = false,
@@ -72,14 +62,7 @@ export function QuickAddPrompt({
       onClose={onCancel}
       isSaving={isSubmitting}
       hideActions
-      homeHeader={{
-        habitId,
-        habitName,
-        side,
-        templateId,
-        categoryKey,
-        icon,
-      }}
+      plain
     >
       <form onSubmit={handleSubmit}>
         <p className="profile-modal__hint">{hint}</p>

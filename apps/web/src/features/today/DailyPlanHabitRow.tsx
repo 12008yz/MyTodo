@@ -1252,13 +1252,8 @@ export function DailyPlanHabitRow({
 
       <QuickAddPrompt
         isOpen={quickAddOpen}
-        habitId={habit.id}
         habitName={habit.name}
         unit={habit.unit}
-        side={side}
-        templateId={habit.template_id}
-        categoryKey={habit.category_key}
-        icon={habit.icon}
         chips={quickAddChips}
         isSubmitting={checkinMutation.isPending}
         onCancel={() => setQuickAddOpen(false)}

@@ -8,8 +8,6 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import type { HabitCategoryKey, HabitSide, HabitTemplateId } from "@mytodo/shared";
-import { HomeModalHeader } from "../../features/today/HomeModalHeader";
 import { ProfileModalYinYangWaves } from "./ProfileModalYinYangWaves";
 import type { ProfileModalArtVariant } from "./profileModalArt";
 import "./ProfileModal.css";
@@ -34,15 +32,8 @@ type ProfileModalProps = {
   wide?: boolean;
   hideActions?: boolean;
   art?: ProfileModalArtVariant;
-  /** Декоративная шапка (модалки «+» на главной). Без пропа — волны профиля. */
-  homeHeader?: {
-    habitId: string;
-    habitName: string;
-    side: HabitSide;
-    templateId?: HabitTemplateId | null;
-    categoryKey?: HabitCategoryKey | null;
-    icon?: string | null;
-  };
+  /** Без декоративной шапки — только белая панель. */
+  plain?: boolean;
 };
 
 export function ProfileModal({
@@ -57,7 +48,7 @@ export function ProfileModal({
   wide = false,
   hideActions = false,
   art = "yin-yang",
-  homeHeader,
+  plain = false,
 }: ProfileModalProps) {
   const titleId = useId();
   const timerRef = useRef<number | null>(null);
@@ -132,7 +123,7 @@ export function ProfileModal({
         className={[
           "profile-modal__panel",
           wide ? "profile-modal__panel--wide" : "",
-          homeHeader ? "profile-modal__panel--home-header" : "",
+          plain ? "profile-modal__panel--plain" : "",
         ]
           .filter(Boolean)
           .join(" ")}
@@ -141,18 +132,7 @@ export function ProfileModal({
         aria-labelledby={titleId}
         onClick={(event) => event.stopPropagation()}
       >
-        {homeHeader ? (
-          <HomeModalHeader
-            habitId={homeHeader.habitId}
-            habitName={homeHeader.habitName}
-            side={homeHeader.side}
-            templateId={homeHeader.templateId}
-            categoryKey={homeHeader.categoryKey}
-            icon={homeHeader.icon}
-          />
-        ) : (
-          <ProfileModalYinYangWaves variant={art} />
-        )}
+        {plain ? null : <ProfileModalYinYangWaves variant={art} />}
 
         <div className="profile-modal__content">
           <h2 id={titleId} className="profile-modal__title">
