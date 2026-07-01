@@ -131,6 +131,63 @@ describe("buildHabitTrendSeries", () => {
     expect(result.points[0]).toMatchObject({ series0: 4, series1: 1 });
   });
 
+  it("counts abstinence success days on dark side", () => {
+    const result = buildHabitTrendSeries(
+      [
+        calendar("2026-06", [
+          {
+            date: "2026-06-01",
+            color: "success",
+            habits: [
+              {
+                habit_id: "nails",
+                name: "Грызть ногти",
+                side: "dark",
+                type: "abstinence",
+                phase: "abstinence",
+                unit: null,
+                template_id: "nail_biting",
+                status: "success",
+                value: null,
+                goal: null,
+                minutes_total: 0,
+              },
+            ],
+          },
+          {
+            date: "2026-06-02",
+            color: "fail",
+            habits: [
+              {
+                habit_id: "nails",
+                name: "Грызть ногти",
+                side: "dark",
+                type: "abstinence",
+                phase: "abstinence",
+                unit: null,
+                template_id: "nail_biting",
+                status: "fail",
+                value: null,
+                goal: null,
+                minutes_total: 0,
+              },
+            ],
+          },
+        ]),
+      ],
+      "dark",
+      "2026-06-01",
+      "2026-06-02",
+      "week",
+    );
+
+    expect(result.total).toBe(1);
+    expect(result.unit).toBe("days");
+    expect(result.series[0]?.total).toBe(1);
+    expect(result.points[0]).toMatchObject({ series0: 1 });
+    expect(result.points[1]).toMatchObject({ series0: 0 });
+  });
+
   it("includes all habits when more than three exist", () => {
     const habits = Array.from({ length: 5 }, (_, index) => ({
       habit_id: `habit-${index}`,
