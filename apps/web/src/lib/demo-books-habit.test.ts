@@ -111,6 +111,33 @@ describe("demo books habit", () => {
     expect(reading.last_read_page).toBe(176);
   });
 
+  it("reconciles success checkin from reader bookmark after reload", () => {
+    const habit = findBooksHabit();
+    demoSelectHabitBook(habit.id, { book_id: "meditations" });
+
+    const date = todayDate();
+    const startPage = 10;
+    demoUpdateReadingBookmark(habit.id, {
+      reader_day_start_page: startPage,
+      reader_day_date: date,
+    });
+    demoUpdateReadingBookmark(habit.id, {
+      last_read_page: startPage + habit.current_goal - 1,
+    });
+
+    const state = readDemoState();
+    const todayCheckin = state.checkins.find(
+      (row: { habit_id: string; date: string; status: string; value: number }) =>
+        row.habit_id === habit.id && row.date === date,
+    );
+    expect(todayCheckin?.status).toBe("success");
+    expect(todayCheckin?.value).toBe(habit.current_goal);
+
+    const today = demoGetTodayLight();
+    const booksHabit = today.habits.find((row) => row.id === habit.id);
+    expect(booksHabit?.checkin?.status).toBe("success");
+  });
+
   it("clears today checkin when book selection is cleared", () => {
     const habit = findBooksHabit();
     demoSelectHabitBook(habit.id, { book_id: "meditations" });

@@ -20,7 +20,8 @@ import {
   formatSessionCountdown,
   useSyncedReadingTimer,
 } from "../../features/books/bookReadingTimer";
-import { createCheckin, updateReadingBookmark } from "../../lib/api";
+import { updateReadingBookmark } from "../../lib/api";
+import { createBooksCheckinSync } from "../../features/books/booksCheckinSync";
 import { patchBooksHabitOnToday } from "../../features/books/bookTodayCache";
 import "./BookReaderPage.css";
 
@@ -49,10 +50,16 @@ export function BookReaderPage() {
   const dayStartPageRef = useRef<number | null>(null);
   const dayBaselineReadyRef = useRef(false);
   const dayBaselinePersistedRef = useRef(false);
-  const lastCreditedPagesRef = useRef<number | null>(null);
-  const checkinDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingCheckinRef = useRef<{ habitId: string; planDate: string; value: number } | null>(
-    null,
+  const checkinSyncRef = useRef(createBooksCheckinSync(queryClient));
+
+  const scheduleCheckinPersist = useCallback(
+    (value: number) => {
+      if (!habitId || !planDate || value <= 0) {
+        return;
+      }
+      checkinSyncRef.current.schedule(habitId, planDate, value);
+    },
+    [habitId, planDate],
   );
 
   const pageCount = manifest?.pageCount ?? reading?.page_count ?? 1;
@@ -106,7 +113,7 @@ export function BookReaderPage() {
     dayStartPageRef.current = null;
     dayBaselineReadyRef.current = false;
     dayBaselinePersistedRef.current = false;
-    lastCreditedPagesRef.current = null;
+    checkinSyncRef.current.reset();
   }, [habitId, bookId, planDate]);
 
   useEffect(() => {
@@ -155,12 +162,12 @@ export function BookReaderPage() {
     if (habitId && initialDayStart != null) {
       const pagesToday = pagesReadTodayInBook(initialPage, initialDayStart);
       const currentCheckin = habit?.checkin?.value ?? 0;
-      patchBooksHabitOnToday(queryClient, habitId, {
-        lastReadPage: initialPage,
-        ...(pagesToday > currentCheckin ? { checkinValue: pagesToday } : {}),
-      });
+      patchBooksHabitOnToday(queryClient, habitId, { lastReadPage: initialPage });
+      if (pagesToday > currentCheckin) {
+        scheduleCheckinPersist(pagesToday);
+      }
     }
-  }, [habit, habitId, queryClient, reading, manifest, page, planDate]);
+  }, [habit, habitId, queryClient, reading, manifest, page, planDate, scheduleCheckinPersist]);
 
   const syncReaderProgress = useCallback(
     (nextPage: number) => {
@@ -181,13 +188,13 @@ export function BookReaderPage() {
             .getQueryData<TodayLightResponse>(["today", "light"])
             ?.habits.find((row) => row.id === habitId)?.checkin?.value ?? 0;
         if (pagesToday > currentCheckin) {
-          patch.checkinValue = pagesToday;
+          scheduleCheckinPersist(pagesToday);
         }
       }
 
       patchBooksHabitOnToday(queryClient, habitId, patch);
     },
-    [habitId, queryClient],
+    [habitId, queryClient, scheduleCheckinPersist],
   );
 
   useEffect(() => {
@@ -268,21 +275,13 @@ export function BookReaderPage() {
   }, [habit, habitId, page, planDate, queryClient, reading, syncReaderProgress]);
 
   useEffect(() => {
-    const serverValue = habit?.checkin?.value ?? 0;
-    if (lastCreditedPagesRef.current == null || serverValue > lastCreditedPagesRef.current) {
-      lastCreditedPagesRef.current = serverValue;
-    }
+    checkinSyncRef.current.acknowledgeServerValue(habit?.checkin?.value ?? 0);
   }, [habit?.checkin?.value]);
 
-  const habitRef = useRef(habit);
-  habitRef.current = habit;
-
   useEffect(() => {
-    const currentHabit = habitRef.current;
     if (
       !habitId ||
-      !currentHabit ||
-      currentHabit.template_id !== "books" ||
+      habit?.template_id !== "books" ||
       page == null ||
       !planDate ||
       !dayBaselineReadyRef.current ||
@@ -291,70 +290,14 @@ export function BookReaderPage() {
       return;
     }
 
-    const dayStartPage = dayStartPageRef.current;
-    const pagesFromReader = pagesReadTodayInBook(page, dayStartPage);
-    const serverValue = currentHabit.checkin?.value ?? 0;
-    const nextValue = Math.max(serverValue, lastCreditedPagesRef.current ?? 0, pagesFromReader);
-
-    if (nextValue <= Math.max(lastCreditedPagesRef.current ?? 0, serverValue)) {
-      return;
+    const pagesFromReader = pagesReadTodayInBook(page, dayStartPageRef.current);
+    const serverValue = habit.checkin?.value ?? 0;
+    if (pagesFromReader > serverValue) {
+      scheduleCheckinPersist(pagesFromReader);
     }
+  }, [habit, habitId, page, planDate, dayStartPage, scheduleCheckinPersist]);
 
-    pendingCheckinRef.current = { habitId, planDate, value: nextValue };
-    patchBooksHabitOnToday(queryClient, habitId, { checkinValue: nextValue });
-
-    if (checkinDebounceRef.current) {
-      window.clearTimeout(checkinDebounceRef.current);
-    }
-
-    checkinDebounceRef.current = window.setTimeout(() => {
-      void createCheckin({
-        habit_id: habitId,
-        date: planDate,
-        value: nextValue,
-      })
-        .then((response) => {
-          lastCreditedPagesRef.current = nextValue;
-          pendingCheckinRef.current = null;
-          patchBooksHabitOnToday(queryClient, habitId, {
-            checkinValue: response.value ?? nextValue,
-          });
-        })
-        .catch(() => {
-          // Повторим при следующем перелистывании.
-        });
-    }, 400);
-
-    return () => {
-      if (checkinDebounceRef.current) {
-        window.clearTimeout(checkinDebounceRef.current);
-        checkinDebounceRef.current = null;
-      }
-    };
-  }, [habitId, page, planDate, queryClient]);
-
-  useEffect(() => {
-    return () => {
-      const hadPendingTimer = checkinDebounceRef.current != null;
-      if (checkinDebounceRef.current) {
-        window.clearTimeout(checkinDebounceRef.current);
-        checkinDebounceRef.current = null;
-      }
-
-      const pending = pendingCheckinRef.current;
-      if (!pending || !hadPendingTimer) {
-        return;
-      }
-
-      void createCheckin({
-        habit_id: pending.habitId,
-        date: pending.planDate,
-        value: pending.value,
-      }).catch(() => {
-        // Страница уже закрыта — сохранится при следующем открытии.
-      });
-    };
-  }, []);
+  useEffect(() => () => checkinSyncRef.current.dispose(), []);
 
   const persistBookmark = useCallback(
     async (nextPage: number) => {

@@ -1,4 +1,5 @@
 import { buildDailyPlan, calibrateHabit, canSkipThisWeek, computeEarlyRiseWindowState, computeGlobalStreak, computeHabitStreak, computeNextEnglishDay, computeNextGoal, isAbstinenceTimerHabit, isEarlyRiseEnforcementActive, isWarmupDay, isWeekendDate, previewDayStatusForProgression, recalculateLightGoal, resolveCheckinStatus, resolveForeignLanguageCheckinStatus, resolveWarmupAnchor, resolveWarmupDayInfo, sumEnglishWatchSecondsToMinutes, sumMinutesHabitValueForTodayStats, usesAbstinenceStreakRules, type CalibrationProfile } from "@mytodo/domain";
+import { pagesReadTodayInBook } from "../features/books/bookReadingProgress";
 import {
   AWARENESS_SESSION_MIN,
   SESSION_TARGET_MIN,
@@ -1564,6 +1565,93 @@ function creditDemoReadingFromCheckin(
   };
 }
 
+function demoPagesReadToday(reading: DemoReadingProgress, date: string): number {
+  const creditedToday =
+    reading.last_checkin_date === date ? reading.pages_credited_today : 0;
+  if (reading.reader_day_date === date && reading.reader_day_start_page != null) {
+    return Math.max(
+      creditedToday,
+      pagesReadTodayInBook(reading.last_read_page, reading.reader_day_start_page),
+    );
+  }
+
+  return creditedToday;
+}
+
+function upsertDemoBooksCheckinValue(
+  state: DemoState,
+  habit: HabitResponse,
+  date: string,
+  value: number,
+): void {
+  if (habit.template_id !== "books" || value <= 0) {
+    return;
+  }
+
+  const existingIndex = state.checkins.findIndex(
+    (checkin) => checkin.habit_id === habit.id && checkin.date === date,
+  );
+  const currentValue =
+    existingIndex >= 0 ? (state.checkins[existingIndex]!.value ?? 0) : 0;
+  const nextValue = Math.max(currentValue, value);
+  if (
+    nextValue <= currentValue &&
+    existingIndex >= 0 &&
+    state.checkins[existingIndex]?.status === "success"
+  ) {
+    return;
+  }
+
+  const { status: resolvedStatus, value: resolvedValue } = resolveDemoCheckinStatus(
+    habit,
+    { habit_id: habit.id, date, value: nextValue },
+    state,
+  );
+  const previewNextGoal = demoPreviewNextGoal(habit, resolvedStatus, resolvedValue);
+  const checkin: CheckinResponse = {
+    id: existingIndex >= 0 ? state.checkins[existingIndex]!.id : crypto.randomUUID(),
+    habit_id: habit.id,
+    date,
+    status: resolvedStatus,
+    value: resolvedValue,
+    updated_at: nowIso(),
+    current_goal: habit.current_goal,
+    preview_next_goal: previewNextGoal,
+  };
+
+  if (existingIndex >= 0) {
+    state.checkins[existingIndex] = checkin;
+  } else {
+    state.checkins.push(checkin);
+  }
+
+  if (resolvedValue != null) {
+    creditDemoReadingFromCheckin(state, habit, date, resolvedValue);
+  }
+}
+
+function reconcileDemoBooksCheckinFromReading(
+  state: DemoState,
+  habit: HabitResponse,
+  date: string,
+): void {
+  if (habit.template_id !== "books") {
+    return;
+  }
+
+  const reading = state.readingByHabitId[habit.id];
+  if (!reading) {
+    return;
+  }
+
+  const pagesToday = demoPagesReadToday(reading, date);
+  if (pagesToday <= 0) {
+    return;
+  }
+
+  upsertDemoBooksCheckinValue(state, habit, date, pagesToday);
+}
+
 export function demoSelectHabitBook(
   habitId: string,
   data: SelectHabitBookRequest,
@@ -1717,6 +1805,7 @@ export function demoUpdateReadingBookmark(
   };
 
   state.readingByHabitId[habitId] = next;
+  reconcileDemoBooksCheckinFromReading(state, habit, todayDate());
   saveState(state);
   return next;
 }
@@ -1864,8 +1953,11 @@ function buildLightTodayResponse(): TodayLightResponse {
   const date = todayDate();
   ensureDemoEarlyRiseWeekendSkips(state, date);
   state = reconcileDemoForeignLanguageMinutes(state);
-  saveState(state);
   const sideHabits = state.habits.filter((h) => h.side === "light" && h.is_active);
+  for (const habit of sideHabits) {
+    reconcileDemoBooksCheckinFromReading(state, habit, date);
+  }
+  saveState(state);
   const todayCheckins = state.checkins.filter((c) => c.date === date);
   const stats = buildTodayStats(state, sideHabits, todayCheckins);
 
