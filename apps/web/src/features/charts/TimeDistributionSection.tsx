@@ -92,12 +92,16 @@ export function TimeDistributionSection() {
   const today = dashboard?.date ?? null;
   const distributionQuery = useTimeDistribution(side, period, today);
   const data = distributionQuery.data;
-  const variant = side === "light" ? "light-side" : "dark-side";
+  const dataSide = data?.side ?? side;
+  const variant = dataSide === "light" ? "light-side" : "dark-side";
   const hasChartData = Boolean(data);
   const isChartLoading =
     (!today && isDashboardLoading) ||
     (Boolean(today) && distributionQuery.isPending && !hasChartData);
-  const isChartRefreshing = distributionQuery.isFetching && hasChartData;
+  const isSideTransitioning =
+    Boolean(data) && side !== dataSide && distributionQuery.isFetching;
+  const isChartRefreshing =
+    distributionQuery.isFetching && hasChartData && !distributionQuery.isPlaceholderData;
 
   const panel = (content: ReactNode) => (
     <div className="pie-chart-panel">
@@ -128,29 +132,40 @@ export function TimeDistributionSection() {
   }
 
   if (!data || data.series.length === 0) {
+    const emptySide = data?.side ?? side;
     return panel(
       <p className="home__placeholder">
         {data?.emptyMessage ??
-          `Нет данных по привычкам на ${side === "light" ? "светлой" : "тёмной"} стороне`}
+          `Нет данных по привычкам на ${emptySide === "light" ? "светлой" : "тёмной"} стороне`}
       </p>,
     );
   }
 
   return panel(
     <div className="charts-page__content">
-      <HabitTrendCard
-        title={data.chartTitle}
-        subtitle={buildSubtitle(side, period, data.unit)}
-        points={data.points}
-        series={data.series}
-        variant={variant}
-        total={data.total}
-        unit={data.unit}
-        animationKey={side}
-        chartKey={`${side}-${period}`}
-        period={period}
-        isRefreshing={isChartRefreshing}
-      />
+      <div
+        key={dataSide}
+        className={[
+          "charts-page__chart-layer",
+          isSideTransitioning ? "charts-page__chart-layer--transitioning" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <HabitTrendCard
+          title={data.chartTitle}
+          subtitle={buildSubtitle(dataSide, data.period, data.unit)}
+          points={data.points}
+          series={data.series}
+          variant={variant}
+          total={data.total}
+          unit={data.unit}
+          animationKey={dataSide}
+          chartKey={`${dataSide}-${data.period}`}
+          period={data.period}
+          isRefreshing={isChartRefreshing}
+        />
+      </div>
     </div>,
   );
 }

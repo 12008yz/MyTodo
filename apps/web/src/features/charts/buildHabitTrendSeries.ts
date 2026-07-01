@@ -25,6 +25,8 @@ export type TrendPoint = {
 };
 
 export type HabitTrendResult = {
+  side: StatsSide;
+  period: ProgressPeriod;
   series: TrendSeries[];
   points: TrendPoint[];
   total: number;
@@ -161,6 +163,8 @@ export function buildHabitTrendSeries(
   const unit = units.size === 1 ? (ranked[0]?.unit ?? null) : null;
 
   return {
+    side,
+    period,
     series,
     points,
     total,

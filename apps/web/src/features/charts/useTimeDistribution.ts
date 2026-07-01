@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getProgressPeriodRange } from "@mytodo/domain";
 import type { ProgressPeriod, StatsSide } from "@mytodo/shared";
 import { getStatsCalendar } from "../../lib/api";
@@ -24,11 +24,6 @@ export function useTimeDistribution(
       return buildHabitTrendSeries(calendars, side, range.start, range.end, period);
     },
     enabled: Boolean(range && months.length > 0),
-    placeholderData: (previousData, previousQuery) => {
-      if (previousQuery?.queryKey[1] === side) {
-        return previousData;
-      }
-      return undefined;
-    },
+    placeholderData: keepPreviousData,
   });
 }

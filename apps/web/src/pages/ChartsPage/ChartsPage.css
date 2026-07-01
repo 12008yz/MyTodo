@@ -3,7 +3,20 @@
 }
 
 .charts-page__content {
-  animation: charts-page-fade-in 0.4s ease-out both;
+  min-width: 0;
+}
+
+.charts-page__chart-layer {
+  min-width: 0;
+  width: 100%;
+  animation: charts-page-chart-layer-in var(--home-habit-crossfade-duration, 0.72s)
+    var(--side-ease, cubic-bezier(0.65, 0, 0.35, 1)) both;
+}
+
+.charts-page__chart-layer--transitioning {
+  opacity: 0.72;
+  transition: opacity var(--home-habit-crossfade-duration, 0.72s)
+    var(--side-ease, cubic-bezier(0.65, 0, 0.35, 1));
 }
 
 @keyframes charts-page-fade-in {
@@ -71,9 +84,26 @@
   background-size: 200% 100%;
 }
 
+@keyframes charts-page-chart-layer-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(6 * var(--s)));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .charts-page--loading,
-  .charts-page__content {
+  .charts-page__chart-layer {
     animation: none;
+  }
+
+  .charts-page__chart-layer--transitioning {
+    opacity: 1;
+    transition: none;
   }
 }
