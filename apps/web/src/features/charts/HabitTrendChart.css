@@ -29,20 +29,15 @@
 
 .habit-trend-chart .recharts-cartesian-grid line {
   stroke: var(--ht-chart-grid) !important;
-  transition: stroke var(--home-habit-crossfade-duration, 0.72s)
-    var(--side-ease, cubic-bezier(0.65, 0, 0.35, 1));
 }
 
 .habit-trend-chart .recharts-cartesian-axis-tick text {
   fill: var(--ht-chart-tick) !important;
-  transition: fill var(--home-habit-crossfade-duration, 0.72s)
-    var(--side-ease, cubic-bezier(0.65, 0, 0.35, 1));
 }
 
 .habit-trend-chart .recharts-dot circle,
 .habit-trend-chart .recharts-active-dot circle {
-  transition: stroke var(--home-habit-crossfade-duration, 0.72s)
-    var(--side-ease, cubic-bezier(0.65, 0, 0.35, 1));
+  stroke: var(--ht-chart-dot-stroke);
 }
 
 .habit-trend-tooltip {

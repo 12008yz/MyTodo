@@ -19,6 +19,7 @@ type HabitTrendCardProps = {
   chartKey: string;
   period: ProgressPeriod;
   isRefreshing?: boolean;
+  animateChart?: boolean;
 };
 
 function formatCenterUnit(unit: HabitUnit | "days" | null | undefined): string | null {
@@ -48,6 +49,7 @@ export function HabitTrendCard({
   chartKey,
   period,
   isRefreshing = false,
+  animateChart = true,
 }: HabitTrendCardProps) {
   const animatedTotal = useAnimatedNumber(total, total > 0, 450, animationKey);
   const unitLabel = formatCenterUnit(unit);
@@ -91,6 +93,7 @@ export function HabitTrendCard({
           series={series}
           chartKey={chartKey}
           period={period}
+          animate={animateChart}
         />
       </div>
 

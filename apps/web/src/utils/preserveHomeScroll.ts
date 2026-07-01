@@ -48,17 +48,10 @@ function restoreHomeScrollTop(top: number): void {
 function restoreHomeScrollTopSoon(top: number): () => void {
   restoreHomeScrollTop(top);
 
-  const frameId = requestAnimationFrame(() => {
-    restoreHomeScrollTop(top);
-    requestAnimationFrame(() => restoreHomeScrollTop(top));
-  });
-  const timeout50 = window.setTimeout(() => restoreHomeScrollTop(top), 50);
-  const timeout150 = window.setTimeout(() => restoreHomeScrollTop(top), 150);
+  const frameId = requestAnimationFrame(() => restoreHomeScrollTop(top));
 
   return () => {
     cancelAnimationFrame(frameId);
-    window.clearTimeout(timeout50);
-    window.clearTimeout(timeout150);
   };
 }
 

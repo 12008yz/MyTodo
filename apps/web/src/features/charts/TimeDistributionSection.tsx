@@ -95,19 +95,19 @@ export function TimeDistributionSection() {
   const distributionQuery = useTimeDistribution(side, period, today);
   const data = distributionQuery.data;
   const hasChartData = Boolean(data);
-  const dataSide = data?.side ?? side;
+  const displayedSide = data?.side ?? side;
   const shellVariant = side === "light" ? "light-side" : "dark-side";
-  const dataVariant = dataSide === "light" ? "light-side" : "dark-side";
-  const variant = hasChartData ? dataVariant : shellVariant;
+  const variant = shellVariant;
   const isChartLoading =
     (!today && isDashboardLoading) ||
     (Boolean(today) && distributionQuery.isPending && !hasChartData);
   const isChartRefreshing =
     distributionQuery.isFetching && hasChartData && !distributionQuery.isPlaceholderData;
-  const chartKey = `${side}-${period}`;
+  const isSideDataStale = hasChartData && data?.side !== side;
+  const chartKey = `${displayedSide}-${period}`;
   const chartTitle = side === "light" ? "Динамика" : "Расход";
 
-  usePreserveHomeScrollAfterChartUpdate(chartKey, data);
+  usePreserveHomeScrollAfterChartUpdate(chartKey);
 
   const panel = (content: ReactNode) => (
     <div className="pie-chart-panel">
@@ -162,6 +162,7 @@ export function TimeDistributionSection() {
           chartKey={chartKey}
           period={period}
           isRefreshing={isChartRefreshing}
+          animateChart={!isChartRefreshing && !isSideDataStale}
         />
       </div>
     </div>,

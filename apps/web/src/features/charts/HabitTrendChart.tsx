@@ -17,6 +17,7 @@ type HabitTrendChartProps = {
   series: TrendSeries[];
   chartKey: string;
   period: ProgressPeriod;
+  animate?: boolean;
 };
 
 function chartHeight(seriesCount: number, pointCount: number): number {
@@ -119,6 +120,7 @@ export function HabitTrendChart({
   series,
   chartKey,
   period,
+  animate = true,
 }: HabitTrendChartProps) {
   const fillOpacity = seriesFillOpacity(series.length);
   const showDots = series.length <= 6;
@@ -188,9 +190,9 @@ export function HabitTrendChart({
                     }
                   : { r: 4, fill: item.color }
               }
-              animationDuration={650}
+              animationDuration={animate ? 650 : 0}
               animationEasing="ease-out"
-              isAnimationActive
+              isAnimationActive={animate}
             />
           ))}
         </AreaChart>

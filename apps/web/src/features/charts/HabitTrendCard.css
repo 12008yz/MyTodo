@@ -57,9 +57,7 @@
 }
 
 .habit-trend-card--dark-side .habit-trend-card__skeleton-line,
-.habit-trend-card--dark-side .habit-trend-card__skeleton-chart,
-.home[data-side="dark"] .habit-trend-card .habit-trend-card__skeleton-line,
-.home[data-side="dark"] .habit-trend-card .habit-trend-card__skeleton-chart {
+.habit-trend-card--dark-side .habit-trend-card__skeleton-chart {
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0.04) 0%,
@@ -252,23 +250,3 @@
   --ht-chart-dot-stroke: #1f2029;
 }
 
-/* Shell side — плавный переход вместе со страницей */
-.home[data-side="dark"] .habit-trend-card {
-  --ht-card-bg: #24252c;
-  --ht-card-border: rgba(255, 255, 255, 0.08);
-  --ht-card-shadow: 0 calc(8 * var(--s)) calc(28 * var(--s)) rgba(0, 0, 0, 0.22);
-  --ht-title-color: rgba(255, 255, 255, 0.94);
-  --ht-muted-color: rgba(255, 255, 255, 0.55);
-  --ht-legend-border: rgba(255, 255, 255, 0.08);
-  --ht-legend-dot-ring: rgba(0, 0, 0, 0.35);
-  --ht-chart-grid: rgba(255, 255, 255, 0.12);
-  --ht-chart-tick: rgba(255, 255, 255, 0.5);
-  --ht-chart-dot-stroke: #1f2029;
-}
-
-/* Данные тёмной стороны — акцент поверх shell-темы */
-.home[data-side="dark"] .habit-trend-card--dark-side {
-  --ht-card-bg: #1f2029;
-  --ht-card-border: rgba(255, 125, 83, 0.14);
-  --ht-card-shadow: 0 calc(8 * var(--s)) calc(28 * var(--s)) rgba(0, 0, 0, 0.28);
-}
