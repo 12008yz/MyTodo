@@ -7,3 +7,17 @@ export function computeNextEnglishDay(currentDay: number, dayStatus: EnglishDayS
 
   return currentDay;
 }
+
+export function computeEnglishPreviewNextDay(
+  currentDay: number,
+  lessonDayNumber: number,
+  dayStatus: EnglishDayStatus | null,
+): number {
+  const baseDay = lessonDayNumber !== currentDay ? lessonDayNumber : currentDay;
+
+  if (dayStatus === "success" || dayStatus === "fail" || dayStatus === "skipped") {
+    return computeNextEnglishDay(baseDay, dayStatus);
+  }
+
+  return baseDay;
+}

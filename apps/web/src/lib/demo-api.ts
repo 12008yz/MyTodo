@@ -1,4 +1,4 @@
-import { buildDailyPlan, calibrateHabit, canSkipThisWeek, computeEarlyRiseWindowState, computeGlobalStreak, computeHabitStreak, computeNextEnglishDay, computeNextGoal, isAbstinenceTimerHabit, isEarlyRiseEnforcementActive, isWarmupDay, isWeekendDate, previewDayStatusForProgression, recalculateLightGoal, resolveCheckinStatus, resolveForeignLanguageCheckinStatus, resolveWarmupAnchor, resolveWarmupDayInfo, sumEnglishWatchSecondsToMinutes, sumMinutesHabitValueForTodayStats, usesAbstinenceStreakRules, type CalibrationProfile } from "@mytodo/domain";
+import { addDays, buildDailyPlan, calibrateHabit, canSkipThisWeek, computeEarlyRiseWindowState, computeEnglishPreviewNextDay, computeGlobalStreak, computeHabitStreak, computeNextEnglishDay, computeNextGoal, isAbstinenceTimerHabit, isEarlyRiseEnforcementActive, isWarmupDay, isWeekendDate, previewDayStatusForProgression, recalculateLightGoal, resolveCheckinStatus, resolveForeignLanguageCheckinStatus, resolveWarmupAnchor, resolveWarmupDayInfo, sumEnglishWatchSecondsToMinutes, sumMinutesHabitValueForTodayStats, usesAbstinenceStreakRules, type CalibrationProfile } from "@mytodo/domain";
 import { pagesReadTodayInBook } from "../features/books/bookReadingProgress";
 import {
   AWARENESS_SESSION_MIN,
@@ -635,6 +635,36 @@ function toDemoDayStatus(
   return null;
 }
 
+function advanceDemoSelectedLessonIfNeeded(state: DemoState): DemoState {
+  const selectedDay = state.english.selected_lesson_day;
+  if (selectedDay == null || selectedDay === state.english.current_day) {
+    return state;
+  }
+
+  const today = todayDate();
+  if (getDemoEnglishProgressForLesson(state, today, selectedDay)) {
+    return state;
+  }
+
+  const yesterday = addDays(today, -1);
+  const yesterdayProgress = getDemoEnglishProgressForLesson(state, yesterday, selectedDay);
+  if (yesterdayProgress?.status !== "success") {
+    return state;
+  }
+
+  if (selectedDay >= ENGLISH_LESSON_COUNT) {
+    return state;
+  }
+
+  return {
+    ...state,
+    english: {
+      ...state.english,
+      selected_lesson_day: selectedDay + 1,
+    },
+  };
+}
+
 function syncDemoEnglishDay(state: DemoState): DemoState {
   if (!state.english.is_enabled) {
     return state;
@@ -795,6 +825,7 @@ export function demoGetEnglishToday(): EnglishTodayResponse {
   }
 
   state = reconcileDemoForeignLanguageMinutes(state);
+  state = advanceDemoSelectedLessonIfNeeded(state);
   saveState(state);
 
   const lessonDay = resolveDemoActiveLessonDay(state);
@@ -818,10 +849,7 @@ export function demoGetEnglishToday(): EnglishTodayResponse {
     selected_lesson_id: selectedLessonId,
     day_status: dayStatus,
     watched_sec: progress?.watched_sec ?? 0,
-    preview_next_day:
-      lessonDay === state.english.current_day && dayStatus !== null
-        ? computeNextEnglishDay(state.english.current_day, dayStatus)
-        : state.english.current_day,
+    preview_next_day: computeEnglishPreviewNextDay(state.english.current_day, lessonDay, dayStatus),
   };
 }
 
@@ -922,10 +950,7 @@ export function demoSelectEnglishLesson(
     current_day: state.english.current_day,
     day_status: dayStatus,
     watched_sec: progress?.watched_sec ?? 0,
-    preview_next_day:
-      seed.dayNumber === state.english.current_day && dayStatus !== null
-        ? computeNextEnglishDay(state.english.current_day, dayStatus)
-        : state.english.current_day,
+    preview_next_day: computeEnglishPreviewNextDay(state.english.current_day, seed.dayNumber, dayStatus),
     habit_complete: dayStatus === "success",
   };
 }
@@ -980,10 +1005,7 @@ export function demoCompleteEnglishLesson(
     current_day: state.english.current_day,
     day_status: "success",
     watched_sec: data.watched_sec,
-    preview_next_day:
-      lessonDay === state.english.current_day
-        ? computeNextEnglishDay(state.english.current_day, "success")
-        : state.english.current_day,
+    preview_next_day: computeEnglishPreviewNextDay(state.english.current_day, lessonDay, "success"),
   };
 }
 

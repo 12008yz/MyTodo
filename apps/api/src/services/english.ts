@@ -1,5 +1,7 @@
 import {
+  addDays,
   canSkipThisWeek,
+  computeEnglishPreviewNextDay,
   computeNextEnglishDay,
   getUserLocalDate,
   type EnglishDayStatus,
@@ -42,11 +44,13 @@ export class EnglishService {
     await this.ensureEnglishLessonCatalog();
     await this.checkinService.reconcileForeignLanguageMinutes(user);
 
-    const lesson = await this.resolveActiveLesson(settings);
     const today = getUserLocalDate(new Date(), user.timezone);
+    let lesson = await this.resolveActiveLesson(settings);
+    lesson = await this.advanceSelectedLessonIfNeeded(user, settings, lesson, today);
     const progress = await this.getProgressForLesson(user.id, today, lesson.id);
+    const latestSettings = (await this.getSettings(user.id)) ?? settings;
 
-    return this.buildTodayPayload(settings, lesson, progress);
+    return this.buildTodayPayload(latestSettings, lesson, progress);
   }
 
   async getCatalog(user: User) {
@@ -144,10 +148,7 @@ export class EnglishService {
       current_day: settings.currentDay,
       day_status: dayStatus,
       watched_sec: progress?.watchedSec ?? 0,
-      preview_next_day: this.previewNextDay(
-        settings.currentDay,
-        this.coursePreviewStatus(settings.currentDay, lesson.dayNumber, dayStatus),
-      ),
+      preview_next_day: this.previewNextDay(settings.currentDay, lesson.dayNumber, dayStatus),
       habit_complete: dayStatus === "success",
     };
   }
@@ -196,10 +197,7 @@ export class EnglishService {
       current_day: settings.currentDay,
       day_status: "success" as const,
       watched_sec: watchedSec,
-      preview_next_day:
-        lesson.dayNumber === settings.currentDay
-          ? computeNextEnglishDay(settings.currentDay, "success")
-          : settings.currentDay,
+      preview_next_day: this.previewNextDay(settings.currentDay, lesson.dayNumber, "success"),
     };
   }
 
@@ -307,18 +305,6 @@ export class EnglishService {
     };
   }
 
-  private coursePreviewStatus(
-    currentDay: number,
-    lessonDayNumber: number,
-    dayStatus: FinalEnglishStatus,
-  ): FinalEnglishStatus {
-    if (lessonDayNumber !== currentDay) {
-      return null;
-    }
-
-    return dayStatus;
-  }
-
   private buildTodayPayload(
     settings: EnglishSettings,
     lesson: EnglishLesson,
@@ -333,19 +319,16 @@ export class EnglishService {
       selected_lesson_id: settings.selectedLessonId,
       day_status: dayStatus,
       watched_sec: progress?.watchedSec ?? 0,
-      preview_next_day: this.previewNextDay(
-        settings.currentDay,
-        this.coursePreviewStatus(settings.currentDay, lesson.dayNumber, dayStatus),
-      ),
+      preview_next_day: this.previewNextDay(settings.currentDay, lesson.dayNumber, dayStatus),
     };
   }
 
-  private previewNextDay(currentDay: number, dayStatus: FinalEnglishStatus): number {
-    if (dayStatus === "success" || dayStatus === "fail" || dayStatus === "skipped") {
-      return computeNextEnglishDay(currentDay, dayStatus);
-    }
-
-    return currentDay;
+  private previewNextDay(
+    currentDay: number,
+    lessonDayNumber: number,
+    dayStatus: FinalEnglishStatus,
+  ): number {
+    return computeEnglishPreviewNextDay(currentDay, lessonDayNumber, dayStatus);
   }
 
   private toDayStatus(status?: string | null): FinalEnglishStatus {
@@ -423,6 +406,40 @@ export class EnglishService {
     }
 
     return settings;
+  }
+
+  private async advanceSelectedLessonIfNeeded(
+    user: User,
+    settings: EnglishSettings,
+    lesson: EnglishLesson,
+    today: string,
+  ): Promise<EnglishLesson> {
+    if (!settings.selectedLessonId || lesson.dayNumber === settings.currentDay) {
+      return lesson;
+    }
+
+    const todayProgress = await this.getProgressForLesson(user.id, today, lesson.id);
+    if (todayProgress) {
+      return lesson;
+    }
+
+    const yesterday = addDays(today, -1);
+    const yesterdayProgress = await this.getProgressForLesson(user.id, yesterday, lesson.id);
+    if (yesterdayProgress?.status !== "success") {
+      return lesson;
+    }
+
+    const nextLesson = await this.getLessonByDay(lesson.dayNumber + 1);
+    if (!nextLesson) {
+      return lesson;
+    }
+
+    await this.db
+      .update(englishSettings)
+      .set({ selectedLessonId: nextLesson.id })
+      .where(eq(englishSettings.userId, user.id));
+
+    return nextLesson;
   }
 
   private async resolveActiveLesson(settings: EnglishSettings): Promise<EnglishLesson> {

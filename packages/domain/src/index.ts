@@ -97,6 +97,7 @@ export {
   type HabitDayStatus,
 } from "./stats/day-color.js";
 export {
+  computeEnglishPreviewNextDay,
   computeNextEnglishDay,
   type EnglishDayStatus,
 } from "./english/progression.js";

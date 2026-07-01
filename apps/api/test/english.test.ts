@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { getUserLocalDate, getWeekStartMonday, listDatesInclusive } from "@mytodo/domain";
+import { getUserLocalDate, getWeekStartMonday, listDatesInclusive, addDays } from "@mytodo/domain";
 import {
   authResponseSchema,
   englishCompleteResponseSchema,
@@ -400,6 +400,101 @@ describe("English", () => {
     if (todayBody.enabled) {
       expect(todayBody.lesson.day_number).toBe(2);
       expect(todayBody.watched_sec).toBe(240);
+    }
+  });
+
+  it("advances preview_next_day from the selected lesson, not current_day", async () => {
+    const auth = await createOnboardedUser("english-select-preview@example.com");
+    await enableEnglish(auth.access_token);
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+
+    const [lesson2] = await db
+      .select()
+      .from(englishLessons)
+      .where(eq(englishLessons.dayNumber, 2))
+      .limit(1);
+
+    expect(lesson2).toBeDefined();
+
+    await app.inject({
+      method: "POST",
+      url: "/api/v1/english/select",
+      headers,
+      payload: { lesson_id: lesson2!.id },
+    });
+
+    const completeResponse = await app.inject({
+      method: "POST",
+      url: "/api/v1/english/complete",
+      headers,
+      payload: { watched_sec: 600 },
+    });
+
+    expect(completeResponse.statusCode).toBe(200);
+    const completeBody = englishCompleteResponseSchema.parse(JSON.parse(completeResponse.body));
+    expect(completeBody.current_day).toBe(1);
+    expect(completeBody.preview_next_day).toBe(3);
+
+    const todayResponse = await app.inject({
+      method: "GET",
+      url: "/api/v1/english/today",
+      headers,
+    });
+
+    const todayBody = englishTodayResponseSchema.parse(JSON.parse(todayResponse.body));
+    if (todayBody.enabled) {
+      expect(todayBody.lesson.day_number).toBe(2);
+      expect(todayBody.day_status).toBe("success");
+      expect(todayBody.preview_next_day).toBe(3);
+    }
+  });
+
+  it("advances the selected lesson on the next calendar day after completion", async () => {
+    const auth = await createOnboardedUser("english-select-advance@example.com");
+    await enableEnglish(auth.access_token);
+    const headers = { authorization: `Bearer ${auth.access_token}` };
+
+    const [lesson2] = await db
+      .select()
+      .from(englishLessons)
+      .where(eq(englishLessons.dayNumber, 2))
+      .limit(1);
+    const [lesson3] = await db
+      .select()
+      .from(englishLessons)
+      .where(eq(englishLessons.dayNumber, 3))
+      .limit(1);
+    const [settings] = await db.select().from(englishSettings).limit(1);
+
+    const today = getUserLocalDate(new Date(), TIMEZONE);
+    const yesterday = addDays(today, -1);
+
+    await db
+      .update(englishSettings)
+      .set({ selectedLessonId: lesson2!.id })
+      .where(eq(englishSettings.userId, settings!.userId));
+
+    await db.insert(englishProgress).values({
+      userId: settings!.userId,
+      lessonId: lesson2!.id,
+      date: yesterday,
+      status: "success",
+      watchedSec: 600,
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/v1/english/today",
+      headers,
+    });
+
+    const body = englishTodayResponseSchema.parse(JSON.parse(response.body));
+    expect(body.enabled).toBe(true);
+    if (body.enabled) {
+      expect(body.lesson.id).toBe(lesson3!.id);
+      expect(body.lesson.day_number).toBe(3);
+      expect(body.selected_lesson_id).toBe(lesson3!.id);
+      expect(body.day_status).toBeNull();
     }
   });
 

@@ -4,7 +4,7 @@
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "dev": "turbo run dev",
-    "dev:demo": "pnpm --filter @mytodo/web dev:demo",
+    "dev:demo": "pnpm --filter @mytodo/domain build && pnpm --filter @mytodo/web dev:demo",
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
