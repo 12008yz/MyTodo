@@ -58,8 +58,8 @@
 
 .habit-trend-card--dark-side .habit-trend-card__skeleton-line,
 .habit-trend-card--dark-side .habit-trend-card__skeleton-chart,
-.home[data-side="dark"] .habit-trend-card--light-side .habit-trend-card__skeleton-line,
-.home[data-side="dark"] .habit-trend-card--light-side .habit-trend-card__skeleton-chart {
+.home[data-side="dark"] .habit-trend-card .habit-trend-card__skeleton-line,
+.home[data-side="dark"] .habit-trend-card .habit-trend-card__skeleton-chart {
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0.04) 0%,
@@ -70,20 +70,30 @@
 }
 
 .habit-trend-card {
+  --ht-card-bg: var(--color-light-surface);
+  --ht-card-border: rgba(95, 51, 225, 0.08);
+  --ht-card-shadow: 0 calc(4 * var(--s)) calc(24 * var(--s)) rgba(0, 0, 0, 0.04);
+  --ht-title-color: var(--color-black);
+  --ht-muted-color: var(--color-secondary);
+  --ht-legend-border: rgba(95, 51, 225, 0.08);
+  --ht-legend-dot-ring: rgba(255, 255, 255, 0.65);
+  --ht-chart-grid: rgba(95, 51, 225, 0.12);
+  --ht-chart-tick: rgba(0, 0, 0, 0.45);
+  --ht-chart-dot-stroke: #ffffff;
+
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   width: 100%;
   padding: calc(16 * var(--s));
   border-radius: calc(16 * var(--s));
-  border: 1px solid rgba(95, 51, 225, 0.08);
-  background: var(--color-light-surface);
-  box-shadow: 0 calc(4 * var(--s)) calc(24 * var(--s)) rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--ht-card-border);
+  background-color: var(--ht-card-bg);
+  box-shadow: var(--ht-card-shadow);
   transition:
     color var(--home-habit-crossfade-duration, 0.72s) var(--side-ease, cubic-bezier(0.65, 0, 0.35, 1)),
     background-color var(--home-habit-crossfade-duration, 0.72s)
       var(--side-ease, cubic-bezier(0.65, 0, 0.35, 1)),
-    background var(--home-habit-crossfade-duration, 0.72s) var(--side-ease, cubic-bezier(0.65, 0, 0.35, 1)),
     border-color var(--home-habit-crossfade-duration, 0.72s) var(--side-ease, cubic-bezier(0.65, 0, 0.35, 1)),
     box-shadow var(--home-habit-crossfade-duration, 0.72s) var(--side-ease, cubic-bezier(0.65, 0, 0.35, 1));
 }
@@ -120,7 +130,7 @@
   font-weight: 600;
   font-size: calc(17 * var(--s));
   line-height: calc(22 * var(--s));
-  color: var(--color-black);
+  color: var(--ht-title-color);
 }
 
 .habit-trend-card__subtitle {
@@ -128,7 +138,7 @@
   font-weight: 400;
   font-size: calc(13 * var(--s));
   line-height: calc(17 * var(--s));
-  color: var(--color-secondary);
+  color: var(--ht-muted-color);
 }
 
 .habit-trend-card__total {
@@ -142,7 +152,7 @@
   font-weight: 600;
   font-size: calc(22 * var(--s));
   line-height: calc(26 * var(--s));
-  color: var(--color-black);
+  color: var(--ht-title-color);
   letter-spacing: -0.02em;
 }
 
@@ -150,7 +160,7 @@
   font-weight: 500;
   font-size: calc(11 * var(--s));
   line-height: calc(14 * var(--s));
-  color: var(--color-secondary);
+  color: var(--ht-muted-color);
 }
 
 .habit-trend-card__total-unit--muted {
@@ -177,7 +187,7 @@
   margin: calc(10 * var(--s)) 0 0;
   padding: calc(10 * var(--s)) 0 0;
   list-style: none;
-  border-top: 1px solid rgba(95, 51, 225, 0.08);
+  border-top: 1px solid var(--ht-legend-border);
   transition:
     opacity 0.35s ease,
     border-color var(--home-habit-crossfade-duration, 0.72s)
@@ -205,13 +215,15 @@
   height: calc(9 * var(--s));
   border-radius: 50%;
   flex-shrink: 0;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65);
+  box-shadow: 0 0 0 1px var(--ht-legend-dot-ring);
+  transition: box-shadow var(--home-habit-crossfade-duration, 0.72s)
+    var(--side-ease, cubic-bezier(0.65, 0, 0.35, 1));
 }
 
 .habit-trend-card__legend-label {
   font-size: calc(12 * var(--s));
   line-height: calc(15 * var(--s));
-  color: var(--color-black);
+  color: var(--ht-title-color);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -221,62 +233,42 @@
   font-size: calc(11 * var(--s));
   line-height: calc(14 * var(--s));
   font-weight: 600;
-  color: var(--color-black);
+  color: var(--ht-title-color);
   white-space: nowrap;
   flex-shrink: 0;
 }
 
-/* Dark-side habits card */
+/* Данные тёмной стороны — тёмная карточка (в т.ч. на светлом shell) */
 .habit-trend-card--dark-side {
-  border-color: rgba(255, 125, 83, 0.14);
-  background: linear-gradient(165deg, #1f2029 0%, #262230 100%);
-  box-shadow: 0 calc(8 * var(--s)) calc(28 * var(--s)) rgba(0, 0, 0, 0.28);
+  --ht-card-bg: #1f2029;
+  --ht-card-border: rgba(255, 125, 83, 0.14);
+  --ht-card-shadow: 0 calc(8 * var(--s)) calc(28 * var(--s)) rgba(0, 0, 0, 0.28);
+  --ht-title-color: rgba(255, 255, 255, 0.94);
+  --ht-muted-color: rgba(255, 255, 255, 0.55);
+  --ht-legend-border: rgba(255, 255, 255, 0.08);
+  --ht-legend-dot-ring: rgba(0, 0, 0, 0.35);
+  --ht-chart-grid: rgba(255, 255, 255, 0.12);
+  --ht-chart-tick: rgba(255, 255, 255, 0.5);
+  --ht-chart-dot-stroke: #1f2029;
 }
 
-.habit-trend-card--dark-side .habit-trend-card__title,
-.habit-trend-card--dark-side .habit-trend-card__total-value {
-  color: rgba(255, 255, 255, 0.94);
+/* Shell side — плавный переход вместе со страницей */
+.home[data-side="dark"] .habit-trend-card {
+  --ht-card-bg: #24252c;
+  --ht-card-border: rgba(255, 255, 255, 0.08);
+  --ht-card-shadow: 0 calc(8 * var(--s)) calc(28 * var(--s)) rgba(0, 0, 0, 0.22);
+  --ht-title-color: rgba(255, 255, 255, 0.94);
+  --ht-muted-color: rgba(255, 255, 255, 0.55);
+  --ht-legend-border: rgba(255, 255, 255, 0.08);
+  --ht-legend-dot-ring: rgba(0, 0, 0, 0.35);
+  --ht-chart-grid: rgba(255, 255, 255, 0.12);
+  --ht-chart-tick: rgba(255, 255, 255, 0.5);
+  --ht-chart-dot-stroke: #1f2029;
 }
 
-.habit-trend-card--dark-side .habit-trend-card__subtitle,
-.habit-trend-card--dark-side .habit-trend-card__total-unit {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.habit-trend-card--dark-side .habit-trend-card__legend {
-  border-top-color: rgba(255, 255, 255, 0.08);
-}
-
-.habit-trend-card--dark-side .habit-trend-card__legend-label,
-.habit-trend-card--dark-side .habit-trend-card__legend-meta {
-  color: rgba(255, 255, 255, 0.94);
-}
-
-.habit-trend-card--dark-side .habit-trend-card__legend-dot {
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
-}
-
-.home[data-side="dark"] .habit-trend-card--light-side {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: #24252c;
-  box-shadow: 0 calc(8 * var(--s)) calc(28 * var(--s)) rgba(0, 0, 0, 0.22);
-}
-
-.home[data-side="dark"] .habit-trend-card--light-side .habit-trend-card__title,
-.home[data-side="dark"] .habit-trend-card--light-side .habit-trend-card__total-value {
-  color: rgba(255, 255, 255, 0.94);
-}
-
-.home[data-side="dark"] .habit-trend-card--light-side .habit-trend-card__subtitle,
-.home[data-side="dark"] .habit-trend-card--light-side .habit-trend-card__total-unit {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.home[data-side="dark"] .habit-trend-card--light-side .habit-trend-card__legend {
-  border-top-color: rgba(255, 255, 255, 0.08);
-}
-
-.home[data-side="dark"] .habit-trend-card--light-side .habit-trend-card__legend-label,
-.home[data-side="dark"] .habit-trend-card--light-side .habit-trend-card__legend-meta {
-  color: rgba(255, 255, 255, 0.94);
+/* Данные тёмной стороны — акцент поверх shell-темы */
+.home[data-side="dark"] .habit-trend-card--dark-side {
+  --ht-card-bg: #1f2029;
+  --ht-card-border: rgba(255, 125, 83, 0.14);
+  --ht-card-shadow: 0 calc(8 * var(--s)) calc(28 * var(--s)) rgba(0, 0, 0, 0.28);
 }

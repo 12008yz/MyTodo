@@ -15,7 +15,6 @@ import "./HabitTrendChart.css";
 type HabitTrendChartProps = {
   points: TrendPoint[];
   series: TrendSeries[];
-  variant: "light-side" | "dark-side";
   chartKey: string;
   period: ProgressPeriod;
 };
@@ -115,18 +114,19 @@ function seriesFillId(chartKey: string, seriesId: string): string {
   return `${chartKey}-fill-${seriesId}`;
 }
 
-export function HabitTrendChart({ points, series, variant, chartKey, period }: HabitTrendChartProps) {
-  const isDark = variant === "dark-side";
+export function HabitTrendChart({
+  points,
+  series,
+  chartKey,
+  period,
+}: HabitTrendChartProps) {
   const fillOpacity = seriesFillOpacity(series.length);
   const showDots = series.length <= 6;
   const height = chartHeight(series.length, points.length);
   const tickInterval = xAxisTickInterval(period, points.length);
 
   return (
-    <div
-      className={["habit-trend-chart", isDark ? "habit-trend-chart--dark" : ""].filter(Boolean).join(" ")}
-      onMouseDown={(event) => event.preventDefault()}
-    >
+    <div className="habit-trend-chart" onMouseDown={(event) => event.preventDefault()}>
       <ResponsiveContainer width="100%" height={height}>
         <AreaChart key={chartKey} data={points} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
           <defs>
@@ -139,19 +139,19 @@ export function HabitTrendChart({ points, series, variant, chartKey, period }: H
           </defs>
           <CartesianGrid
             strokeDasharray="4 4"
-            stroke={isDark ? "rgba(255,255,255,0.12)" : "rgba(95,51,225,0.12)"}
+            stroke="var(--ht-chart-grid)"
             vertical={period === "week"}
           />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 10, fill: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)" }}
+            tick={{ fontSize: 10, fill: "var(--ht-chart-tick)" }}
             axisLine={false}
             tickLine={false}
             interval={tickInterval}
             minTickGap={8}
           />
           <YAxis
-            tick={{ fontSize: 10, fill: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.45)" }}
+            tick={{ fontSize: 10, fill: "var(--ht-chart-tick)" }}
             axisLine={false}
             tickLine={false}
             width={28}
@@ -173,7 +173,7 @@ export function HabitTrendChart({ points, series, variant, chartKey, period }: H
                   ? {
                       r: 3,
                       fill: item.color,
-                      stroke: isDark ? "#1f2029" : "#ffffff",
+                      stroke: "var(--ht-chart-dot-stroke)",
                       strokeWidth: 2,
                     }
                   : false
@@ -183,13 +183,14 @@ export function HabitTrendChart({ points, series, variant, chartKey, period }: H
                   ? {
                       r: 5,
                       fill: item.color,
-                      stroke: isDark ? "#1f2029" : "#ffffff",
+                      stroke: "var(--ht-chart-dot-stroke)",
                       strokeWidth: 2,
                     }
                   : { r: 4, fill: item.color }
               }
               animationDuration={650}
               animationEasing="ease-out"
+              isAnimationActive
             />
           ))}
         </AreaChart>

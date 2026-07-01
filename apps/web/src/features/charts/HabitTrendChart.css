@@ -19,8 +19,30 @@
   user-select: none;
 }
 
+.habit-trend-chart .recharts-surface {
+  background: transparent;
+}
+
 .habit-trend-chart .recharts-legend-item-text {
   color: inherit !important;
+}
+
+.habit-trend-chart .recharts-cartesian-grid line {
+  stroke: var(--ht-chart-grid) !important;
+  transition: stroke var(--home-habit-crossfade-duration, 0.72s)
+    var(--side-ease, cubic-bezier(0.65, 0, 0.35, 1));
+}
+
+.habit-trend-chart .recharts-cartesian-axis-tick text {
+  fill: var(--ht-chart-tick) !important;
+  transition: fill var(--home-habit-crossfade-duration, 0.72s)
+    var(--side-ease, cubic-bezier(0.65, 0, 0.35, 1));
+}
+
+.habit-trend-chart .recharts-dot circle,
+.habit-trend-chart .recharts-active-dot circle {
+  transition: stroke var(--home-habit-crossfade-duration, 0.72s)
+    var(--side-ease, cubic-bezier(0.65, 0, 0.35, 1));
 }
 
 .habit-trend-tooltip {
@@ -31,7 +53,12 @@
   box-shadow: 0 calc(6 * var(--s)) calc(20 * var(--s)) rgba(0, 0, 0, 0.1);
 }
 
-.habit-trend-chart--dark .habit-trend-tooltip {
+.home[data-side="dark"] .habit-trend-tooltip {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(31, 32, 41, 0.96);
+}
+
+.habit-trend-card--dark-side .habit-trend-tooltip {
   border-color: rgba(255, 255, 255, 0.1);
   background: rgba(31, 32, 41, 0.96);
 }
@@ -43,7 +70,11 @@
   color: var(--color-black);
 }
 
-.habit-trend-chart--dark .habit-trend-tooltip__label {
+.home[data-side="dark"] .habit-trend-tooltip__label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.habit-trend-card--dark-side .habit-trend-tooltip__label {
   color: rgba(255, 255, 255, 0.9);
 }
 
@@ -76,7 +107,11 @@
   color: var(--color-secondary);
 }
 
-.habit-trend-chart--dark .habit-trend-tooltip__name {
+.home[data-side="dark"] .habit-trend-tooltip__name {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.habit-trend-card--dark-side .habit-trend-tooltip__name {
   color: rgba(255, 255, 255, 0.6);
 }
 
@@ -85,6 +120,10 @@
   color: var(--color-black);
 }
 
-.habit-trend-chart--dark .habit-trend-tooltip__value {
+.home[data-side="dark"] .habit-trend-tooltip__value {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.habit-trend-card--dark-side .habit-trend-tooltip__value {
   color: rgba(255, 255, 255, 0.92);
 }

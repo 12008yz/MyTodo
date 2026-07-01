@@ -89,7 +89,6 @@ export function HabitTrendCard({
         <HabitTrendChart
           points={points}
           series={series}
-          variant={variant}
           chartKey={chartKey}
           period={period}
         />
