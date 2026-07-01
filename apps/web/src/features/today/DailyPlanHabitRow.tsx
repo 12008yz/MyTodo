@@ -19,7 +19,7 @@ import {
 } from "@mytodo/shared";
 import { isWeekendDate } from "@mytodo/domain";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { patchBooksHabitOnToday, resetBooksHabitOnToday } from "../../features/books/bookTodayCache";
+import { resetBooksHabitOnToday } from "../../features/books/bookTodayCache";
 import { ClientApiError, clearHabitBook, getEnglishToday, selectHabitBook, startDoomScroll, stopDoomScroll } from "../../lib/api";
 import { CollapsibleReveal } from "../../components/CollapsibleReveal";
 import { BookPickerModal } from "./BookPickerModal";
