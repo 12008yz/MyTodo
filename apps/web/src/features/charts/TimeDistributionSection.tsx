@@ -161,8 +161,8 @@ export function TimeDistributionSection() {
           animationKey={chartKey}
           chartKey={chartKey}
           period={period}
-          isRefreshing={isChartRefreshing}
-          animateChart={!isChartRefreshing && !isSideDataStale}
+          isRefreshing={isChartRefreshing || isSideDataStale}
+          animateChart={!isSideDataStale}
         />
       </div>
     </div>,
