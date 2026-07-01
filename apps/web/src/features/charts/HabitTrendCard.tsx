@@ -62,7 +62,7 @@ export function HabitTrendCard({
           <div className="habit-trend-card__title-row">
             <h3 className="habit-trend-card__title">{title}</h3>
             {unit !== null ? (
-              <div className="habit-trend-card__total" aria-live="polite">
+              <div className="habit-trend-card__total">
                 <span className="habit-trend-card__total-value">{animatedTotal}</span>
                 {unitLabel ? (
                   <span className="habit-trend-card__total-unit">{unitLabel}</span>

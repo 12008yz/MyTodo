@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import type { HabitUnit, ProgressPeriod } from "@mytodo/shared";
 import { ClientApiError } from "../../lib/api";
+import { usePreserveHomeScrollAfterChartUpdate } from "../../utils/preserveHomeScroll";
 import { useHabitSide } from "../shell/SideContext";
 import { formatUnit } from "../today/format";
 import { useTodayDashboard } from "../today/useTodayData";
@@ -56,6 +57,7 @@ function PeriodToggle({
           ]
             .filter(Boolean)
             .join(" ")}
+          onMouseDown={(event) => event.preventDefault()}
           onClick={() => onChange(option.value)}
         >
           {option.label}
@@ -104,6 +106,8 @@ export function TimeDistributionSection() {
     distributionQuery.isFetching && hasChartData && !distributionQuery.isPlaceholderData;
   const chartKey = `${side}-${period}`;
   const chartTitle = side === "light" ? "Динамика" : "Расход";
+
+  usePreserveHomeScrollAfterChartUpdate(chartKey, data);
 
   const panel = (content: ReactNode) => (
     <div className="pie-chart-panel">

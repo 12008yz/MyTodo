@@ -1,7 +1,15 @@
-import { useHabitSide } from "../../features/shell/SideContext";
+import { useHabitSide, type HabitSide } from "../../features/shell/SideContext";
+import { runWithPreservedHomeScroll } from "../../utils/preserveHomeScroll";
 
 export function SideToggle() {
   const { side, setSide } = useHabitSide();
+
+  const selectSide = (next: HabitSide) => {
+    if (next === side) {
+      return;
+    }
+    runWithPreservedHomeScroll(() => setSide(next));
+  };
 
   return (
     <div className="home__side-toggle" role="tablist" aria-label="Сторона привычек" data-active={side}>
@@ -12,7 +20,7 @@ export function SideToggle() {
         aria-selected={side === "light"}
         className={["home__side-btn", side === "light" ? "is-active" : ""].filter(Boolean).join(" ")}
         onMouseDown={(event) => event.preventDefault()}
-        onClick={() => setSide("light")}
+        onClick={() => selectSide("light")}
       >
         ☀️ Светлая
       </button>
@@ -22,7 +30,7 @@ export function SideToggle() {
         aria-selected={side === "dark"}
         className={["home__side-btn", side === "dark" ? "is-active" : ""].filter(Boolean).join(" ")}
         onMouseDown={(event) => event.preventDefault()}
-        onClick={() => setSide("dark")}
+        onClick={() => selectSide("dark")}
       >
         🌑 Тёмная
       </button>
